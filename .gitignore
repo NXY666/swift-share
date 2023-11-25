@@ -1,0 +1,5 @@
+.idea/
+files/
+node_modules/
+
+config.js
