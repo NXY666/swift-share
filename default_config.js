@@ -5,10 +5,20 @@ exports.default = {
 	 */
 	PORT: 3000,
 	/**
-	 * Biu~ 获取所有提取码口令
-	 * @type {string}
+	 * Biu~ 命令
 	 */
-	BIU_GET_ALL_CODE_COMMAND: "/getallcode",
+	BIU: {
+		/**
+		 * 获取所有提取码口令
+		 * @type {string|null}
+		 */
+		GET_ALL_CODE_COMMAND: "/getallcode",
+		/**
+		 * 清除所有提取码口令
+		 * @type {string|null}
+		 */
+		CLEAR_ALL_CODE_COMMAND: "/clearallcode"
+	},
 	/**
 	 * 提取码长度（单位：2字符）
 	 * @type {number}

@@ -1,4 +1,4 @@
-# 快传<img align="right" width="60" src="https://raw.githubusercontent.com/NXY666/SwiftShare/master/resources/favicon.ico">
+# 快传<img align="right" alt="快传图标" src="https://raw.githubusercontent.com/NXY666/SwiftShare/master/resources/favicon.ico" title="快传" width="60"/>
 
 ## 功能特性
 * **传递文本**。零散文本无需保存为文件，可直接传递。
@@ -9,14 +9,10 @@
 * **自定义配置**。支持自定义端口、提取码长度、过期时间等多项配置。
 
 ## 使用方法
+
 ### 安装
 ```shell
 npm install -g swift-share
-```
-
-### 配置
-```shell
-swift-share -config
 ```
 
 ### 启动
@@ -25,10 +21,55 @@ swift-share
 ```
 
 ### 停止
-```shell
-^C
+
+```
+^C (Ctrl + C)
 ```
 
+### 卸载
+
+```shell
+npm uninstall -g swift-share
+```
+
+### 配置
+
+#### 编辑
+
+```shell
+swift-share -config
+```
+
+#### 重置
+
+```shell
+swift-share -reset
+```
+
+## Biu~ 命令
+
+> 快传没有独立的管理页面，仅支持简易的命令。
+
+### 如何使用？
+
+在 2 秒内点击 4 下主页中的网站图标，即可打开伪装的命令窗口。
+
+### 执行结果
+
+* 如果命令匹配成功，则提示 `已收到您的反馈，但是我们不会处理。` ，否则提示 `已收到您的反馈，我们将尽快处理。` 。
+* 命令的执行结果将以 `console.log` 的形式输出到日志。
+
+### 命令列表
+
+> 可在配置文件中自定义命令名称。设置为 `null` 时，表示禁用该命令。
+
+| 命令             | 默认名称            | 说明      |
+|----------------|-----------------|---------|
+| `GetAllCode`   | `/getallcode`   | 获取所有提取码 |
+| `ClearAllCode` | `/clearallcode` | 清除所有提取码 |
+
 ## 注意事项
-* 快传未设计任何保护机制，不建议在公网环境下使用。
-* 关闭快传后，已上传的文件将**自动删除**，共享文件夹中的文件不受影响。如果出现异常退出，在下次启动时会自动清理未删除的文件。
+
+* 快传未设计任何保护机制，**不建议**在公网环境下使用。
+* 关闭快传后，已上传的文件将**自动删除**，共享文件夹中的文件不受影响。
+* 如果发生异常退出，在下次启动时会自动清理未删除的文件。

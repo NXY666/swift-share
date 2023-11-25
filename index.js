@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-function getAbsPath(Path) {
+function getAbsPath(Path = "") {
 	return path.isAbsolute(Path) ? Path : path.join(__dirname, Path);
 }
 function deepMergeObject(def, act) {
@@ -125,6 +125,11 @@ if (process.argv.includes('-config')) {
 	}
 	openEditor(ConfigAbsolutePath);
 	process.exit(0);
+} else if (process.argv.includes('-reset')) {
+	fs.rmSync(ConfigAbsolutePath);
+	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
+	console.log('Config file has been reset.');
+	process.exit(0);
 }
 
 const config = deepMergeObject(require(DefaultConfigAbsolutePath).default, require(ConfigAbsolutePath).default);
@@ -180,26 +185,36 @@ app.use(bodyParser.text({limit: `${config.TEXT_STORE_CAPACITY}mb`}));
 
 // 处理biu
 app.post('/biu', (req, res) => {
-	if (req.body === config.BIU_GET_ALL_CODE_COMMAND) {
-		console.log('biu');
-		res.json({
-			text: "已收到您的反馈，但是我们不会处理。",
-			console: Object.entries(codeStore).map(([code, info]) => {
-				switch (info.type) {
-					case "text":
-						return `【文本】【${code.toUpperCase()}】${info.text.replaceAll(/[\s\n\r]/g, " ").slice(0, 20)}${info.text.length > 20 ? "..." : ""}`;
-					case "files":
-						return `【文件】【${code.toUpperCase()}】${info.files[0].name} 等 ${info.files.length} 个文件`;
-					case "share":
-						return `【共享】【${code.toUpperCase()}】${info.path}`;
-					default:
-						return `【未知】【${code.toUpperCase()}】${JSON.stringify(info)}`;
-				}
-			}).sort((a, b) => a.expiration - b.expiration).join('\n')
+	let matched = true, consoleText;
+	if (req.body === config.BIU.GET_ALL_CODE_COMMAND) {
+		console.log('biu~GET_ALL_CODE_COMMAND');
+		consoleText = Object.entries(codeStore).map(([code, info]) => {
+			switch (info.type) {
+				case "text":
+					return `【文本】【${code.toUpperCase()}】${info.text.replaceAll(/[\s\n\r]/g, " ").slice(0, 20)}${info.text.length > 20 ? "..." : ""}`;
+				case "files":
+					return `【文件】【${code.toUpperCase()}】${info.files[0].name} 等 ${info.files.length} 个文件`;
+				case "share":
+					return `【共享】【${code.toUpperCase()}】${info.path}`;
+				default:
+					return `【未知】【${code.toUpperCase()}】${JSON.stringify(info)}`;
+			}
+		}).sort((a, b) => a.expiration - b.expiration).join('\n');
+	} else if (req.body === config.BIU.CLEAR_ALL_CODE_COMMAND) {
+		console.log('biu~CLEAR_ALL_CODE_COMMAND');
+		Object.keys(codeStore).forEach(code => {
+			if (codeStore[code].type === "files" || codeStore[code].type === "text") {
+				delCode(code);
+			}
 		});
+		consoleText = "已清除所有提取码。";
 	} else {
-		res.json({text: "已收到您的反馈，我们将尽快处理。", console: "biu~"});
+		consoleText = "biu~";
+		matched = false;
 	}
+	res.json({
+		text: matched ? "已收到您的反馈，但是我们不会处理。" : "已收到您的反馈，我们将尽快处理。", console: consoleText
+	});
 });
 
 // 处理文本上传
@@ -376,7 +391,7 @@ app.get('/download/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
 
-	const absFilePath = getAbsPath(linkInfo.path);
+	const absFilePath = getAbsPath(linkInfo?.path);
 
 	if (!linkInfo || Date.now() > linkInfo.expiration) {
 		console.log(`Download link not found or has expired: ${downCode}`);
@@ -396,8 +411,7 @@ app.get('/play/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
 
-	const absFilePath = getAbsPath(linkInfo.path);
-	console.log(absFilePath);
+	const absFilePath = getAbsPath(linkInfo?.path);
 
 	if (!linkInfo || Date.now() > linkInfo.expiration) {
 		console.log(`Play link not found or has expired: ${downCode}`);
@@ -423,8 +437,22 @@ app.get('/favicon.ico', (req, res) => {
 	res.sendFile('favicon.ico', {root: ResourceAbsolutePath});
 });
 
+function delCode(code) {
+	const info = codeStore[code];
+	if (info.type === "files") {
+		for (const file of info.files) {
+			try {
+				fs.unlinkSync(file.path);
+			} catch (e) {
+				console.error(`Failed to delete file: ${file.path}`);
+			}
+		}
+	}
+	delete codeStore[code];
+}
+
 app.listen(port, () => {
-	console.log(`Server is running on port ${port}`);
+	console.log(`Server is running on http://localhost:${port}/ .`);
 
 	// 每分钟清理过期的文本信息
 	setInterval(() => {
@@ -434,20 +462,13 @@ app.listen(port, () => {
 				case "text":
 					if (Date.now() > info.expiration) {
 						console.log(`Text expired: ${code}`);
-						delete codeStore[code];
+						delCode(code);
 					}
 					break;
 				case "files":
 					if (Date.now() > info.expiration + config.LINK_EXPIRE_INTERVAL) {
 						console.log(`File expired: ${code}`);
-						for (const file of info.files) {
-							try {
-								fs.unlinkSync(file.path);
-							} catch (e) {
-								console.error(`Failed to delete file: ${file.path}`);
-							}
-						}
-						delete codeStore[code];
+						delCode(code);
 					}
 					break;
 			}
