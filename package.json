@@ -1,15 +1,16 @@
 {
   "name": "swift-share",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "支持传输文本、文件及在线观看视频。",
   "main": "index.js",
   "bin": {
-    "swift-share": "./index.js"
+    "swift-share": "index.js"
   },
   "author": "GreatNXY",
+  "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/NXY666/SwiftShare.git",
+    "url": "git+https://github.com/NXY666/SwiftShare.git",
     "branch": "master"
   },
   "license": "MIT",
