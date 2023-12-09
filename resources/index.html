@@ -271,7 +271,8 @@
 		</div>
 	</div>
 
-	<a style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;" href="https://github.com/NXY666/SwiftShare">快传 - SwiftShare</a>
+	<a href="https://github.com/NXY666/SwiftShare"
+	   style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;">快传 - SwiftShare</a>
 
 	<script>
 		function disableForm(form) {
@@ -305,16 +306,18 @@
 
 		const host = window.location.origin;
 
+		let extractCodeLength = null;
+
+		setTimeout(() => {
+			fetch(`${host}/extract/code/length`)
+			.then(response => response.json())
+			.then(data => extractCodeLength = data.length * 2);
+		});
+
 		document.addEventListener('DOMContentLoaded', function () {
 			let titleIcon = document.getElementById('titleIcon');
-			let titleIconClickTimestamps = [];
-			titleIcon.addEventListener('click', () => {
-				const now = Date.now();
-				titleIconClickTimestamps.push(now);
-				titleIconClickTimestamps = titleIconClickTimestamps.filter((timestamp) => {
-					return timestamp > now - 2000;
-				});
-				if (titleIconClickTimestamps.length === 4) {
+			titleIcon.addEventListener('click', e => {
+				if (e.detail === 4) {
 					const reqMsg = prompt('您遇到了什么问题？')?.trim();
 					if (!reqMsg) {
 						return;
@@ -390,7 +393,7 @@
 
 				const code = extractTextCode.value;
 
-				if (code.length !== 2) {
+				if (extractCodeLength && code.length !== extractCodeLength) {
 					return;
 				}
 
@@ -496,7 +499,7 @@
 				e.preventDefault();
 
 				const extractionCode = extractFileCode.value;
-				if (extractionCode.length !== 2) {
+				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
 					return;
 				}
 
@@ -533,7 +536,7 @@
 				e.preventDefault();
 
 				const extractionCode = playFileCode.value;
-				if (extractionCode.length !== 2) {
+				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
 					return;
 				}
 

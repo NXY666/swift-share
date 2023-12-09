@@ -199,7 +199,7 @@ console.log(`Share folder code: ${shareFolderCode}`);
 // 设置文本传输最大容量
 app.use(bodyParser.text({limit: `${config.TEXT_STORE_CAPACITY}mb`}));
 
-// 处理biu
+// biu~
 app.post('/biu', (req, res) => {
 	let matched = true, consoleText;
 	if (req.body === config.BIU.GET_ALL_CODE_COMMAND) {
@@ -233,7 +233,12 @@ app.post('/biu', (req, res) => {
 	});
 });
 
-// 处理文本上传
+// 提取码长度
+app.get('/extract/code/length', (req, res) => {
+	res.json({length: config.EXTRACT_CODE_LENGTH});
+});
+
+// 文本上传
 app.post('/upload/text', (req, res) => {
 	const text = req.body.toString();
 
@@ -261,7 +266,7 @@ app.post('/upload/text', (req, res) => {
 	res.json({status: true, code: extractionCode.toUpperCase()});
 });
 
-// 处理文本提取
+// 文本提取
 app.get('/extract/text/:code', (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const textInfo = codeStore[extractionCode];
@@ -278,7 +283,7 @@ app.get('/extract/text/:code', (req, res) => {
 	}
 });
 
-// 处理文件上传
+// 文件上传
 app.post('/upload/files', upload.array('files'), (req, res) => {
 	const files = req.files;
 
@@ -322,7 +327,7 @@ app.post('/upload/files', upload.array('files'), (req, res) => {
 	res.json({status: true, code: extractionCode.toUpperCase()});
 });
 
-// 处理文件提取
+// 文件提取
 app.get('/extract/files/:code', (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const fileInfo = codeStore[extractionCode];
@@ -402,8 +407,8 @@ app.get('/extract/files/:code', (req, res) => {
 	}
 });
 
-// 处理文件下载
-app.get('/download/:code', (req, res) => {
+// 文件下载
+app.get('/down/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
 
@@ -422,7 +427,7 @@ app.get('/download/:code', (req, res) => {
 	}
 });
 
-// 处理文件播放
+// 文件播放
 app.get('/play/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
@@ -443,9 +448,9 @@ app.get('/play/:code', (req, res) => {
 	}
 });
 
-// TextUploader.html
+// index.html
 app.get('/', (req, res) => {
-	res.sendFile('TextSender.html', {root: ResourceAbsolutePath});
+	res.sendFile('index.html', {root: ResourceAbsolutePath});
 });
 
 // favicon.ico
