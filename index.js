@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { execSync } = require("child_process");
+const {spawnSync} = require("child_process");
 
 function getAbsPath(Path = "") {
 	return path.isAbsolute(Path) ? Path : path.join(__dirname, Path);
@@ -59,70 +59,86 @@ if (fs.existsSync(FileAbsolutePath)) {
 }
 fs.mkdirSync(FileAbsolutePath, {recursive: true});
 
-if (process.argv.includes('-config')) {
-	function openEditor(path) {
-		path = `"${path}"`
-		const editors = {
-			'aix': [
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'darwin': [
-				{name: 'nano', command: 'nano {{path}}'},
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'freebsd': [
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'linux': [
-				{name: 'nano', command: 'nano {{path}}'},
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'openbsd': [
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'sunos': [
-				{name: 'vim', command: 'vim {{path}}'},
-				{name: 'vi', command: 'vi {{path}}'}
-			],
-			'win32': [
-				{
-					name: 'notepad++', command: [
-						'"C:\\Program Files\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
-						'"C:\\Program Files (x86)\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
-						'"D:\\Program Files\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
-						'"D:\\Program Files (x86)\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}'
-					]
-				},
-				{name: 'notepad', command: 'notepad {{path}}'}
-			]
-		};
-		const platform = process.platform;
-		const editorList = editors[platform];
-		if (!editorList) {
-			throw new Error(`Unsupported platform: ${platform}`);
-		}
-		for (const editor of editorList) {
-			if (typeof editor.command === 'string') {
-				let command = editor.command;
-				execSync(command.replace('{{path}}', path), {stdio: 'ignore'});
+function runCommand(command, stdio = 'ignore') {
+	try {
+		const result = spawnSync(command, {shell: true, stdio});
+		return result.status === 0;
+	} catch {
+		return false;
+	}
+}
+
+function openEditor(path) {
+	path = `"${path}"`;
+	const editors = {
+		'aix': [
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'darwin': [
+			{name: 'nano', command: 'nano {{path}}'},
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'freebsd': [
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'linux': [
+			{name: 'nano', command: 'nano {{path}}'},
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'openbsd': [
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'sunos': [
+			{name: 'vim', command: 'vim {{path}}'},
+			{name: 'vi', command: 'vi {{path}}'}
+		],
+		'win32': [
+			{
+				name: 'vscode',
+				command: [
+					'code -n {{path}} -w',
+					'code-insiders -n {{path}} -w'
+				]
+			},
+			{
+				name: 'notepad++',
+				command: [
+					'"C:\\Program Files\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
+					'"C:\\Program Files (x86)\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
+					'"D:\\Program Files\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}',
+					'"D:\\Program Files (x86)\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}'
+				]
+			},
+			{name: 'notepad', command: 'notepad {{path}}'}
+		]
+	};
+	const platform = process.platform;
+	const editorList = editors[platform];
+	if (!editorList) {
+		throw new Error(`Unsupported platform: ${platform}`);
+	}
+	for (const editor of editorList) {
+		if (typeof editor.command === 'string') {
+			let command = editor.command;
+			if (runCommand(command.replace('{{path}}', path), platform === 'win32' ? 'ignore' : 'inherit')) {
 				return;
-			} else {
-				for (const command of editor.command) {
-					try {
-						execSync(command.replace('{{path}}', path), {stdio: 'ignore'});
-						return;
-					} catch {
-					}
+			}
+		} else {
+			for (const command of editor.command) {
+				if (runCommand(command.replace('{{path}}', path), platform === 'win32' ? 'ignore' : 'inherit')) {
+					return;
 				}
 			}
 		}
-		throw new Error(`No editor found for platform: ${platform}`);
 	}
+	throw new Error(`No editor found for platform: ${platform}`);
+}
+if (process.argv.includes('-config')) {
 	openEditor(ConfigAbsolutePath);
 	process.exit(0);
 } else if (process.argv.includes('-reset')) {
