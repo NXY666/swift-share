@@ -297,21 +297,43 @@
 		function downloadFile(code, fileName = 'download') {
 			const a = document.createElement('a');
 			a.style.display = 'none';
-			a.href = `${host}/download/${code}`;
+			a.href = `${host}/down/${code}`;
 			a.download = fileName;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
 		}
 
+		function parseBytes(bytes) {
+			if (bytes < 1024) {
+				return `${bytes} B`;
+			} else if (bytes < 1024 * 1024) {
+				return `${(bytes / 1024).toFixed(2)} KB`;
+			} else if (bytes < 1024 * 1024 * 1024) {
+				return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+			} else if (bytes < 1024 * 1024 * 1024 * 1024) {
+				return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+			} else {
+				return `${(bytes / 1024 / 1024 / 1024 / 1024).toFixed(2)} TB`;
+			}
+		}
+
 		const host = window.location.origin;
 
-		let extractCodeLength = null;
+		let extractCodeLength = null, uploadTextCapacity = null, uploadFileCapacity = null;
 
 		setTimeout(() => {
 			fetch(`${host}/extract/code/length`)
 			.then(response => response.json())
 			.then(data => extractCodeLength = data.length * 2);
+
+			fetch(`${host}/upload/text/capacity`)
+			.then(response => response.json())
+			.then(data => uploadTextCapacity = data.capacity);
+
+			fetch(`${host}/upload/files/capacity`)
+			.then(response => response.json())
+			.then(data => uploadFileCapacity = data.capacity);
 		});
 
 		document.addEventListener('DOMContentLoaded', function () {
@@ -354,6 +376,9 @@
 
 				const text = uploadTextInput.value;
 				if (text.trim() === '') {
+					return;
+				} else if (text.length > uploadTextCapacity) {
+					alert(`上传文本长度不能超过 ${parseBytes(uploadTextCapacity)} 。`);
 					return;
 				}
 
@@ -461,6 +486,9 @@
 
 				const files = uploadFileInput.files;
 				if (!files.length) {
+					return;
+				} else if (Array.from(files).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
+					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
 					return;
 				}
 
