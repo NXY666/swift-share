@@ -8,8 +8,8 @@ const path = require("path");
 const fs = require("fs");
 const {spawnSync} = require("child_process");
 
-function getAbsPath(Path = "") {
-	return path.isAbsolute(Path) ? Path : path.join(__dirname, Path);
+function getAbsPath(Path = "", baseDir = __dirname) {
+	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
 }
 function deepMergeObject(def, act) {
 	if (typeof def == "undefined" || def == null) {
@@ -36,18 +36,20 @@ function deepMergeObject(def, act) {
 	return res;
 }
 
+const DataDirPath = path.join(process.platform === "win32" ? process.env.APPDATA : process.env.HOME, './.swift-share');
+
 const DefaultConfigPath = './default_config.js';
 const ConfigPath = './config.js';
 const ResourcePath = './resources';
 const FilePath = './files';
 
 const DefaultConfigAbsolutePath = getAbsPath(DefaultConfigPath);
-const ConfigAbsolutePath = getAbsPath(ConfigPath);
-const ResourceAbsolutePath = path.join(__dirname, ResourcePath);
-const FileAbsolutePath = path.join(__dirname, FilePath);
+const ConfigAbsolutePath = getAbsPath(ConfigPath, DataDirPath);
+const ResourceAbsolutePath = getAbsPath(ResourcePath);
+const FileAbsolutePath = getAbsPath(FilePath, DataDirPath);
 
 if (!fs.existsSync(ConfigAbsolutePath)) {
-	fs.cpSync(path.join(__dirname, DefaultConfigPath), ConfigAbsolutePath);
+	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
 }
 
 if (fs.existsSync(FileAbsolutePath)) {
