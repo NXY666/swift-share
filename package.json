@@ -1,6 +1,6 @@
 {
   "name": "swift-share",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "支持传输文本、文件及在线观看视频。",
   "main": "index.js",
   "bin": {

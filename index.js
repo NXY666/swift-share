@@ -238,6 +238,11 @@ app.get('/extract/code/length', (req, res) => {
 	res.json({length: config.EXTRACT_CODE_LENGTH});
 });
 
+// 文本暂存空间
+app.get('/upload/text/capacity', (req, res) => {
+	res.json({capacity: config.TEXT_STORE_CAPACITY});
+});
+
 // 文本上传
 app.post('/upload/text', (req, res) => {
 	const text = req.body.toString();
@@ -281,6 +286,11 @@ app.get('/extract/text/:code', (req, res) => {
 		console.log(`Text extracted: ${extractionCode}`);
 		res.json({status: true, text: textInfo.text});
 	}
+});
+
+// 文件暂存空间
+app.get('/upload/files/capacity', (req, res) => {
+	res.json({capacity: config.FILE_STORE_CAPACITY});
 });
 
 // 文件上传
