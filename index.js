@@ -203,7 +203,7 @@ app.use(bodyParser.text({limit: Infinity}));
 
 // biu~
 app.post('/biu', (req, res) => {
-	let matched = true, consoleText;
+	let matched = true, consoleText, scriptText;
 	if (req.body === config.BIU.GET_ALL_CODE_COMMAND) {
 		console.log('biu~GET_ALL_CODE_COMMAND');
 		consoleText = Object.entries(codeStore).map(([code, info]) => {
@@ -226,12 +226,16 @@ app.post('/biu', (req, res) => {
 			}
 		});
 		consoleText = "已清除所有提取码。";
+	} else if (req.body === config.BIU.OPEN_CONSOLE_COMMAND) {
+		console.log('biu~OPEN_CONSOLE_COMMAND');
+		consoleText = "已启动虚拟控制台。";
+		scriptText = `(function () { var script = document.createElement('script'); script.src="https://cdn.jsdelivr.net/npm/eruda"; document.body.append(script); script.onload = function () { eruda.init(); } })();`;
 	} else {
 		consoleText = "biu~";
 		matched = false;
 	}
 	res.json({
-		text: matched ? "已收到您的反馈，但是我们不会处理。" : "已收到您的反馈，我们将尽快处理。", console: consoleText
+		text: matched ? "已收到您的反馈，但是我们不会处理。" : "已收到您的反馈，我们将尽快处理。", console: consoleText, script: scriptText
 	});
 });
 
