@@ -199,7 +199,7 @@ codeStore[shareFolderCode] = {type: "share", path: config.SHARE_FOLDER_PATH};
 console.log(`Share folder code: ${shareFolderCode}`);
 
 // 设置文本传输最大容量
-app.use(bodyParser.text({limit: `${config.TEXT_STORE_CAPACITY}mb`}));
+app.use(bodyParser.text({limit: Infinity}));
 
 // biu~
 app.post('/biu', (req, res) => {
