@@ -97,7 +97,6 @@
 		}
 
 		body {
-			font-family: sans-serif;
 			padding-bottom: 15px;
 			color: var(--text-color-1);
 			background-color: var(--background-color-2);
@@ -146,6 +145,7 @@
 		}
 
 		input, textarea {
+			font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
 			padding: 5px 10px;
 			transition: border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
 			color: var(--form-input-color);
@@ -218,7 +218,7 @@
 				<label for="uploadTextInput" style="display: none;"></label>
 				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"
 						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
-				<button style="border-radius: 0 0 5px 5px; border-top: none;">上传</button>
+				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
 			</form>
 		</div>
 	</div>
@@ -337,30 +337,37 @@
 		});
 
 		document.addEventListener('DOMContentLoaded', function () {
-			let titleIcon = document.getElementById('titleIcon');
-			titleIcon.addEventListener('click', e => {
-				if (e.detail === 4) {
-					const reqMsg = prompt('您遇到了什么问题？')?.trim();
-					if (!reqMsg) {
-						return;
-					}
-
-					fetch(`${host}/biu`, {
-						method: 'POST',
-						body: reqMsg,
-						headers: {
-							'Content-Type': 'text/plain'
-						}
-					})
-					.then(response => response.json())
-					.then(data => {
-						console.info(data.console);
-						alert(data.text);
-					})
-					.catch(error => {
-						alert(`biu：${error}`);
-					});
+			function sendBiu() {
+				const reqMsg = prompt('您遇到了什么问题？')?.trim();
+				if (!reqMsg) {
+					return;
 				}
+
+				fetch(`${host}/biu`, {
+					method: 'POST',
+					body: reqMsg,
+					headers: {
+						'Content-Type': 'text/plain'
+					}
+				})
+				.then(response => response.json())
+				.then(data => {
+					// 输出console
+					data.console && console.info(data.console);
+					// 弹窗
+					data.text && alert(data.text);
+					// 插入script
+					data.script && eval(data.script);
+				})
+				.catch(error => {
+					alert(`biu：${error}`);
+				});
+			}
+
+			let titleIcon = document.getElementById('titleIcon');
+			titleIcon.addEventListener('contextmenu', ev => {
+				ev.preventDefault();
+				sendBiu();
 			});
 
 			let uploadTextInput = document.getElementById('uploadTextInput');

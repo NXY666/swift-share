@@ -17,7 +17,12 @@ exports.default = {
 		 * 清除所有提取码口令
 		 * @type {string|null}
 		 */
-		CLEAR_ALL_CODE_COMMAND: "/clearallcode"
+		CLEAR_ALL_CODE_COMMAND: "/clearallcode",
+		/**
+		 * 启用控制台口令
+		 * @type {string|null}
+		 */
+		OPEN_CONSOLE_COMMAND: "/openconsole",
 	},
 	/**
 	 * 提取码长度（单位：2字符）
