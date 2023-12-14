@@ -1,12 +1,15 @@
 {
   "name": "swift-share",
-  "version": "1.0.4",
-  "description": "支持传输文本、文件及在线观看视频。",
+  "version": "1.0.5",
+  "description": "传递文本、传输文件、持久共享及在线播放。",
   "main": "index.js",
   "bin": {
     "swift-share": "index.js"
   },
   "author": "GreatNXY",
+  "engines": {
+    "node": ">=16"
+  },
   "scripts": {},
   "repository": {
     "type": "git",
