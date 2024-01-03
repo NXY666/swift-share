@@ -332,7 +332,7 @@ app.post('/upload/files', upload.array('files'), (req, res) => {
 		return;
 	}
 
-	const extractionCode = generateExtractionCode(1);
+	const extractionCode = generateExtractionCode(config.EXTRACT_CODE_LENGTH);
 	codeStore[extractionCode] = {
 		type: "files", files,
 		size: filesSize,
