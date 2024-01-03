@@ -19,7 +19,7 @@ exports.default = {
 		 */
 		CLEAR_ALL_CODE_COMMAND: "/clearallcode",
 		/**
-		 * 启用控制台口令
+		 * 启用虚拟控制台口令
 		 * @type {string|null}
 		 */
 		OPEN_CONSOLE_COMMAND: "/openconsole",

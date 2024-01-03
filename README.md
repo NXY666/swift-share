@@ -1,6 +1,7 @@
 # 快传<img align="right" alt="快传图标" src="https://raw.githubusercontent.com/NXY666/SwiftShare/master/resources/favicon.ico" title="快传" width="60"/>
 
 ## 功能特性
+
 * **传递文本**。零散文本无需保存为文件，可直接传递。
 * **传输文件**。支持多文件传输，下载前可指定需要下载的文件。
 * **持久共享**。支持设置一个常驻的共享目录，只需将文件放入该目录，即可通过快传传输。每次启动时会生成一个随机的提取码用于下载共享目录中的文件。
@@ -11,11 +12,13 @@
 ## 使用方法
 
 ### 安装
+
 ```shell
 npm install -g swift-share
 ```
 
 ### 启动
+
 ```shell
 swift-share
 ```
@@ -67,6 +70,7 @@ swift-share -reset
 |----------------|-----------------|---------|
 | `GetAllCode`   | `/getallcode`   | 获取所有提取码 |
 | `ClearAllCode` | `/clearallcode` | 清除所有提取码 |
+| `OpenConsole`  | `/openconsole`  | 启用虚拟控制台 |
 
 ## 注意事项
 
