@@ -271,6 +271,27 @@
 		</div>
 	</div>
 
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">上传分片文件</h2>
+			<form id="uploadPartFileForm" style="display: flex; gap: 15px;">
+				<label for="uploadPartFileInput" style="display: none;"></label>
+				<input id="uploadPartFileInput" multiple style="flex: 6; width: 0;" type="file">
+				<button style="flex: 1;">上传</button>
+			</form>
+		</div>
+	</div>
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">分片下载文件</h2>
+			<form id="extractPartFileForm" style="display: flex; gap: 15px;">
+				<label for="extractPartFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">下载</button>
+			</form>
+		</div>
+	</div>
+
 	<a href="https://github.com/NXY666/SwiftShare"
 	   style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;">快传 - SwiftShare</a>
 
@@ -304,6 +325,117 @@
 			document.body.removeChild(a);
 		}
 
+		// 判断blob功能是否可用
+		function checkBlob() {
+			return !!(Blob && URL && URL.createObjectURL);
+		}
+
+		async function downDownloadConfigs(downloadConfigs) {
+			// 判断能不能用blob合成文件
+			const allowMultipart = checkBlob();
+
+			const failedConfigs = [];
+
+			for (const downloadConfig of downloadConfigs) {
+				await new Promise(resolve => {
+					// 连接 WebSocket 并循环发送 ping
+					const socket = new WebSocket(downloadConfig.wsUrl);
+					function autoPing() {
+						if (socket.readyState === WebSocket.OPEN) {
+							socket.send("ping");
+							setTimeout(autoPing, 30 * 1000);
+						} else if (socket.readyState === WebSocket.CONNECTING) {
+							setTimeout(autoPing);
+						}
+					}
+					autoPing();
+
+					if (allowMultipart) {
+						// 终止控制器
+						const abortController = new AbortController();
+
+						// 用于存储已下载的分片blob
+						const multipartBlobs = [];
+
+						// 用于存储下载的promise
+						const downloadPromises = [];
+						// 监听 WebSocket
+						socket.addEventListener('message', ({data}) => {
+							if (data === 'pong') {
+								return;
+							}
+							const downloadIndexArr = JSON.parse(data);
+							for (const downloadIndex of downloadIndexArr) {
+								if (multipartBlobs[downloadIndex]) {
+									continue;
+								}
+								multipartBlobs[downloadIndex] = true;
+
+								downloadPromises.push(api.get(downloadConfig.parts[downloadIndex].url, {signal: abortController.signal}, {
+									slowRequest: true, bodyType: 'blob'
+								}).then(({data}) => {
+									multipartBlobs[downloadIndex] = data;
+								}));
+							}
+						});
+						socket.addEventListener('close', ev => {
+							console.log('WebSocket closed.', ev.code, ev.reason);
+							if (ev.code === 1000) {
+								// 说明下载完成，将所有未下载的片段下载下来
+								for (let i = 0; i < downloadConfig.parts.length; i++) {
+									if (!multipartBlobs[i]) {
+										downloadPromises.push(api.get(downloadConfig.parts[i].url, {signal: abortController.signal}, {
+											slowRequest: true, bodyType: 'blob'
+										}).then(({data}) => {
+											multipartBlobs[i] = data;
+											// 输出data的大小
+											console.log(`Part ${i} size: ${parseBytes(data.size)}`);
+										}));
+									}
+								}
+								Promise.all(downloadPromises)
+								.then(() => {
+									const blob = new Blob(multipartBlobs);
+									const a = document.createElement('a');
+									a.style.display = 'none';
+									a.href = URL.createObjectURL(blob);
+									a.download = downloadConfig.name;
+									document.body.appendChild(a);
+									a.click();
+									document.body.removeChild(a);
+								})
+								.catch(() => {
+									abortController.abort();
+									failedConfigs.push(downloadConfig);
+								})
+								.finally(() => resolve());
+							}
+						});
+					} else {
+						// 监听 WebSocket
+						socket.addEventListener('close', ev => {
+							console.log('WebSocket closed.', ev.code, ev.reason);
+							if (ev.code === 1000) {
+								// 说明下载完成，下载整个文件
+								const a = document.createElement('a');
+								a.style.display = 'none';
+								a.href = downloadConfig.parts[0].url;
+								a.download = downloadConfig.name;
+								document.body.appendChild(a);
+								a.click();
+								document.body.removeChild(a);
+							} else {
+								failedConfigs.push(downloadConfig);
+							}
+							resolve();
+						});
+					}
+				});
+			}
+
+			alert(`下载完成，失败${failedConfigs.length}个。`);
+		}
+
 		function parseBytes(bytes) {
 			if (bytes < 1024) {
 				return `${bytes} B`;
@@ -320,20 +452,152 @@
 
 		const host = window.location.origin;
 
+		class api {
+			static #requestQueue = [];
+			static #requestingCount = 0;
+			static #maxRequestingCount = 16;
+			static #processQueue = async () => {
+				if (this.#requestQueue.length > 0 && this.#requestingCount < this.#maxRequestingCount) {
+					const now = Date.now();
+					let maxValue = 0, maxValueIndex = -1;
+					for (let i = 0; i < this.#requestQueue.length; i++) {
+						const request = this.#requestQueue[i];
+						const value = (now - request.pushTime) * (request.slowRequest ? 1 : 2);
+						if (value > maxValue) {
+							maxValue = value;
+							maxValueIndex = i;
+						}
+					}
+					const request = this.#requestQueue.splice(maxValueIndex, 1)[0];
+					this.#requestingCount++;
+					await request.callback();
+					this.#requestingCount--;
+					setTimeout(this.#processQueue);
+				}
+			};
+
+			static #request(url, options, config) {
+				const {slowRequest, retryCount, bodyType} = config;
+				return new Promise((resolve, reject) => {
+					this.#requestQueue.push({
+						slowRequest,
+						pushTime: Date.now(),
+						callback: async () => {
+							await fetch(new URL(url, host).href, options)
+							.then(async response => ({
+								ok: response.ok, code: response.status,
+								body: await response[bodyType === "auto" ? "text" : bodyType]()
+							}))
+							.then(response => {
+								let body = response.body;
+								if (bodyType === "auto") {
+									try {
+										body = JSON.parse(body);
+									} catch {
+									}
+								}
+								if (response.ok) {
+									resolve({code: response.code, data: body});
+								} else {
+									reject({code: response.code, message: body?.message ?? response.code});
+								}
+							})
+							.catch(error => {
+								if (error instanceof Error) {
+									console.error(error);
+									if (retryCount > 0) {
+										this.#request(url, options, {...config, retryCount: retryCount - 1})
+										.then(resolve)
+										.catch(reject);
+									} else {
+										reject({code: -1, message: error.toString()});
+									}
+								} else {
+									reject(error);
+								}
+							});
+						}
+					});
+					this.#processQueue();
+				});
+			}
+
+			/**
+			 * 发送 GET 请求
+			 * @param {string} url 请求地址
+			 * @param {RequestInit} [options] 请求选项
+			 * @param {boolean} [slowRequest] 是否为慢速请求
+			 * @param {number} [retryCount] 重试次数
+			 * @param {string} [bodyType] 响应体类型
+			 * @return {Promise<{code: number, data: any}>} 响应数据
+			 * @throws {{code: number, message: string}} 响应错误
+			 */
+			static get(
+				url, options = {},
+				{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
+					slowRequest: false, retryCount: 3, bodyType: "auto"
+				}
+			) {
+				return this.#request(url, {
+					...options,
+					method: 'GET'
+				}, {slowRequest, retryCount, bodyType});
+			}
+
+			/**
+			 * 发送 POST 请求
+			 * @param {string} url 请求地址
+			 * @param {string|object} body 请求体
+			 * @param {object} [options] fetch 选项
+			 * @param {boolean} [slowRequest] 是否为慢速请求
+			 * @param {number} [retryCount] 重试次数
+			 * @param {string} [bodyType] 响应体类型
+			 * @return {Promise<{code: number, data: any}>} 响应数据
+			 * @throws {{code: number, message: string}} 响应错误
+			 */
+			static post(
+				url, body, options = {},
+				{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
+					slowRequest: false, retryCount: 3, bodyType: "auto"
+				}
+			) {
+				if (!options.headers) {
+					options.headers = {};
+				}
+				if (body instanceof FormData) {
+					// do nothing
+				} else if (typeof body == 'object') {
+					try {
+						body = JSON.stringify(body);
+						options.headers['Content-Type'] = 'application/json';
+					} catch (e) {
+						console.error(e);
+					}
+				} else if (typeof body == 'string') {
+					options.headers['Content-Type'] = 'text/plain';
+				} else {
+					throw new Error('Unsupported body type.');
+				}
+
+				return this.#request(url, {
+					...options,
+					method: 'POST',
+					body
+				}, {slowRequest, retryCount, bodyType});
+			}
+		}
+
 		let extractCodeLength = null, uploadTextCapacity = null, uploadFileCapacity = null;
 
 		setTimeout(() => {
-			fetch(`${host}/extract/code/length`)
-			.then(response => response.json())
-			.then(data => extractCodeLength = data.length * 2);
+			api.get("/extract/code/length")
+			.then(({data}) => extractCodeLength = data.length * 2);
 
-			fetch(`${host}/upload/text/capacity`)
-			.then(response => response.json())
-			.then(data => uploadTextCapacity = data.capacity);
+			api.get("/upload/text/capacity")
+			.then(({data}) => uploadTextCapacity = data.capacity);
 
-			fetch(`${host}/upload/files/capacity`)
-			.then(response => response.json())
-			.then(data => uploadFileCapacity = data.capacity);
+			api.get("/upload/files/capacity")
+			.then(({data}) => uploadFileCapacity = data.capacity);
 		});
 
 		document.addEventListener('DOMContentLoaded', function () {
@@ -343,15 +607,8 @@
 					return;
 				}
 
-				fetch(`${host}/biu`, {
-					method: 'POST',
-					body: reqMsg,
-					headers: {
-						'Content-Type': 'text/plain'
-					}
-				})
-				.then(response => response.json())
-				.then(data => {
+				api.post("/biu", reqMsg)
+				.then(({data}) => {
 					// 输出console
 					data.console && console.info(data.console);
 					// 弹窗
@@ -359,8 +616,8 @@
 					// 插入script
 					data.script && eval(data.script);
 				})
-				.catch(error => {
-					alert(`biu：${error}`);
+				.catch(({message}) => {
+					alert(`biu：${message}`);
 				});
 			}
 
@@ -391,28 +648,10 @@
 
 				disableForm(uploadTextForm);
 
-				fetch(`${host}/upload/text`, {
-					method: 'POST',
-					body: text,
-					headers: {
-						'Content-Type': 'text/plain'
-					}
-				})
-				.then(response => response.json())
-				.then(data => {
-					if (data.status) {
-						alert(`文本上传成功。请凭【${data.code}】提取文本。`);
-					} else {
-						throw data.message;
-					}
-				})
-				.catch(error => {
-					alert(`文本上传失败：${error}`);
-					console.error(error);
-				})
-				.finally(() => {
-					enableForm(uploadTextForm);
-				});
+				api.post("/upload/text", text)
+				.then(({data}) => alert(`文本上传成功。请凭【${data.code}】提取文本。`))
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(uploadTextForm));
 			});
 
 			const extractTextForm = document.getElementById('extractTextForm');
@@ -431,26 +670,18 @@
 
 				disableForm(extractTextForm);
 
-				fetch(`${host}/extract/text/${code}`)
-				.then(response => response.json())
-				.then(data => {
-					if (data.status) {
-						extractedText.style.backgroundColor = 'var(--background-color-2)';
-						extractedText.style.color = 'var(--form-color)';
-						extractedText.textContent = `${data.text}`;
-					} else {
-						extractedText.style.backgroundColor = 'var(--form-background-error-color)';
-						extractedText.style.color = 'var(--form-error-color)';
-						extractedText.textContent = data.message;
-					}
+				api.get(`/extract/text/${code}`)
+				.then(({data}) => {
+					extractedText.style.backgroundColor = 'var(--background-color-2)';
+					extractedText.style.color = 'var(--form-color)';
+					extractedText.textContent = `${data.text}`;
 				})
-				.catch(error => {
-					alert(`文本提取失败：${error}`);
-					console.error(error);
+				.catch(({message}) => {
+					extractedText.style.backgroundColor = 'var(--form-background-error-color)';
+					extractedText.style.color = 'var(--form-error-color)';
+					extractedText.textContent = message;
 				})
-				.finally(() => {
-					enableForm(extractTextForm);
-				});
+				.finally(() => enableForm(extractTextForm));
 			});
 			copyExtractedTextButton.addEventListener('click', async () => {
 				const text = extractedText.textContent;
@@ -506,25 +737,10 @@
 					formData.append('files', file);
 				}
 
-				fetch(`${host}/upload/files`, {
-					method: 'POST',
-					body: formData
-				})
-				.then(response => response.json())
-				.then(data => {
-					if (data.status) {
-						alert(`文件上传成功。请凭【${data.code}】提取文件。`);
-					} else {
-						throw data.message;
-					}
-				})
-				.catch(error => {
-					alert(`文件上传失败：${error}`);
-					console.error(error);
-				})
-				.finally(() => {
-					enableForm(uploadFileForm);
-				});
+				api.post("/upload/files", formData)
+				.then(({data}) => alert(`文件上传成功。请凭【${data.code}】提取文件。`))
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(uploadFileForm));
 			});
 
 			let extractFileCode = document.getElementById('extractFileCode');
@@ -540,26 +756,17 @@
 
 				disableForm(extractFileForm);
 
-				fetch(`${host}/extract/files/${extractionCode}`)
-				.then(response => response.json())
-				.then(data => {
-					if (data.status) {
-						if (data.codes.length === 1) {
-							downloadFile(data.codes[0].code, data.codes[0].name);
-						} else {
-							showDownloadDialog(data.codes);
-						}
+				api.get(`/extract/files/${extractionCode}`)
+				.then(({data}) => {
+					const codes = data.codes;
+					if (codes.length === 1) {
+						downloadFile(codes[0].code, codes[0].name);
 					} else {
-						alert(`文件提取失败：${data.message}`);
+						showDownloadDialog(codes);
 					}
 				})
-				.catch(error => {
-					alert(`文件提取失败：${error}`);
-					console.error(error);
-				})
-				.finally(() => {
-					enableForm(extractFileForm);
-				});
+				.catch(({message}) => alert(`文件提取失败：${message}`))
+				.finally(() => enableForm(extractFileForm));
 			});
 
 			let playFileCode = document.getElementById('playFileCode');
@@ -577,32 +784,110 @@
 
 				disableForm(playFileForm);
 
-				fetch(`${host}/extract/files/${extractionCode}`)
-				.then(response => response.json())
-				.then(data => {
-					if (data.status) {
-						if (data.codes.length === 1) {
-							playFileVideo.src = `${host}/play/${data.codes[0].code}`;
-						} else {
-							showPlayDialog(data.codes);
-						}
+				api.get(`${host}/extract/files/${extractionCode}`)
+				.then(({data}) => {
+					if (data.length === 1) {
+						playFileVideo.src = `${host}/play/${data[0].code}`;
 					} else {
-						alert(`文件提取失败：${data.message}`);
+						showPlayDialog(data);
 					}
 				})
-				.catch(error => {
-					alert(`文件提取失败：${error}`);
-					console.error(error);
-				})
-				.finally(() => {
-					enableForm(playFileForm);
-				});
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(playFileForm));
 			});
 			playFileVideo.addEventListener('error', (ignore) => {
 				console.error(playFileVideo.error.message);
 			});
 
-			function showDownloadDialog(codes) {
+			let uploadPartFileInput = document.getElementById('uploadPartFileInput');
+			let uploadPartFileForm = document.getElementById('uploadPartFileForm');
+
+			uploadPartFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const localFiles = uploadPartFileInput.files;
+				if (!localFiles.length) {
+					return;
+				} else if (Array.from(localFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
+					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
+					return;
+				}
+
+				disableForm(uploadPartFileForm);
+
+				const allowMultipart = checkBlob();
+
+				api.post('/upload/files/apply', {
+					files: (Array.from(localFiles).map(file => ({
+						name: file.name,
+						size: file.size
+					}))),
+					allowMultipart
+				})
+				.then(async ({data}) => {
+					const {configs} = data;
+
+					// 制作停止信号
+					const abortController = new AbortController();
+
+					const extractCode = data.code;
+					const postPromises = [];
+					for (let i = 0; i < configs.length; i++) {
+						const uploadFileConfig = configs[i];
+						const blobFile = localFiles[i];
+						for (const uploadPartConfig of uploadFileConfig.parts) {
+							const formData = new FormData();
+							formData.append('id', uploadFileConfig.id);
+							formData.append('index', uploadPartConfig.index);
+							formData.append('key', uploadFileConfig.key);
+							// -1表示整个文件
+							formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
+							postPromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}));
+						}
+					}
+
+					// 全部成功才行
+					await Promise.all(postPromises)
+					.then(() => alert(`文件上传成功。请凭【${extractCode}】提取文件。`))
+					.catch(error => {
+						abortController.abort();
+						throw error;
+					});
+				})
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(uploadPartFileForm));
+			});
+
+			let extractPartFileCode = document.getElementById('extractPartFileCode');
+			let extractPartFileForm = document.getElementById('extractPartFileForm');
+
+			extractPartFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const extractionCode = extractPartFileCode.value;
+				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
+					return;
+				}
+
+				disableForm(extractPartFileForm);
+
+				// 判断能不能用blob
+				const allowMultipart = checkBlob();
+
+				api.post(`/extract/files/new/${extractionCode}`, {allowMultipart})
+				.then(({data}) => {
+					const {configs} = data;
+					if (configs.length === 1) {
+						downDownloadConfigs(configs);
+					} else {
+						showDownloadDialog2(configs);
+					}
+				})
+				.catch(({message}) => alert(`文件提取失败：${message}`))
+				.finally(() => enableForm(extractPartFileForm));
+			});
+
+			function showDownloadDialog(downloadFiles) {
 				/**
 				 * 遮罩层
 				 * @type {HTMLDivElement}
@@ -760,7 +1045,7 @@
 						dialog.appendChild(document.createTextNode("从集合中下载文件"));
 
 						checkboxList.classList.add('dialog-checkbox-list');
-						codes.forEach(code => {
+						downloadFiles.forEach(code => {
 							const checkboxListItem = document.createElement('li');
 							const checkboxLabel = document.createElement('label');
 							const checkbox = document.createElement('input');
@@ -825,7 +1110,228 @@
 				document.body.appendChild(overlay);
 			}
 
-			function showPlayDialog(codes) {
+			function showDownloadDialog2(downloadConfigs) {
+				/**
+				 * 遮罩层
+				 * @type {HTMLDivElement}
+				 */
+				const overlay = document.createElement('div');
+				/**
+				 * 样式
+				 * @type {HTMLStyleElement}
+				 */
+				const style = document.createElement('style');
+				/**
+				 * 对话框
+				 * @type {HTMLDivElement}
+				 */
+				const dialog = document.createElement('div');
+				/**
+				 * 复选框列表
+				 * @type {HTMLUListElement}
+				 */
+				const checkboxList = document.createElement('ul');
+				/**
+				 * 按钮组
+				 * @type {HTMLDivElement}
+				 */
+				const buttonGroup = document.createElement('div');
+				/**
+				 * 全选标签
+				 * @type {HTMLLabelElement}
+				 */
+				const selectAllLabel = document.createElement('label');
+				/**
+				 * 全选复选框
+				 * @type {HTMLInputElement}
+				 */
+				const selectAllCheckbox = document.createElement('input');
+				/**
+				 * 确认按钮
+				 * @type {HTMLButtonElement}
+				 */
+				const confirmButton = document.createElement('button');
+				/**
+				 * 取消按钮
+				 * @type {HTMLAnchorElement}
+				 */
+				const cancelButton = document.createElement('a');
+
+				// 按esc关闭对话框
+				let closeDialogKeyboardEvent;
+				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
+					if (e.key === 'Escape') {
+						closeDialog();
+					}
+				});
+
+				function closeDialog() {
+					document.removeEventListener('keydown', closeDialogKeyboardEvent);
+					dialog.style.animationName = 'dialog-disappear';
+					dialog.addEventListener('animationend', () => {
+						document.body.removeChild(overlay);
+					});
+				}
+
+				overlay.classList.add('dialog-overlay');
+				{
+					style.textContent = `
+						.dialog-overlay {
+							position: fixed;
+							top: 0;
+							left: 0;
+							width: 100%;
+							height: 100%;
+							background-color: rgba(0, 0, 0, 0.5);
+							user-select: none;
+						}
+						.dialog-container {
+							width: 500px;
+							max-width: calc(100% - 40px);
+							font-size: 14px;
+							position: fixed;
+							z-index: 999;
+							top: 50%;
+							left: 50%;
+							padding: 20px;
+							transform: translate(-50%, -50%);
+							animation: dialog-appear var(--base-transition-duration);
+							border: 1px solid var(--form-border-color);
+							border-radius: 5px;
+							background-color: var(--form-background-color);
+						}
+						@keyframes dialog-appear {
+							0% {
+								transform: translate(-50%, -50%) scale(0.8);
+								opacity: 0;
+							}
+							100% {
+								transform: translate(-50%, -50%) scale(1);
+								opacity: 1;
+							}
+						}
+						@keyframes dialog-disappear {
+							0% {
+								transform: translate(-50%, -50%) scale(1);
+								opacity: 1;
+							}
+							100% {
+								transform: translate(-50%, -50%) scale(0.8);
+								opacity: 0;
+							}
+						}
+						.dialog-checkbox-list {
+							overflow-y: auto;
+							max-height: 300px;
+							margin-top: 20px;
+							padding: 5px;
+							list-style-type: none;
+							border-radius: 5px;
+							background-color: var(--background-color-2);
+							box-shadow: inset 0 0 5px -2px grey;
+						}
+						.dialog-checkbox-list li label {
+							display: flex;
+							align-items: center;
+							overflow-wrap: anywhere;
+							transition: background-color var(--short-transition-duration);
+							padding: 10px;
+							border-radius: 5px;
+							gap: 10px;
+						}
+						.dialog-checkbox-list li label:hover {
+							background-color: var(--background-color-1);
+						}
+						.dialog-button-group {
+							display: flex;
+							align-items: center;
+						}
+						.dialog-cancel-button {
+							margin-right: 20px;
+							margin-left: auto;
+							text-decoration: none;
+							color: var(--text-color-2);
+							transition: color var(--short-transition-duration);
+						}
+						.dialog-cancel-button:hover {
+							color: var(--text-color-1);
+						}
+						.dialog-cancel-button:active {
+							color: var(--primary-color-1);
+						}
+				`;
+					overlay.appendChild(style);
+
+					dialog.classList.add('dialog-container');
+					{
+						// 标题
+						dialog.appendChild(document.createTextNode("从集合中下载文件"));
+
+						checkboxList.classList.add('dialog-checkbox-list');
+						downloadConfigs.forEach((downloadConfig, index) => {
+							const checkboxListItem = document.createElement('li');
+							const checkboxLabel = document.createElement('label');
+							const checkbox = document.createElement('input');
+							checkbox.type = 'checkbox';
+							checkbox.value = index;
+							checkbox.checked = true; // 设置初始状态为全选
+							checkbox.addEventListener('change', () => {
+								// 更新全选框状态
+								selectAllCheckbox.checked = Array.from(checkboxList.querySelectorAll('input')).every(checkbox => checkbox.checked);
+								selectAllCheckbox.indeterminate = !selectAllCheckbox.checked && Array.from(checkboxList.querySelectorAll('input')).some(checkbox => checkbox.checked);
+							});
+							checkboxLabel.appendChild(checkbox);
+							checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
+
+							checkboxListItem.appendChild(checkboxLabel);
+
+							checkboxList.appendChild(checkboxListItem);
+						});
+						dialog.appendChild(checkboxList);
+
+						buttonGroup.classList.add('dialog-button-group');
+						{
+							selectAllLabel.style.display = 'flex';
+							selectAllLabel.style.alignItems = 'center';
+							selectAllLabel.style.gap = '5px';
+							{
+								selectAllCheckbox.type = 'checkbox';
+								selectAllCheckbox.checked = true; // 默认全选
+								selectAllCheckbox.addEventListener('change', () => {
+									// 全选或取消全选
+									checkboxList.querySelectorAll('input').forEach(checkbox => {
+										checkbox.checked = selectAllCheckbox.checked;
+									});
+								});
+								selectAllLabel.appendChild(selectAllCheckbox);
+
+								// 全选文字
+								selectAllLabel.appendChild(document.createTextNode(' 全选'));
+							}
+							buttonGroup.appendChild(selectAllLabel);
+
+							cancelButton.classList.add('dialog-cancel-button');
+							cancelButton.href = 'javascript:;';
+							cancelButton.textContent = '取消';
+							cancelButton.addEventListener('click', closeDialog);
+							buttonGroup.appendChild(cancelButton);
+
+							confirmButton.textContent = '下载';
+							confirmButton.addEventListener('click', () => {
+								const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => downloadConfigs[checkbox.value]);
+								downDownloadConfigs(selectedConfigs);
+								closeDialog();
+							});
+							buttonGroup.appendChild(confirmButton);
+						}
+						dialog.appendChild(buttonGroup);
+					}
+					overlay.appendChild(dialog);
+				}
+				document.body.appendChild(overlay);
+			}
+
+			function showPlayDialog(downloadFiles) {
 				/**
 				 * 遮罩层
 				 * @type {HTMLDivElement}
@@ -973,7 +1479,7 @@
 						dialog.appendChild(document.createTextNode("从集合中播放视频"));
 
 						checkboxList.classList.add('dialog-checkbox-list');
-						codes.forEach(code => {
+						downloadFiles.forEach(code => {
 							const checkboxListItem = document.createElement('li');
 							const checkboxLabel = document.createElement('label');
 							const checkbox = document.createElement('input');

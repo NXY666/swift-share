@@ -1,4 +1,4 @@
-exports.default = {
+export default {
 	/**
 	 * 端口号
 	 * @type {number}
@@ -22,7 +22,7 @@ exports.default = {
 		 * 启用虚拟控制台口令
 		 * @type {string|null}
 		 */
-		OPEN_CONSOLE_COMMAND: "/openconsole",
+		OPEN_CONSOLE_COMMAND: "/openconsole"
 	},
 	/**
 	 * 提取码长度（单位：2字符）
@@ -59,6 +59,12 @@ exports.default = {
 	 * @type {number}
 	 */
 	FILE_EXPIRE_INTERVAL: 6 * 60 * 60 * 1000,
+	/**
+	 * 文件上传最大时长（单位：毫秒）
+	 * @type {number}
+	 */
+	FILE_UPLOAD_INTERVAL: 30 * 60 * 1000,
+	FILE_PART_SIZE: 10 * 1024 * 1024,
 	/**
 	 * 链接过期时间（单位：毫秒）
 	 * @type {number}

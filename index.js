@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 
-const express = require("express");
-const bodyParser = require("body-parser");
-const crypto = require("crypto");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const {spawnSync} = require("child_process");
+import {fileURLToPath, pathToFileURL} from "url";
+import express from "express";
+import bodyParser from "body-parser";
+import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import {spawnSync} from "child_process";
+import http from "http";
+import {WebSocketServer} from 'ws';
+import DefaultConfig from "./default_config.js";
+import {CodeStore, FileCodeInfo} from "./modules/Code.js";
+import {FileStatus, findFileById, MultipartFile, SimpleFile} from "./modules/File.js";
+import {UploadWebSocketPool} from "./modules/WebSocket.js";
 
-function getAbsPath(Path = "", baseDir = __dirname) {
+function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
 }
 function deepMergeObject(def, act) {
@@ -36,6 +43,7 @@ function deepMergeObject(def, act) {
 	return res;
 }
 
+// 定义路径
 const DataDirPath = path.join(process.platform === "win32" ? process.env.APPDATA : process.env.HOME, './.swift-share');
 
 const DefaultConfigPath = './default_config.js';
@@ -48,10 +56,10 @@ const ConfigAbsolutePath = getAbsPath(ConfigPath, DataDirPath);
 const ResourceAbsolutePath = getAbsPath(ResourcePath);
 const FileAbsolutePath = getAbsPath(FilePath, DataDirPath);
 
+// 路径检查和初始化
 if (!fs.existsSync(ConfigAbsolutePath)) {
 	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
 }
-
 if (fs.existsSync(FileAbsolutePath)) {
 	try {
 		fs.rmSync(FileAbsolutePath, {recursive: true});
@@ -61,6 +69,7 @@ if (fs.existsSync(FileAbsolutePath)) {
 }
 fs.mkdirSync(FileAbsolutePath, {recursive: true});
 
+// 配置
 function runCommand(command, stdio = 'ignore') {
 	try {
 		const result = spawnSync(command, {shell: true, stdio});
@@ -69,7 +78,6 @@ function runCommand(command, stdio = 'ignore') {
 		return false;
 	}
 }
-
 function openEditor(path) {
 	path = `"${path}"`;
 	const editors = {
@@ -149,8 +157,7 @@ if (process.argv.includes('-config')) {
 	console.log('Config file has been reset.');
 	process.exit(0);
 }
-
-const config = deepMergeObject(require(DefaultConfigAbsolutePath).default, require(ConfigAbsolutePath).default);
+const config = deepMergeObject(DefaultConfig, await import(pathToFileURL(ConfigAbsolutePath)).default);
 
 // noinspection JSUnusedGlobalSymbols
 const storage = multer.diskStorage({
@@ -162,7 +169,7 @@ const storage = multer.diskStorage({
 		const fileName = `${file.fieldname}-${uniqueSuffix}`;
 		cb(null, fileName);
 
-		req.on('aborted', () => {
+		req.once('aborted', () => {
 			const fullFilePath = path.join(FileAbsolutePath, fileName);
 			file.stream.on('end', () => {
 				fs.unlink(fullFilePath, (err) => {
@@ -198,8 +205,12 @@ const shareFolderCode = generateExtractionCode(config.EXTRACT_CODE_LENGTH);
 codeStore[shareFolderCode] = {type: "share", path: config.SHARE_FOLDER_PATH};
 console.log(`Share folder code: ${shareFolderCode}`);
 
-// 设置文本传输最大容量
+// 解析文本和JSON
 app.use(bodyParser.text({limit: Infinity}));
+app.use(bodyParser.json({limit: Infinity}));
+
+// 设置静态资源目录
+app.use(express.static(ResourcePath));
 
 // biu~
 app.post('/biu', (req, res) => {
@@ -235,7 +246,8 @@ app.post('/biu', (req, res) => {
 		matched = false;
 	}
 	res.json({
-		text: matched ? "已收到您的反馈，但是我们不会处理。" : "已收到您的反馈，我们将尽快处理。", console: consoleText, script: scriptText
+		text: matched ? "已收到您的反馈，但是我们不会处理。" : "已收到您的反馈，我们将尽快处理。", console: consoleText,
+		script: scriptText
 	});
 });
 
@@ -262,7 +274,7 @@ app.post('/upload/text', (req, res) => {
 	}
 	if (totalSize + text.length > config.TEXT_STORE_CAPACITY) {
 		console.log(`Text store is full: ${totalSize} + ${text.length} > ${config.TEXT_STORE_CAPACITY}`);
-		res.status(403).json({status: false, message: '文本暂存空间已满，请稍后再试。'});
+		res.status(403).json({message: '文本暂存空间已满，请稍后再试。'});
 		return;
 	}
 
@@ -274,7 +286,7 @@ app.post('/upload/text', (req, res) => {
 	};
 
 	console.log(`Text uploaded: ${extractionCode}`);
-	res.json({status: true, code: extractionCode.toUpperCase()});
+	res.json({code: extractionCode.toUpperCase()});
 });
 
 // 文本提取
@@ -284,13 +296,13 @@ app.get('/extract/text/:code', (req, res) => {
 
 	if (!textInfo || Date.now() > textInfo.expiration) {
 		console.log(`Text not found or has expired: ${extractionCode}`);
-		res.status(404).json({status: false, message: '提取码不存在或已过期。'});
+		res.status(404).json({message: '提取码不存在或已过期。'});
 	} else if (textInfo.type !== "text") {
 		console.log(`Specified code is not a text: ${extractionCode}`);
-		res.status(400).json({status: false, message: '指定的提取码类型不是文本。'});
+		res.status(400).json({message: '指定的提取码类型不是文本。'});
 	} else {
 		console.log(`Text extracted: ${extractionCode}`);
-		res.json({status: true, text: textInfo.text});
+		res.json({text: textInfo.text});
 	}
 });
 
@@ -299,9 +311,145 @@ app.get('/upload/files/capacity', (req, res) => {
 	res.json({capacity: config.FILE_STORE_CAPACITY});
 });
 
+// 申请文件上传
+app.post('/upload/files/apply', (req, res) => {
+	const apply = req.body;
+	const {files: applyFiles, allowMultipart} = apply;
+
+	let storeUsedSize = CodeStore.getUsedSpace("files");
+
+	let filesSize = 0;
+	for (const file of applyFiles) {
+		filesSize += file.size;
+	}
+
+	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
+		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
+		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
+		return;
+	}
+
+	const fileUploadConfigs = [], localFiles = [];
+	for (const applyFile of applyFiles) {
+		if (allowMultipart) {
+			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
+			fileUploadConfigs.push(newFile.getUploadConfig());
+			localFiles.push(newFile);
+		} else {
+			const newFile = new SimpleFile({name: applyFile.name, size: applyFile.size});
+			fileUploadConfigs.push(newFile.getUploadConfig());
+			localFiles.push(newFile);
+		}
+	}
+
+	const codeInfo = new FileCodeInfo(localFiles);
+	CodeStore.saveCodeInfo(codeInfo);
+
+	res.json({code: codeInfo.code, configs: fileUploadConfigs});
+});
+
+// 上传文件片段
+app.post('/upload/files/new', upload.single('part'), (req, res) => {
+	const params = req.body;
+	let {id: fileId, key, index} = params;
+
+	fileId = parseInt(fileId);
+
+	const file = findFileById(parseInt(fileId));
+
+	if (file?.key !== key) {
+		console.log(`Invalid file or key: ${key}`);
+		res.status(403).json({message: '无效的文件或密钥。'});
+		return;
+	}
+
+	if (file.upload(parseInt(index), req.file)) {
+		console.log(`File part uploaded: ${fileId}`);
+
+		// 如果上传完成，则关闭所有连接；否则广播文件片段
+		if (file.status === FileStatus.UPLOADED) {
+			uploadConnPool.closeAll(fileId, 1000, "文件上传完成。");
+		} else {
+			uploadConnPool.broadcast(fileId, index);
+		}
+
+		res.json({});
+	} else {
+		res.status(403).json({message: '上传的文件片段不匹配。'});
+	}
+});
+
+// 文件提取（新）
+app.post('/extract/files/new/:code', (req, res) => {
+	const extractionCode = req.params.code.toLowerCase();
+	const codeInfo = CodeStore.getCodeInfo(extractionCode);
+
+	if (!codeInfo) {
+		console.log(`File not found or has expired: ${extractionCode}`);
+		res.status(404).json({message: '提取码不存在或已过期。'});
+		return;
+	} else if (codeInfo.hasExpired()) {
+		console.log(`File has expired: ${extractionCode}`);
+		const expDate = new Date(codeInfo.expireTime);
+		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
+		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
+		return;
+	}
+
+	const params = req.body;
+	const {allowMultipart} = params;
+	switch (codeInfo.type) {
+		case "files": {
+			console.log(`File extracted: ${extractionCode}`);
+			// 生成下载配置
+			const fileDownloadConfigs = [];
+			for (const file of codeInfo.files) {
+				const downloadConfig = file.getDownloadConfig(`http://${req.headers.host}/down`, allowMultipart);
+				fileDownloadConfigs.push(downloadConfig);
+			}
+			res.json({configs: fileDownloadConfigs});
+			break;
+		}
+	}
+});
+
+// 文件下载（新）
+app.get('/down', (req, res) => {
+	const url = new URL(req.url, "http://downalod.file/");
+
+	const id = parseInt(url.searchParams.get('id'));
+
+	const file = findFileById(id);
+
+	if (!file) {
+		console.log(`File not found: ${id}`);
+		res.status(404).send("文件不存在或已过期。");
+		return;
+	} else if (!file.checkSignature(url)) {
+		console.log(`Invalid signature: ${url}`);
+		res.status(404).send("文件不存在或已过期。");
+		return;
+	}
+	console.log(`File downloaded: ${req.query.id}`);
+
+	// 读取整个流的内容
+	const s = file.download(parseInt(req.query.index));
+
+	// 输出整个流的数据大小
+	console.log(s);
+
+	// 输出整个流的内容
+	s.pipe(process.stdout);
+
+	// 是二进制文件内容
+	// res.setHeader('Content-Disposition', `attachment; filename=${file.name}; charset=utf-8`);
+	s.pipe(res);
+});
+
 // 文件上传
 app.post('/upload/files', upload.array('files'), (req, res) => {
 	const files = req.files;
+	console.log(files);
 
 	// 获取store文件的总大小
 	let storeUsedSize = 0;
@@ -320,7 +468,7 @@ app.post('/upload/files', upload.array('files'), (req, res) => {
 	// 判断是否超出容量
 	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
 		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
-		res.status(403).json({status: false, message: '文件暂存空间已满，请稍后再试。'});
+		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
 		// 删除已上传的文件
 		for (const file of files) {
 			try {
@@ -340,7 +488,7 @@ app.post('/upload/files', upload.array('files'), (req, res) => {
 	};
 
 	console.log(`File uploaded: ${extractionCode}`);
-	res.json({status: true, code: extractionCode.toUpperCase()});
+	res.json({code: extractionCode.toUpperCase()});
 });
 
 // 文件提取
@@ -350,12 +498,12 @@ app.get('/extract/files/:code', (req, res) => {
 
 	if (!fileInfo) {
 		console.log(`File not found or has expired: ${extractionCode}`);
-		res.status(404).json({status: false, message: '提取码不存在或已过期。'});
+		res.status(404).json({message: '提取码不存在或已过期。'});
 	} else if (Date.now() > fileInfo.expiration) {
 		console.log(`File has expired: ${extractionCode}`);
 		const expDate = new Date(fileInfo.expiration);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
-		res.status(404).json({status: false, message: `提取码已于 ${datetime} 过期。`});
+		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
 	} else {
 		switch (fileInfo.type) {
 			case "files": {
@@ -373,7 +521,7 @@ app.get('/extract/files/:code', (req, res) => {
 						code: downloadCode.toUpperCase()
 					});
 				}
-				res.json({status: true, codes});
+				res.json({codes});
 				break;
 			}
 			case "share": {
@@ -411,12 +559,12 @@ app.get('/extract/files/:code', (req, res) => {
 				} catch (e) {
 					console.error(`Failed to read share folder: ${fileInfo.path}`);
 				}
-				res.json({status: true, codes});
+				res.json({codes});
 				break;
 			}
 			default: {
 				console.log(`Specified code is not a file: ${extractionCode}`);
-				res.status(400).json({status: false, message: '指定的提取码类型不是文件。'});
+				res.status(400).json({message: '指定的提取码类型不是文件。'});
 				break;
 			}
 		}
@@ -447,7 +595,6 @@ app.get('/down/:code', (req, res) => {
 app.get('/play/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
-
 	const absFilePath = getAbsPath(linkInfo?.path);
 
 	if (!linkInfo || Date.now() > linkInfo.expiration) {
@@ -458,20 +605,10 @@ app.get('/play/:code', (req, res) => {
 		res.status(404).send("文件不存在。");
 	} else {
 		console.log(`File played: ${downCode}`);
-		res.setHeader('Content-Type', 'video/*');
+		res.type("video/*");
 		res.setHeader('Content-Disposition', `inline; filename=${path.basename(linkInfo.originalName)}`);
 		res.sendFile(absFilePath);
 	}
-});
-
-// index.html
-app.get('/', (req, res) => {
-	res.sendFile('index.html', {root: ResourceAbsolutePath});
-});
-
-// favicon.ico
-app.get('/favicon.ico', (req, res) => {
-	res.sendFile('favicon.ico', {root: ResourceAbsolutePath});
 });
 
 function delCode(code) {
@@ -488,7 +625,64 @@ function delCode(code) {
 	delete codeStore[code];
 }
 
-app.listen(port, () => {
+const server = http.createServer(app);
+
+const uploadWss = new WebSocketServer({server});
+
+const uploadConnPool = new UploadWebSocketPool();
+
+// 监听WebSocket连接事件
+uploadWss.on('connection', (ws, req) => {
+	const url = new URL(req.url, "ws://websocket.client/");
+	switch (url.pathname) {
+		case "/down": {
+			// 获取params
+			const params = url.searchParams;
+
+			const id = params.get('id');
+
+			const file = findFileById(parseInt(id));
+
+			if (!file) {
+				console.log(`File not found: ${id}`);
+				ws.close(1001, "文件不存在或已过期。");
+				return;
+			} else if (!file.checkSignature(url)) {
+				console.log(`Invalid signature: ${url}`);
+				ws.close(1001, "文件不存在或已过期。");
+				return;
+			} else if (file.status === FileStatus.UPLOADED) {
+				console.log(`File downloaded: ${id}`);
+				ws.close(1000, "文件已下载完成。");
+				return;
+			} else if (file.status === FileStatus.REMOVED) {
+				console.log(`File removed: ${id}`);
+				ws.close(1002, "文件已被删除。");
+				return;
+			}
+
+			uploadConnPool.addConnection(ws, parseInt(id));
+
+			const downloadConfig = file.getDownloadConfig(`local://download.config/`, true);
+			downloadConfig.parts.forEach((part, partIndex) => {
+				if (part.uploaded) {
+					uploadConnPool.send(ws, partIndex);
+				}
+			});
+			break;
+		}
+		default: {
+			// ws.on('message', (message) => {
+			// 	console.log('Received message:', message);
+			// 	// 在这里处理WebSocket消息
+			// });
+			ws.close();
+			break;
+		}
+	}
+});
+
+server.listen(port, () => {
 	console.log(`Server is running on http://localhost:${port}/ .`);
 
 	// 每分钟清理过期的文本信息
