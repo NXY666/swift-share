@@ -3,20 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import {Url} from "./Url.js";
 import {Stream} from "./Stream.js";
-
-let activeFileId = 0;
-const fileMap = new Map();
-function generateFileId() {
-	return activeFileId++;
-}
-/**
- * 根据 ID 查找文件
- * @param {number} id
- * @return {File}
- */
-export function findFileById(id) {
-	return fileMap.get(id);
-}
+import {Readable} from "stream";
 
 export class FileStatus {
 	static CREATED = 0;
@@ -26,21 +13,24 @@ export class FileStatus {
 }
 
 export class File {
+	static #nextId = 0;
+
+	static #fileMap = {};
 	/**
 	 * 文件ID
 	 * @type {number}
 	 */
-	#id = generateFileId();
-	/**
-	 * 文件上传期限
-	 * @type {number}
-	 */
-	#uploadDeadline = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
+	#id = File.#nextId++;
 	/**
 	 * 访问 UUID
 	 * @type {UUID}
 	 */
 	#key = crypto.randomUUID();
+	/**
+	 * 文件状态
+	 * @type {number}
+	 */
+	#status = FileStatus.CREATED;
 	/**
 	 * 文件名
 	 * @type {string}
@@ -52,29 +42,27 @@ export class File {
 	 */
 	#size;
 	/**
-	 * 文件状态
+	 * 分片大小
 	 * @type {number}
 	 */
-	#status = FileStatus.CREATED;
-
 	#partSize = DefaultConfig.FILE_PART_SIZE;
 
 	constructor({name, size}) {
-		fileMap.set(this.#id, this);
+		File.#fileMap[this.#id] = this;
 		this.#name = name;
 		this.#size = size;
 	}
 
-	get partSize() {
-		return this.#partSize;
-	}
-
-	get partCount() {
-		return Math.ceil(this.size / this.partSize);
+	get id() {
+		return this.#id;
 	}
 
 	get key() {
 		return this.#key;
+	}
+
+	get status() {
+		return this.#status;
 	}
 
 	get name() {
@@ -85,38 +73,26 @@ export class File {
 		return this.#size;
 	}
 
-	/**
-	 * @return {number}
-	 */
-	get status() {
-		return this.#status;
+	get partSize() {
+		return this.#partSize;
 	}
 
-	get id() {
-		return this.#id;
+	get partCount() {
+		return Math.ceil(this.size / this.partSize);
+	}
+
+	/**
+	 * 根据 ID 查找文件
+	 * @param {number|string} id
+	 * @return {File}
+	 */
+	static findFileById(id) {
+		return this.#fileMap[id];
 	}
 
 	// 因为子类要用，所以不能用 private
 	_changeStatus(status) {
 		this.#status = status;
-	}
-
-	upload() {
-		// 已上传或已删除的文件不可再上传
-		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
-			return false;
-		}
-		if (this.status === FileStatus.CREATED) {
-			this._changeStatus(FileStatus.UPLOADING);
-		}
-		return true;
-	}
-
-	remove() {
-		fileMap.delete(this.id);
-		const status = this.status;
-		this._changeStatus(FileStatus.REMOVED);
-		return status === FileStatus.UPLOADING || status === FileStatus.UPLOADED;
 	}
 
 	/**
@@ -131,8 +107,15 @@ export class File {
 		};
 	}
 
-	download() {
-		throw new Error("Not implemented");
+	upload() {
+		// 已上传或已删除的文件不可再上传
+		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
+			return false;
+		}
+		if (this.status === FileStatus.CREATED) {
+			this._changeStatus(FileStatus.UPLOADING);
+		}
+		return true;
 	}
 
 	/**
@@ -147,6 +130,17 @@ export class File {
 			parts: [],
 			wsUrl: this.getSignedWsUrl(apiUrl)
 		};
+	}
+
+	download() {
+		throw new Error("Not implemented");
+	}
+
+	remove() {
+		delete this.#fileMap[this.id];
+		const status = this.status;
+		this._changeStatus(FileStatus.REMOVED);
+		return status === FileStatus.UPLOADING || status === FileStatus.UPLOADED;
 	}
 
 	getSignedPartUrl(apiUrl, index = -1) {
@@ -186,6 +180,14 @@ export class SimpleFile extends File {
 		super({name, size});
 	}
 
+	getUploadConfig() {
+		const uploadConfig = super.getUploadConfig();
+		uploadConfig.parts.push({
+			index: -1
+		});
+		return uploadConfig;
+	}
+
 	upload(index, file) {
 		if (super.upload()) {
 			// 检查索引
@@ -202,24 +204,6 @@ export class SimpleFile extends File {
 		} else {
 			return false;
 		}
-	}
-
-	remove() {
-		if (super.remove()) {
-			try {
-				fs.unlinkSync(this.#path);
-			} catch (e) {
-				console.error("[RemoveSimpleFile]", e);
-			}
-		}
-	}
-
-	getUploadConfig() {
-		const uploadConfig = super.getUploadConfig();
-		uploadConfig.parts.push({
-			index: -1
-		});
-		return uploadConfig;
 	}
 
 	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
@@ -260,10 +244,21 @@ export class SimpleFile extends File {
 			const activePart = downloadConfig.parts[index];
 			if (activePart.uploaded) {
 				// 返回分片文件流
-				return fs.createReadStream(this.#path, {start: activePart.range[0], end: activePart.range[1] - 1
+				return fs.createReadStream(this.#path, {
+					start: activePart.range[0], end: activePart.range[1] - 1
 				});
 			} else {
 				return null;
+			}
+		}
+	}
+
+	remove() {
+		if (super.remove()) {
+			try {
+				fs.unlinkSync(this.#path);
+			} catch (e) {
+				console.error("[RemoveSimpleFile]", e);
 			}
 		}
 	}
@@ -274,6 +269,18 @@ export class MultipartFile extends File {
 
 	constructor({name, size}) {
 		super({name, size});
+	}
+
+	getUploadConfig() {
+		const uploadConfig = super.getUploadConfig();
+		for (let i = 0; i < this.partCount; i++) {
+			// 最后一片可能不完整
+			uploadConfig.parts.push({
+				index: i,
+				range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)]
+			});
+		}
+		return uploadConfig;
 	}
 
 	/**
@@ -304,41 +311,6 @@ export class MultipartFile extends File {
 		}
 	}
 
-	getUploadConfig() {
-		const uploadConfig = super.getUploadConfig();
-		for (let i = 0; i < this.partCount; i++) {
-			// 最后一片可能不完整
-			uploadConfig.parts.push({
-				index: i,
-				range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)]
-			});
-		}
-		return uploadConfig;
-	}
-
-	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
-		const downloadConfig = super.getDownloadConfig(apiUrl);
-		if (allowMultiPart) {
-			for (let i = 0; i < this.partCount; i++) {
-				// 最后一片可能不完整
-				downloadConfig.parts.push({
-					index: i,
-					range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-					url: this.getSignedPartUrl(apiUrl, i),
-					uploaded: this.#paths[i] !== undefined,
-				});
-			}
-		} else {
-			downloadConfig.parts.push({
-				index: -1,
-				range: [0, this.size],
-				url: this.getSignedPartUrl(apiUrl),
-				uploaded: this.status === FileStatus.UPLOADED
-			});
-		}
-		return downloadConfig;
-	}
-
 	download(index) {
 		if (index === -1) {
 			const downloadConfig = this.getDownloadConfig(undefined, false);
@@ -365,6 +337,29 @@ export class MultipartFile extends File {
 		}
 	}
 
+	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
+		const downloadConfig = super.getDownloadConfig(apiUrl);
+		if (allowMultiPart) {
+			for (let i = 0; i < this.partCount; i++) {
+				// 最后一片可能不完整
+				downloadConfig.parts.push({
+					index: i,
+					range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
+					url: this.getSignedPartUrl(apiUrl, i),
+					uploaded: this.#paths[i] !== undefined
+				});
+			}
+		} else {
+			downloadConfig.parts.push({
+				index: -1,
+				range: [0, this.size],
+				url: this.getSignedPartUrl(apiUrl),
+				uploaded: this.status === FileStatus.UPLOADED
+			});
+		}
+		return downloadConfig;
+	}
+
 	remove() {
 		if (super.remove()) {
 			this.#paths.forEach(path => {
@@ -374,6 +369,75 @@ export class MultipartFile extends File {
 					console.error("[RemoveMultipartFile]", e);
 				}
 			});
+		}
+	}
+}
+
+export class TextFile extends File {
+	#text;
+
+	constructor({name, size}) {
+		super({name, size});
+	}
+
+	getUploadConfig() {
+		const uploadConfig = super.getUploadConfig();
+		uploadConfig.parts.push({
+			index: -1
+		});
+		return uploadConfig;
+	}
+
+	upload(index, text) {
+		if (super.upload()) {
+			// 检查索引
+			if (index !== -1) {
+				return false;
+			}
+			// 检查文件大小
+			if (text.length !== this.size) {
+				return false;
+			}
+			this.#text = text;
+			this._changeStatus(FileStatus.UPLOADED);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
+		const downloadConfig = super.getDownloadConfig(apiUrl);
+		downloadConfig.parts.push({
+			index: -1,
+			range: [0, this.size],
+			url: this.getSignedPartUrl(apiUrl),
+			uploaded: this.status === FileStatus.UPLOADED
+		});
+		return downloadConfig;
+	}
+
+	download(index) {
+		if (index === -1) {
+			const downloadConfig = this.getDownloadConfig(undefined, false);
+			const activePart = downloadConfig.parts[0];
+			if (activePart.uploaded) {
+				// 文本转成流
+				const textStream = new Readable();
+				textStream.push(this.#text);
+				textStream.push(null);
+				return textStream;
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+
+	remove() {
+		if (super.remove()) {
+			this.#text = null;
 		}
 	}
 }

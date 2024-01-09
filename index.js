@@ -12,7 +12,7 @@ import http from "http";
 import {WebSocketServer} from 'ws';
 import DefaultConfig from "./default_config.js";
 import {CodeStore, FileCodeInfo} from "./modules/Code.js";
-import {FileStatus, findFileById, MultipartFile, SimpleFile} from "./modules/File.js";
+import {FileStatus, MultipartFile, SimpleFile, File} from "./modules/File.js";
 import {UploadWebSocketPool} from "./modules/WebSocket.js";
 
 function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
@@ -348,108 +348,9 @@ app.post('/upload/files/apply', (req, res) => {
 	res.json({code: codeInfo.code, configs: fileUploadConfigs});
 });
 
-// 上传文件片段
-app.post('/upload/files/new', upload.single('part'), (req, res) => {
-	const params = req.body;
-	let {id: fileId, key, index} = params;
-
-	fileId = parseInt(fileId);
-
-	const file = findFileById(parseInt(fileId));
-
-	if (file?.key !== key) {
-		console.log(`Invalid file or key: ${key}`);
-		res.status(403).json({message: '无效的文件或密钥。'});
-		return;
-	}
-
-	if (file.upload(parseInt(index), req.file)) {
-		console.log(`File part uploaded: ${fileId}`);
-
-		// 如果上传完成，则关闭所有连接；否则广播文件片段
-		if (file.status === FileStatus.UPLOADED) {
-			uploadConnPool.closeAll(fileId, 1000, "文件上传完成。");
-		} else {
-			uploadConnPool.broadcast(fileId, index);
-		}
-
-		res.json({});
-	} else {
-		res.status(403).json({message: '上传的文件片段不匹配。'});
-	}
-});
-
-// 文件提取（新）
-app.post('/extract/files/new/:code', (req, res) => {
-	const extractionCode = req.params.code.toLowerCase();
-	const codeInfo = CodeStore.getCodeInfo(extractionCode);
-
-	if (!codeInfo) {
-		console.log(`File not found or has expired: ${extractionCode}`);
-		res.status(404).json({message: '提取码不存在或已过期。'});
-		return;
-	} else if (codeInfo.hasExpired()) {
-		console.log(`File has expired: ${extractionCode}`);
-		const expDate = new Date(codeInfo.expireTime);
-		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
-		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
-		return;
-	}
-
-	const params = req.body;
-	const {allowMultipart} = params;
-	switch (codeInfo.type) {
-		case "files": {
-			console.log(`File extracted: ${extractionCode}`);
-			// 生成下载配置
-			const fileDownloadConfigs = [];
-			for (const file of codeInfo.files) {
-				const downloadConfig = file.getDownloadConfig(`http://${req.headers.host}/down`, allowMultipart);
-				fileDownloadConfigs.push(downloadConfig);
-			}
-			res.json({configs: fileDownloadConfigs});
-			break;
-		}
-	}
-});
-
-// 文件下载（新）
-app.get('/down', (req, res) => {
-	const url = new URL(req.url, "http://downalod.file/");
-
-	const id = parseInt(url.searchParams.get('id'));
-
-	const file = findFileById(id);
-
-	if (!file) {
-		console.log(`File not found: ${id}`);
-		res.status(404).send("文件不存在或已过期。");
-		return;
-	} else if (!file.checkSignature(url)) {
-		console.log(`Invalid signature: ${url}`);
-		res.status(404).send("文件不存在或已过期。");
-		return;
-	}
-	console.log(`File downloaded: ${req.query.id}`);
-
-	// 读取整个流的内容
-	const s = file.download(parseInt(req.query.index));
-
-	// 输出整个流的数据大小
-	console.log(s);
-
-	// 输出整个流的内容
-	s.pipe(process.stdout);
-
-	// 是二进制文件内容
-	// res.setHeader('Content-Disposition', `attachment; filename=${file.name}; charset=utf-8`);
-	s.pipe(res);
-});
-
 // 文件上传
 app.post('/upload/files', upload.array('files'), (req, res) => {
 	const files = req.files;
-	console.log(files);
 
 	// 获取store文件的总大小
 	let storeUsedSize = 0;
@@ -591,6 +492,90 @@ app.get('/down/:code', (req, res) => {
 	}
 });
 
+// 上传文件（新）
+app.post('/upload/files/new', upload.single('part'), (req, res) => {
+	let {id: fileId, key, index} = req.body.params;
+
+	const file = File.findFileById(fileId);
+
+	if (file?.key !== key) {
+		console.log(`Invalid file or key: ${key}`);
+		res.status(403).json({message: '无效的文件或密钥。'});
+		return;
+	}
+
+	if (file.upload(index, req.file)) {
+		console.log(`File part uploaded: ${fileId}`);
+
+		// 如果上传完成，则关闭所有连接；否则广播文件片段
+		if (file.status === FileStatus.UPLOADED) {
+			uploadConnPool.closeAll(fileId, 1000, "文件上传完成。");
+		} else {
+			uploadConnPool.broadcast(fileId, parseInt(index));
+		}
+
+		res.json({});
+	} else {
+		res.status(403).json({message: '上传的文件片段不匹配。'});
+	}
+});
+
+// 文件提取（新）
+app.post('/extract/files/new/:code', (req, res) => {
+	const extractionCode = req.params.code.toLowerCase();
+	const codeInfo = CodeStore.getCodeInfo(extractionCode);
+
+	if (!codeInfo) {
+		console.log(`File not found or has expired: ${extractionCode}`);
+		res.status(404).json({message: '提取码不存在或已过期。'});
+		return;
+	} else if (codeInfo.hasExpired()) {
+		console.log(`File has expired: ${extractionCode}`);
+		const expDate = new Date(codeInfo.expireTime);
+		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
+		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
+		return;
+	}
+
+	const {allowMultipart} = req.body.params;
+	switch (codeInfo.type) {
+		case "files": {
+			console.log(`File extracted: ${extractionCode}`);
+			// 生成下载配置
+			const fileDownloadConfigs = [];
+			for (const file of codeInfo.files) {
+				const downloadConfig = file.getDownloadConfig(`http://${req.headers.host}/down`, allowMultipart);
+				fileDownloadConfigs.push(downloadConfig);
+			}
+			res.json({configs: fileDownloadConfigs});
+			break;
+		}
+	}
+});
+
+// 文件下载（新）
+app.get('/down', (req, res) => {
+	const url = new URL(req.url, "http://downalod.file/");
+
+	const id = parseInt(url.searchParams.get('id'));
+
+	const file = File.findFileById(id);
+
+	if (!file) {
+		console.log(`File not found: ${id}`);
+		res.status(404).send("文件不存在或已过期。");
+		return;
+	} else if (!file.checkSignature(url)) {
+		console.log(`Invalid signature: ${url}`);
+		res.status(404).send("文件不存在或已过期。");
+		return;
+	}
+	console.log(`File downloaded: ${req.query.id}`);
+
+	// 读取整个流的内容
+	file.download(parseInt(req.query.index)).pipe(res);
+});
+
 // 文件播放
 app.get('/play/:code', (req, res) => {
 	const downCode = req.params.code.toLowerCase();
@@ -641,7 +626,7 @@ uploadWss.on('connection', (ws, req) => {
 
 			const id = params.get('id');
 
-			const file = findFileById(parseInt(id));
+			const file = File.findFileById(id);
 
 			if (!file) {
 				console.log(`File not found: ${id}`);

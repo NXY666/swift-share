@@ -343,7 +343,7 @@
 					function autoPing() {
 						if (socket.readyState === WebSocket.OPEN) {
 							socket.send("ping");
-							setTimeout(autoPing, 30 * 1000);
+							setTimeout(autoPing, 15 * 1000);
 						} else if (socket.readyState === WebSocket.CONNECTING) {
 							setTimeout(autoPing);
 						}

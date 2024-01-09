@@ -46,7 +46,7 @@ export class UploadWebSocketPool {
 		// 定期检查连接的不活动状态，关闭不活动连接
 		const intervalId = setInterval(() => {
 			this.checkInactiveConnections(id);
-		}, this.#inactivityTimeout / 2);
+		}, this.#inactivityTimeout / 4);
 
 		// 关闭连接时清除定时器
 		connection.on('close', () => {

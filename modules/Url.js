@@ -1,10 +1,6 @@
 import crypto from "crypto";
 
 export class Url {
-	static #secretKey = crypto.randomBytes(32);
-
-	static #iv = crypto.randomBytes(16);
-
 	static #digest(text) {
 		// 创建一个哈希对象
 		const hash = crypto.createHash('sha256');
@@ -42,7 +38,7 @@ export class Url {
 		const expireTime = urlObj.searchParams.get('url-expr');
 		const signature = urlObj.searchParams.get('url-sign');
 
-		if (expireTime === null || signature === null || Date.now() > parseInt(expireTime, 10)) {
+		if (expireTime === null || signature === null || Date.now() > parseInt(expireTime)) {
 			return false;
 		}
 

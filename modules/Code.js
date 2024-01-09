@@ -3,7 +3,7 @@ import DefaultConfig from "../default_config.js";
 import {File} from "./File.js";
 
 export class CodeStore {
-	static #store = new Map();
+	static #store = {};
 
 	/**
 	 * 获取提取码信息
