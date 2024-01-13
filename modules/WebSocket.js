@@ -1,17 +1,62 @@
-export class UploadWebSocketPool {
-	#broadcastWaitList = [];
-	#broadcastWaitTimeout = 500;
-	#broadcastWaitTimeoutId = null;
+// noinspection ES6UnusedImports
+import {WebSocket} from 'ws';
+import {File, FileStatus} from "./File.js";
 
-	#sendWaitList = [];
-	#sendWaitTimeout = 500;
-	#sendWaitTimeoutId = null;
+/**
+ * WebSocket 客户端
+ */
+class Client {
+	/**
+	 * 标识符
+	 * @type {number|string}
+	 */
+	id;
+
+	/**
+	 * WebSocket 连接
+	 * @type {WebSocket}
+	 */
+	connection;
+
+	/**
+	 * 附加数据
+	 * @type {Object}
+	 */
+	#data = {};
+
+	/**
+	 * 最后活动时间
+	 * @type {number}
+	 */
+	lastActive = Date.now();
+
+	constructor(id, connection, data) {
+		this.id = id;
+		this.connection = connection;
+		data && Object.assign(this.#data, data);
+	}
+
+	get data() {
+		return this.#data;
+	}
+}
+
+export class WebSocketPool {
+	#waitList = [];
+	#waitTimeout = 500;
+	#waitTimeoutId = null;
 
 	/**
 	 * WebSocket 连接池
-	 * @type {Map<number, {connection: WebSocket, data: {id: number, lastActive: number}}[]>}
+	 * @type {Object.<string, Client[]>}
 	 */
-	#clients = new Map();
+	#clients = {};
+
+	/**
+	 * WebSocket 连接映射
+	 * @type {Map<WebSocket, Client>}
+	 */
+	#connMap = new Map();
 
 	/**
 	 * 不活跃连接的超时时间（毫秒）
@@ -21,148 +66,150 @@ export class UploadWebSocketPool {
 
 	/**
 	 * 添加 WebSocket 连接到连接池
-	 * @param {WebSocket} connection
-	 * @param {number} id
+	 * @param {number|string} id ID
+	 * @param {WebSocket} connection WebSocket 连接
+	 * @param {Object} [data] 附加数据
 	 */
-	addConnection(connection, id) {
-		const connectionData = {id, lastActive: Date.now()};
-
+	addConnection(id, connection, data) {
 		// 添加连接到 ID 映射
-		if (!this.#clients.has(id)) {
-			this.#clients.set(id, []);
+		if (!this.#clients[id]) {
+			this.#clients[id] = [];
 		}
-		this.#clients.get(id).push({connection, data: connectionData});
+		const newClient = new Client(id, connection, data);
+		if (this.onConnection(newClient) === false) {
+			throw new Error('连接池拒绝接受此连接。');
+		}
+		this.#clients[id].push(newClient);
+
+		// 添加连接到连接映射
+		this.#connMap.set(connection, newClient);
 
 		// 处理连接的消息
 		connection.on('message', (message) => {
-			this.onMessage(connection, message);
-		});
-
-		// 处理连接的关闭
-		connection.on('close', (code, reason) => {
-			this.onClose(connection, code, reason);
+			this.#onMessage(connection, message);
 		});
 
 		// 定期检查连接的不活动状态，关闭不活动连接
 		const intervalId = setInterval(() => {
-			this.checkInactiveConnections(id);
+			this.checkClientHealth(newClient);
 		}, this.#inactivityTimeout / 4);
 
-		// 关闭连接时清除定时器
-		connection.on('close', () => {
+		// 处理连接的关闭
+		connection.on('close', (code, reason) => {
+			this.#onClose(connection, code, reason);
 			clearInterval(intervalId);
 		});
 	}
 
-	// 处理连接的消息
-	onMessage(connection, message) {
-		// 处理收到的消息
+	/**
+	 * 处理连接的建立
+	 * @param {Client} client
+	 * @return {boolean} 是否接受此连接
+	 */
+	onConnection(client) {
+		return true;
+	}
+
+	/**
+	 * 处理连接的消息
+	 */
+	#onMessage(connection, message) {
 		message = message.toString();
 
 		// 检查接收到的消息是否为 "ping"，如果是，则发送 "pong" 响应
 		if (message === 'ping') {
 			connection.send('pong');
-		} else {
-			console.log('Received unknown message:', message);
+			return;
 		}
 
 		// 更新连接的最后活动时间
-		const connections = Array.from(this.#clients.values()).flat();
-		for (const item of connections) {
-			const conn = item.connection;
-			const data = item.data;
-
-			if (conn === connection) {
-				data.lastActive = Date.now();
-				break;
-			}
+		const client = this.#findClientByConnection(connection);
+		if (client) {
+			client.lastActive = Date.now();
+		} else {
+			console.error('未找到连接对应的客户端。');
 		}
+
+		// 处理消息
+		this.onMessage(client, message);
 	}
 
-	// 处理连接的关闭
-	onClose(connection, code, reason) {
-		const id = [...this.#clients.entries()]
-		.find(([_, connections]) => connections.some(({connection: conn}) => conn === connection))
-		?.shift();
+	/**
+	 * 处理连接的消息
+	 * @param {Client} client
+	 * @param {string} message
+	 */
+	onMessage(client, message) {
+	}
 
-		if (id) {
-			// 从 ID 映射中移除连接
-			const idConnections = this.#clients.get(id);
-			const index = idConnections.findIndex(({connection: conn}) => conn === connection);
-			if (index !== -1) {
-				idConnections.splice(index, 1);
-			}
+	/**
+	 * 处理连接的关闭
+	 */
+	#onClose(connection, code, reason) {
+		const client = this.#findClientByConnection(connection);
 
-			// 从连接池中移除连接
-			if (idConnections.length === 0) {
-				this.#clients.delete(id);
-			}
+		this.onClose(client, code, reason);
+
+		const {id} = client;
+		// 从 ID 映射中移除连接
+		const idClients = this.#clients[id];
+		const index = idClients.findIndex((client) => client.connection === connection);
+		if (index !== -1) {
+			idClients.splice(index, 1);
 		}
 
 		// 输出关闭的连接信息
 		console.log(`Connection closed with code ${code} and reason: ${reason}`);
 	}
 
-	// 定期检查不活动连接并关闭它们
-	checkInactiveConnections(id) {
+	/**
+	 * 处理连接的关闭
+	 * @param {Client} client
+	 * @param {number} code
+	 * @param {string} reason
+	 */
+	onClose(client, code, reason) {
+	}
+
+	/**
+	 * 检查客户端的活性
+	 * @param {Client} client
+	 */
+	checkClientHealth(client) {
 		const currentTime = Date.now();
-		const client = this.#clients.get(id) || [];
-		for (const {connection, data: {lastActive}} of client) {
-			if (currentTime - lastActive >= this.#inactivityTimeout) {
-				connection.close(1001, 'Connection inactive');
-			}
+		if (currentTime - client.lastActive >= this.#inactivityTimeout) {
+			client.connection.close(1001, '长时间未活动');
 		}
 	}
 
 	/**
-	 * 根据 ID 查找连接
+	 * 根据 ID 查找客户端
 	 * @param {number} id
-	 * @return {{connection: WebSocket, data: {id: number, lastActive: number}}[]}
+	 * @return {Client[]}
 	 */
-	#findClientsById(id) {
-		return this.#clients.get(id)?.slice() || [];
+	findClientsById(id) {
+		return this.#clients[id]?.slice() || [];
 	}
 
-	broadcast(id, message) {
-		this.#broadcastWaitList.push({id, message});
-
-		if (this.#broadcastWaitTimeoutId === null) {
-			const wait = () => {
-				const sendingMap = {};
-
-				// 取出0-100条数据
-				this.#broadcastWaitList.splice(0, 100).forEach(({id, message}) => {
-					if (!sendingMap[id]) {
-						sendingMap[id] = [];
-					}
-					sendingMap[id].push(message);
-				});
-
-				// 发送数据
-				Object.entries(sendingMap).forEach(([id, messages]) => {
-					const clients = this.#findClientsById(parseInt(id));
-					for (const client of clients) {
-						client.connection.send(JSON.stringify(messages));
-					}
-				});
-
-				// 如果还有数据，则继续等待
-				this.#broadcastWaitTimeoutId = this.#broadcastWaitList.length > 0 ? setTimeout(wait, this.#broadcastWaitTimeout) : null;
-			};
-
-			this.#broadcastWaitTimeoutId = setTimeout(wait, this.#broadcastWaitTimeout);
-		}
+	/**
+	 * 根据 WebSocket 连接查找客户端
+	 * @param connection
+	 * @return {Client}
+	 */
+	#findClientByConnection(connection) {
+		return this.#connMap.get(connection);
 	}
 
-	send(connection, message) {
-		this.#sendWaitList.push({connection, message});
+	queue(connection, message) {
+		const client = this.#findClientByConnection(connection);
+		this.#waitList.push({connection, message: this.onSend(client, message)});
 
-		if (this.#sendWaitTimeoutId == null) {
-			const wait = () => {
+		if (this.#waitTimeoutId === null) {
+			const waitTimeoutCallback = () => {
 				const sendingMap = new Map();
 
 				// 取出0-100条数据
-				this.#sendWaitList.splice(0, 100).forEach(({connection, message}) => {
+				this.#waitList.splice(0, 100).forEach(({connection, message}) => {
 					if (!sendingMap.has(connection)) {
 						sendingMap.set(connection, []);
 					}
@@ -170,16 +217,36 @@ export class UploadWebSocketPool {
 				});
 
 				// 发送数据
-				for (const [connection, messages] of sendingMap.entries()) {
+				Object.entries(sendingMap).forEach(([connection, messages]) => {
 					connection.send(JSON.stringify(messages));
-				}
+				});
 
 				// 如果还有数据，则继续等待
-				this.#sendWaitTimeoutId = this.#sendWaitList.length > 0 ? setTimeout(wait, this.#sendWaitTimeout) : null;
+				this.#waitTimeoutId = this.#waitList.length > 0 ? setTimeout(waitTimeoutCallback, this.#waitTimeout) : null;
 			};
 
-			this.#sendWaitTimeoutId = setTimeout(wait, this.#sendWaitTimeout);
+			this.#waitTimeoutId = setTimeout(waitTimeoutCallback, this.#waitTimeout);
 		}
+	}
+
+	/**
+	 * 发送消息前的处理
+	 * @param {Client} client
+	 * @param {any} message
+	 * @return {any}
+	 */
+	onSend(client, message) {
+		return message;
+	}
+
+	send(connection, message) {
+		this.queue(connection, message);
+	}
+
+	broadcast(id, message) {
+		this.findClientsById(id).forEach(({connection}) => {
+			this.queue(connection, message);
+		});
 	}
 
 	/**
@@ -189,9 +256,50 @@ export class UploadWebSocketPool {
 	 * @param {string} reason
 	 */
 	closeAll(id, code, reason) {
-		const clients = this.#findClientsById(id);
+		const clients = this.findClientsById(id);
 		for (const {connection} of clients) {
-			connection.close(code, reason);
+			if (connection.readyState !== WebSocket.CONNECTING) {
+				connection.close(code, reason);
+			}
 		}
+	}
+}
+
+export class DownloadWebSocketPool extends WebSocketPool {
+	/**
+	 * @inheritDoc
+	 */
+	onSend(client, message) {
+		return parseInt(message);
+	}
+}
+
+export class UploadWebSocketPool extends WebSocketPool {
+	downloadWebSocketPool;
+
+	constructor(downloadWebSocketPool) {
+		super();
+		this.downloadWebSocketPool = downloadWebSocketPool;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	onConnection(client) {
+		// 调整文件状态
+		const {id} = client;
+		const file = File.findFileById(id);
+		file.changeStatus(FileStatus.UPLOADING);
+		// 只能有一个上传连接
+		return this.findClientsById(client.id).length <= 0;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	onClose(client, code, reason) {
+		const {id} = client;
+		const file = File.findFileById(id);
+		file.remove();
 	}
 }

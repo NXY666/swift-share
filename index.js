@@ -12,8 +12,8 @@ import http from "http";
 import {WebSocketServer} from 'ws';
 import DefaultConfig from "./default_config.js";
 import {CodeStore, FileCodeInfo} from "./modules/Code.js";
-import {FileStatus, MultipartFile, SimpleFile, File} from "./modules/File.js";
-import {UploadWebSocketPool} from "./modules/WebSocket.js";
+import {File, FileStatus, MultipartFile, SimpleFile} from "./modules/File.js";
+import {DownloadWebSocketPool, UploadWebSocketPool} from "./modules/WebSocket.js";
 
 function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
@@ -311,43 +311,6 @@ app.get('/upload/files/capacity', (req, res) => {
 	res.json({capacity: config.FILE_STORE_CAPACITY});
 });
 
-// 申请文件上传
-app.post('/upload/files/apply', (req, res) => {
-	const apply = req.body;
-	const {files: applyFiles, allowMultipart} = apply;
-
-	let storeUsedSize = CodeStore.getUsedSpace("files");
-
-	let filesSize = 0;
-	for (const file of applyFiles) {
-		filesSize += file.size;
-	}
-
-	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
-		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
-		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
-		return;
-	}
-
-	const fileUploadConfigs = [], localFiles = [];
-	for (const applyFile of applyFiles) {
-		if (allowMultipart) {
-			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
-			fileUploadConfigs.push(newFile.getUploadConfig());
-			localFiles.push(newFile);
-		} else {
-			const newFile = new SimpleFile({name: applyFile.name, size: applyFile.size});
-			fileUploadConfigs.push(newFile.getUploadConfig());
-			localFiles.push(newFile);
-		}
-	}
-
-	const codeInfo = new FileCodeInfo(localFiles);
-	CodeStore.saveCodeInfo(codeInfo);
-
-	res.json({code: codeInfo.code, configs: fileUploadConfigs});
-});
-
 // 文件上传
 app.post('/upload/files', upload.array('files'), (req, res) => {
 	const files = req.files;
@@ -492,26 +455,63 @@ app.get('/down/:code', (req, res) => {
 	}
 });
 
+// 申请文件上传
+app.post('/upload/files/apply', (req, res) => {
+	const apply = req.body;
+	const {files: applyFiles, allowMultipart} = apply;
+
+	let storeUsedSize = CodeStore.getUsedSpace("files");
+
+	let filesSize = 0;
+	for (const file of applyFiles) {
+		filesSize += file.size;
+	}
+
+	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
+		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
+		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
+		return;
+	}
+
+	const fileUploadConfigs = [], localFiles = [];
+	for (const applyFile of applyFiles) {
+		if (allowMultipart) {
+			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
+			fileUploadConfigs.push(newFile.getUploadConfig(`//${req.headers.host}/upload`));
+			localFiles.push(newFile);
+		} else {
+			const newFile = new SimpleFile({name: applyFile.name, size: applyFile.size});
+			fileUploadConfigs.push(newFile.getUploadConfig(`//${req.headers.host}/upload`));
+			localFiles.push(newFile);
+		}
+	}
+
+	const codeInfo = new FileCodeInfo(localFiles);
+	CodeStore.saveCodeInfo(codeInfo);
+
+	res.json({code: codeInfo.code, configs: fileUploadConfigs});
+});
+
 // 上传文件（新）
 app.post('/upload/files/new', upload.single('part'), (req, res) => {
-	let {id: fileId, key, index} = req.body.params;
+	let {id: fileId, key: fileKey, index: partIndex} = req.body;
 
 	const file = File.findFileById(fileId);
 
-	if (file?.key !== key) {
-		console.log(`Invalid file or key: ${key}`);
+	if (file?.key !== fileKey) {
+		console.log(`Invalid file or key: ${fileKey}`);
 		res.status(403).json({message: '无效的文件或密钥。'});
 		return;
 	}
 
-	if (file.upload(index, req.file)) {
+	if (file.upload(partIndex, req.file)) {
 		console.log(`File part uploaded: ${fileId}`);
 
 		// 如果上传完成，则关闭所有连接；否则广播文件片段
 		if (file.status === FileStatus.UPLOADED) {
-			uploadConnPool.closeAll(fileId, 1000, "文件上传完成。");
+			downloadWebSocketPool.closeAll(fileId, 4000, "文件上传完成。");
 		} else {
-			uploadConnPool.broadcast(fileId, parseInt(index));
+			downloadWebSocketPool.broadcast(fileId, partIndex);
 		}
 
 		res.json({});
@@ -544,7 +544,7 @@ app.post('/extract/files/new/:code', (req, res) => {
 			// 生成下载配置
 			const fileDownloadConfigs = [];
 			for (const file of codeInfo.files) {
-				const downloadConfig = file.getDownloadConfig(`http://${req.headers.host}/down`, allowMultipart);
+				const downloadConfig = file.getDownloadConfig(`//${req.headers.host}/down`, allowMultipart);
 				fileDownloadConfigs.push(downloadConfig);
 			}
 			res.json({configs: fileDownloadConfigs});
@@ -555,7 +555,7 @@ app.post('/extract/files/new/:code', (req, res) => {
 
 // 文件下载（新）
 app.get('/down', (req, res) => {
-	const url = new URL(req.url, "http://downalod.file/");
+	const url = new URL(req.url, "http://downalod/");
 
 	const id = parseInt(url.searchParams.get('id'));
 
@@ -612,19 +612,18 @@ function delCode(code) {
 
 const server = http.createServer(app);
 
-const uploadWss = new WebSocketServer({server});
+const wss = new WebSocketServer({server});
 
-const uploadConnPool = new UploadWebSocketPool();
+const downloadWebSocketPool = new DownloadWebSocketPool(),
+	uploadWebSocketPool = new UploadWebSocketPool(downloadWebSocketPool);
 
 // 监听WebSocket连接事件
-uploadWss.on('connection', (ws, req) => {
+wss.on('connection', (ws, req) => {
 	const url = new URL(req.url, "ws://websocket.client/");
+	const {searchParams} = url;
 	switch (url.pathname) {
 		case "/down": {
-			// 获取params
-			const params = url.searchParams;
-
-			const id = params.get('id');
+			const id = searchParams.get('id');
 
 			const file = File.findFileById(id);
 
@@ -637,8 +636,8 @@ uploadWss.on('connection', (ws, req) => {
 				ws.close(1001, "文件不存在或已过期。");
 				return;
 			} else if (file.status === FileStatus.UPLOADED) {
-				console.log(`File downloaded: ${id}`);
-				ws.close(1000, "文件已下载完成。");
+				console.log(`File uploaded: ${id}`);
+				ws.close(1000, "文件已上传完成。");
 				return;
 			} else if (file.status === FileStatus.REMOVED) {
 				console.log(`File removed: ${id}`);
@@ -646,21 +645,49 @@ uploadWss.on('connection', (ws, req) => {
 				return;
 			}
 
-			uploadConnPool.addConnection(ws, parseInt(id));
+			downloadWebSocketPool.addConnection(id, ws);
 
 			const downloadConfig = file.getDownloadConfig(`local://download.config/`, true);
 			downloadConfig.parts.forEach((part, partIndex) => {
 				if (part.uploaded) {
-					uploadConnPool.send(ws, partIndex);
+					downloadWebSocketPool.send(ws, partIndex);
 				}
 			});
 			break;
 		}
+		case "/upload": {
+			const id = searchParams.get('id');
+			const key = searchParams.get('key');
+
+			const file = File.findFileById(id);
+
+			if (!file) {
+				console.log(`File not found: ${id}`);
+				ws.close(4001, "文件不存在或已过期。");
+				return;
+			} else if (!file.checkSignature(url)) {
+				console.log(`Invalid signature: ${url}`);
+				ws.close(4001, "文件不存在或已过期。");
+				return;
+			} else if (file.key !== key) {
+				console.log(`Invalid file or key: ${key}`);
+				ws.close(4001, "无效的文件或密钥。");
+				return;
+			} else if (file.status === FileStatus.UPLOADED) {
+				console.log(`File uploaded: ${id}`);
+				ws.close(4000, "文件已上传完成。");
+				return;
+			} else if (file.status === FileStatus.REMOVED) {
+				console.log(`File removed: ${id}`);
+				ws.close(4001, "文件已被删除。");
+				return;
+			}
+
+			uploadWebSocketPool.addConnection(id, ws);
+
+			break;
+		}
 		default: {
-			// ws.on('message', (message) => {
-			// 	console.log('Received message:', message);
-			// 	// 在这里处理WebSocket消息
-			// });
 			ws.close();
 			break;
 		}

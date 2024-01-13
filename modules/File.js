@@ -47,10 +47,17 @@ export class File {
 	 */
 	#partSize = DefaultConfig.FILE_PART_SIZE;
 
-	constructor({name, size}) {
+	/**
+	 * 是否需要 WebSocket 保证上传
+	 * @type {boolean}
+	 */
+	#needWs = false;
+
+	constructor({name, size, needWs = true}) {
 		File.#fileMap[this.#id] = this;
 		this.#name = name;
 		this.#size = size;
+		this.#needWs = needWs;
 	}
 
 	get id() {
@@ -81,6 +88,10 @@ export class File {
 		return Math.ceil(this.size / this.partSize);
 	}
 
+	get needWs() {
+		return this.#needWs;
+	}
+
 	/**
 	 * 根据 ID 查找文件
 	 * @param {number|string} id
@@ -91,19 +102,20 @@ export class File {
 	}
 
 	// 因为子类要用，所以不能用 private
-	_changeStatus(status) {
+	changeStatus(status) {
 		this.#status = status;
 	}
 
 	/**
 	 * 获取上传配置
-	 * @returns {{id: number, key: UUID, parts: {index: number, range?: [number, number]}[]}}
+	 * @returns {{id: number, key: UUID, parts: {index: number, range?: [number, number]}[], wsUrl: string}}
 	 */
-	getUploadConfig() {
+	getUploadConfig(apiUrl) {
 		return {
 			id: this.id,
 			key: this.key,
-			parts: []
+			parts: [],
+			wsUrl: this.getSignedUploadWsUrl(apiUrl)
 		};
 	}
 
@@ -112,9 +124,13 @@ export class File {
 		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
 			return false;
 		}
-		if (this.status === FileStatus.CREATED) {
-			this._changeStatus(FileStatus.UPLOADING);
+
+		// 需要ws但未连接websocket的文件不能上传
+		if (this.needWs && this.status === FileStatus.CREATED) {
+			return false;
 		}
+
+		this.changeStatus(FileStatus.UPLOADING);
 		return true;
 	}
 
@@ -128,7 +144,7 @@ export class File {
 			name: this.name,
 			size: this.size,
 			parts: [],
-			wsUrl: this.getSignedWsUrl(apiUrl)
+			wsUrl: this.getSignedDownloadWsUrl(apiUrl)
 		};
 	}
 
@@ -137,23 +153,29 @@ export class File {
 	}
 
 	remove() {
-		delete this.#fileMap[this.id];
+		delete File.#fileMap[this.id];
 		const status = this.status;
-		this._changeStatus(FileStatus.REMOVED);
+		this.changeStatus(FileStatus.REMOVED);
 		return status === FileStatus.UPLOADING || status === FileStatus.UPLOADED;
 	}
 
 	getSignedPartUrl(apiUrl, index = -1) {
-		const apiUrlObj = new URL(apiUrl);
+		const apiUrlObj = new URL(apiUrl, "http://sign.url/");
 		apiUrlObj.searchParams.set("id", this.id.toString());
 		apiUrlObj.searchParams.set("index", index.toString());
 		return Url.sign(apiUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
-	getSignedWsUrl(apiUrl) {
-		const wsUrlObj = new URL(apiUrl);
-		wsUrlObj.protocol = "ws";
+	getSignedDownloadWsUrl(apiUrl) {
+		const wsUrlObj = new URL(apiUrl, "ws://sign.url/");
 		wsUrlObj.searchParams.set("id", this.id.toString());
+		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
+	}
+
+	getSignedUploadWsUrl(apiUrl) {
+		const wsUrlObj = new URL(apiUrl, "ws://sign.url/");
+		wsUrlObj.searchParams.set("id", this.id.toString());
+		wsUrlObj.searchParams.set("key", this.key.toString());
 		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
@@ -180,8 +202,8 @@ export class SimpleFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig() {
-		const uploadConfig = super.getUploadConfig();
+	getUploadConfig(apiUrl) {
+		const uploadConfig = super.getUploadConfig(apiUrl);
 		uploadConfig.parts.push({
 			index: -1
 		});
@@ -199,14 +221,14 @@ export class SimpleFile extends File {
 				return false;
 			}
 			this.#path = file.path;
-			this._changeStatus(FileStatus.UPLOADED);
+			this.changeStatus(FileStatus.UPLOADED);
 			return true;
 		} else {
 			return false;
 		}
 	}
 
-	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
+	getDownloadConfig(apiUrl, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig(apiUrl);
 		if (allowMultiPart) {
 			for (let i = 0; i < this.partCount; i++) {
@@ -271,8 +293,8 @@ export class MultipartFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig() {
-		const uploadConfig = super.getUploadConfig();
+	getUploadConfig(apiUrl) {
+		const uploadConfig = super.getUploadConfig(apiUrl);
 		for (let i = 0; i < this.partCount; i++) {
 			// 最后一片可能不完整
 			uploadConfig.parts.push({
@@ -303,7 +325,7 @@ export class MultipartFile extends File {
 			}
 			this.#paths[index] = file.path;
 			if (this.#paths.filter(item => item).length === this.partCount) {
-				this._changeStatus(FileStatus.UPLOADED);
+				this.changeStatus(FileStatus.UPLOADED);
 			}
 			return true;
 		} else {
@@ -377,11 +399,11 @@ export class TextFile extends File {
 	#text;
 
 	constructor({name, size}) {
-		super({name, size});
+		super({name, size, needWs: false});
 	}
 
-	getUploadConfig() {
-		const uploadConfig = super.getUploadConfig();
+	getUploadConfig(apiUrl) {
+		const uploadConfig = super.getUploadConfig(apiUrl);
 		uploadConfig.parts.push({
 			index: -1
 		});
@@ -399,7 +421,7 @@ export class TextFile extends File {
 				return false;
 			}
 			this.#text = text;
-			this._changeStatus(FileStatus.UPLOADED);
+			this.changeStatus(FileStatus.UPLOADED);
 			return true;
 		} else {
 			return false;

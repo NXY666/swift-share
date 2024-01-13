@@ -380,7 +380,7 @@
 						});
 						socket.addEventListener('close', ev => {
 							console.log('WebSocket closed.', ev.code, ev.reason);
-							if (ev.code === 1000) {
+							if (ev.code === 4000) {
 								// 说明下载完成，将所有未下载的片段下载下来
 								for (let i = 0; i < downloadConfig.parts.length; i++) {
 									if (!multipartBlobs[i]) {
@@ -405,7 +405,10 @@
 									document.body.removeChild(a);
 								})
 								.catch(() => {
-									abortController.abort();
+									try {
+										abortController.abort("文件下载失败");
+									} catch {
+									}
 									failedConfigs.push(downloadConfig);
 								})
 								.finally(() => resolve());
@@ -415,7 +418,7 @@
 						// 监听 WebSocket
 						socket.addEventListener('close', ev => {
 							console.log('WebSocket closed.', ev.code, ev.reason);
-							if (ev.code === 1000) {
+							if (ev.code === 4000) {
 								// 说明下载完成，下载整个文件
 								const a = document.createElement('a');
 								a.style.display = 'none';
@@ -584,6 +587,79 @@
 					method: 'POST',
 					body
 				}, {slowRequest, retryCount, bodyType});
+			}
+		}
+
+		class WebsocketClient {
+			#url;
+			#websocket;
+
+			constructor(url) {
+				this.#url = url;
+			}
+
+			set onOpen(value) {
+				this.#onOpen = value;
+			}
+
+			set onMessage(value) {
+				this.#onMessage = value;
+			}
+
+			set onClose(value) {
+				this.#onClose = value;
+			}
+
+			set onError(value) {
+				this.#onError = value;
+			}
+
+			#onOpen = () => {};
+
+			#onMessage = () => {};
+
+			#onClose = () => {};
+
+			#onError = () => {};
+
+			open() {
+				if (this.#websocket) {
+					return;
+				}
+				console.log(this);
+				this.#websocket = new WebSocket(this.#url);
+				this.#websocket.addEventListener('open', () => {
+					this.#autoPing();
+					this.#onOpen();
+				});
+				this.#websocket.addEventListener('message', ({data}) => {
+					this.#onMessage(data);
+				});
+				this.#websocket.addEventListener('close', ({code, reason}) => {
+					this.#onClose(code, reason);
+				});
+				this.#websocket.addEventListener('error', (error) => {
+					this.#onError(error);
+				});
+			}
+
+			send(data) {
+				if (this.#websocket && this.#websocket.readyState === WebSocket.OPEN) {
+					this.#websocket.send(data);
+				}
+			}
+
+			close() {
+				if (this.#websocket && this.#websocket.readyState === WebSocket.OPEN) {
+					this.#websocket.close();
+				}
+			}
+
+			#autoPing() {
+				if (this.#websocket.readyState === WebSocket.OPEN) {
+					this.send("ping");
+					setTimeout(() => {this.#autoPing();}, 15 * 1000);
+				}
 			}
 		}
 
@@ -827,30 +903,48 @@
 				.then(async ({data}) => {
 					const {configs} = data;
 
-					// 制作停止信号
-					const abortController = new AbortController();
-
 					const extractCode = data.code;
 					const postPromises = [];
 					for (let i = 0; i < configs.length; i++) {
 						const uploadFileConfig = configs[i];
 						const blobFile = localFiles[i];
-						for (const uploadPartConfig of uploadFileConfig.parts) {
-							const formData = new FormData();
-							formData.append('id', uploadFileConfig.id);
-							formData.append('index', uploadPartConfig.index);
-							formData.append('key', uploadFileConfig.key);
-							// -1表示整个文件
-							formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
-							postPromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}));
-						}
+
+						postPromises.push(new Promise((resolve, reject) => {
+							const uploadFileAbortController = new AbortController();
+							const uploadFilePromises = [];
+							const uploadFileWebSocket = new WebsocketClient(uploadFileConfig.wsUrl);
+							console.log(uploadFileWebSocket);
+							// 确保连接成功再开始上传
+							uploadFileWebSocket.onOpen = () => {
+								for (const uploadPartConfig of uploadFileConfig.parts) {
+									const formData = new FormData();
+									formData.append('id', uploadFileConfig.id);
+									formData.append('key', uploadFileConfig.key);
+									formData.append('index', uploadPartConfig.index);
+									// -1 表示整个文件
+									formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
+									uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: uploadFileAbortController.signal}, {slowRequest: true}));
+								}
+							};
+							// 启动 WebSocket 并开始上传
+							uploadFileWebSocket.open();
+							Promise.all(uploadFilePromises)
+							.then(() => resolve())
+							.catch(error => {
+								try {
+									uploadFileAbortController.abort("文件上传失败");
+								} catch {
+								}
+								reject(error);
+							})
+							.finally(() => uploadFileWebSocket.close());
+						}));
 					}
 
 					// 全部成功才行
 					await Promise.all(postPromises)
 					.then(() => alert(`文件上传成功。请凭【${extractCode}】提取文件。`))
 					.catch(error => {
-						abortController.abort();
 						throw error;
 					});
 				})
