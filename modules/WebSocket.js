@@ -300,6 +300,8 @@ export class UploadWebSocketPool extends WebSocketPool {
 	onClose(client, code, reason) {
 		const {id} = client;
 		const file = File.findFileById(id);
-		file.remove();
+		if (file.status !== FileStatus.UPLOADED) {
+			file.remove();
+		}
 	}
 }
