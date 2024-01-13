@@ -925,19 +925,18 @@
 									formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
 									uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: uploadFileAbortController.signal}, {slowRequest: true}));
 								}
+								Promise.all(uploadFilePromises)
+								.then(() => resolve())
+								.catch(error => {
+									try {
+										uploadFileAbortController.abort("文件上传失败");
+									} catch {}
+									reject(error);
+								})
+								.finally(() => uploadFileWebSocket.close());
 							};
 							// 启动 WebSocket 并开始上传
 							uploadFileWebSocket.open();
-							Promise.all(uploadFilePromises)
-							.then(() => resolve())
-							.catch(error => {
-								try {
-									uploadFileAbortController.abort("文件上传失败");
-								} catch {
-								}
-								reject(error);
-							})
-							.finally(() => uploadFileWebSocket.close());
 						}));
 					}
 
