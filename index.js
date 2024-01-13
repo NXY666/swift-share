@@ -537,7 +537,7 @@ app.post('/extract/files/new/:code', (req, res) => {
 		return;
 	}
 
-	const {allowMultipart} = req.body.params;
+	const {allowMultipart} = req.body;
 	switch (codeInfo.type) {
 		case "files": {
 			console.log(`File extracted: ${extractionCode}`);
@@ -629,19 +629,19 @@ wss.on('connection', (ws, req) => {
 
 			if (!file) {
 				console.log(`File not found: ${id}`);
-				ws.close(1001, "文件不存在或已过期。");
+				ws.close(4001, "文件不存在或已过期。");
 				return;
 			} else if (!file.checkSignature(url)) {
 				console.log(`Invalid signature: ${url}`);
-				ws.close(1001, "文件不存在或已过期。");
+				ws.close(4001, "文件不存在或已过期。");
 				return;
 			} else if (file.status === FileStatus.UPLOADED) {
 				console.log(`File uploaded: ${id}`);
-				ws.close(1000, "文件已上传完成。");
+				ws.close(4000, "文件已上传完成。");
 				return;
 			} else if (file.status === FileStatus.REMOVED) {
 				console.log(`File removed: ${id}`);
-				ws.close(1002, "文件已被删除。");
+				ws.close(4001, "文件已被删除。");
 				return;
 			}
 

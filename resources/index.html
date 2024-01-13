@@ -663,6 +663,295 @@
 			}
 		}
 
+		class Dialog {
+			/**
+			 * 遮罩层
+			 * @type {HTMLDivElement}
+			 */
+			#overlay = document.createElement('div');
+			/**
+			 * 样式
+			 * @type {HTMLStyleElement}
+			 */
+			#style = document.createElement('style');
+			/**
+			 * 对话框
+			 * @type {HTMLDivElement}
+			 */
+			#dialog = document.createElement('div');
+			/**
+			 * 头部
+			 * @type {HTMLDivElement}
+			 */
+			#headerContainer = document.createElement('div');
+			/**
+			 * 身体
+			 * @type {HTMLDivElement}
+			 */
+			#bodyContainer = document.createElement('div');
+			/**
+			 * 底部
+			 * @type {HTMLDivElement}
+			 */
+			#footerContainer = document.createElement('div');
+
+			#hasOpened = false;
+
+			#hasClosed = false;
+
+			/**
+			 * 标题
+			 * @type {string}
+			 */
+			#title = '';
+			/**
+			 * 内容
+			 * @type {string|HTMLDivElement}
+			 */
+			#content = '';
+			/**
+			 * 底部
+			 * @type {?HTMLDivElement}
+			 */
+			#footer = null;
+			/**
+			 * 样式
+			 * @type {string}
+			 */
+			#styles = '';
+			/**
+			 * 点击遮罩层关闭
+			 * @type {boolean}
+			 */
+			#closeOnClickOverlay = false;
+			/**
+			 * 显示关闭按钮
+			 * @type {boolean}
+			 */
+			#showCloseButton = true;
+
+			set title(title) {
+				this.#title = title;
+			}
+
+			set content(content) {
+				this.#content = content;
+			}
+
+			set footer(footer) {
+				this.#footer = footer;
+			}
+
+			set styles(styles) {
+				this.#styles = styles;
+			}
+
+			set closeOnClickOverlay(closeOnClickOverlay) {
+				this.#closeOnClickOverlay = closeOnClickOverlay;
+			}
+
+			set showCloseButton(showCloseButton) {
+				this.#showCloseButton = showCloseButton;
+			}
+
+			/**
+			 * 打开对话框
+			 */
+			open() {
+				if (this.#hasOpened) {
+					return;
+				}
+				this.#hasOpened = true;
+				// 按esc关闭对话框
+				let closeDialogKeyboardEvent;
+				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
+					if (e.key === 'Escape') {
+						document.removeEventListener('keydown', closeDialogKeyboardEvent);
+						this.close();
+					}
+				});
+
+				this.#overlay.classList.add('dialog-overlay');
+				{
+					this.#style.textContent = `
+						.dialog-overlay {
+							position: fixed;
+							top: 0;
+							left: 0;
+							width: 100%;
+							height: 100%;
+							background-color: rgba(0, 0, 0, 0.5);
+							user-select: none;
+							animation: overlay-appear var(--base-transition-duration);
+						}
+						@keyframes overlay-appear {
+							0% {
+								opacity: 0;
+							}
+							100% {
+								opacity: 1;
+							}
+						}
+						@keyframes overlay-disappear {
+							0% {
+								opacity: 1;
+							}
+							100% {
+								opacity: 0;
+							}
+						}
+						.dialog-container {
+							width: 500px;
+							max-width: calc(100% - 40px);
+							font-size: 14px;
+							position: fixed;
+							z-index: 114514;
+							top: 0;
+							margin: 10vh auto;
+							max-height: 80vh;
+							left: 50%;
+							transform: translateX(-50%);
+							animation: dialog-appear var(--base-transition-duration);
+							border: 1px solid var(--form-border-color);
+							border-radius: 5px;
+							background-color: var(--form-background-color);
+							box-shadow: 0 0 18px rgba(0,0,0,.3);
+						}
+						@keyframes dialog-appear {
+							0% {
+								transform: translateX(-50%) scale(0.8);
+								opacity: 0;
+							}
+							100% {
+								transform: translateX(-50%) scale(1);
+								opacity: 1;
+							}
+						}
+						@keyframes dialog-disappear {
+							0% {
+								transform: translateX(-50%) scale(1);
+								opacity: 1;
+							}
+							100% {
+								transform: translateX(-50%) scale(0.8);
+								opacity: 0;
+							}
+						}
+						.dialog-header {
+							padding: 16px;
+							border-bottom: 1px solid #D0D7DE;
+							border-top-left-radius: 5px;
+							border-top-right-radius: 5px;
+							background-color: #F5F7FA;
+							display: flex;
+							align-items: center;
+						}
+						.dialog-close-button {
+							margin-left: auto;
+							cursor: pointer;
+							color: #656D76;
+						}
+						.dialog-close-button:hover {
+							color: var(--primary-color-1);
+						}
+						.dialog-body {
+							padding: 16px;
+							max-height: 60vh;
+							overflow: auto;
+						}
+						.dialog-footer {
+							padding: 0 16px 16px;
+							display: flex;
+							align-items: center;
+						}
+						.dialog-footer button {
+							height: 30px;
+						}
+						${this.#styles}
+				`;
+					this.#overlay.appendChild(this.#style);
+
+					this.#dialog.classList.add('dialog-container');
+					{
+						// 头部
+						this.#headerContainer.classList.add('dialog-header');
+						{
+							this.#headerContainer.classList.add('dialog-header');
+							{
+								const titleText = document.createElement('h3');
+								titleText.style.margin = '0';
+								titleText.textContent = this.#title;
+								this.#headerContainer.appendChild(titleText);
+							}
+
+							if (this.#showCloseButton) {
+								const closeButton = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+								closeButton.classList.add('dialog-close-button');
+								closeButton.setAttribute('width', '16');
+								closeButton.setAttribute('height', '16');
+								closeButton.setAttribute('viewBox', '0 0 16 16');
+								closeButton.setAttribute('fill', 'currentColor');
+								{
+									const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+									path.setAttribute('d', 'M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z');
+									closeButton.appendChild(path);
+								}
+								closeButton.addEventListener('click', () => {
+									this.close();
+								});
+								this.#headerContainer.appendChild(closeButton);
+							}
+						}
+						this.#dialog.appendChild(this.#headerContainer);
+
+						// 身体
+						this.#bodyContainer.classList.add('dialog-body');
+						{
+							if (typeof this.#content === 'string') {
+								this.#bodyContainer.textContent = this.#content;
+							} else {
+								this.#bodyContainer.appendChild(this.#content);
+							}
+						}
+						this.#dialog.appendChild(this.#bodyContainer);
+
+						// 底部
+						if (this.#footer) {
+							this.#footerContainer.classList.add('dialog-footer');
+							{
+								this.#footerContainer.appendChild(this.#footer);
+							}
+							this.#dialog.appendChild(this.#footerContainer);
+						}
+					}
+					if (this.#closeOnClickOverlay) {
+						this.#overlay.addEventListener('click', (ev) => {
+							if (ev.target === this.#overlay) {
+								this.close();
+							}
+						});
+					}
+					this.#overlay.appendChild(this.#dialog);
+				}
+				document.body.appendChild(this.#overlay);
+			}
+
+			/**
+			 * 关闭对话框
+			 */
+			close() {
+				if (!this.#hasOpened || this.#hasClosed) {
+					return;
+				}
+				this.#hasClosed = true;
+				this.#overlay.style.animationName = 'overlay-disappear';
+				this.#dialog.style.animationName = 'dialog-disappear';
+				this.#dialog.addEventListener('animationend', () => {
+					document.body.removeChild(this.#overlay);
+				});
+			}
+		}
+
 		let extractCodeLength = null, uploadTextCapacity = null, uploadFileCapacity = null;
 
 		setTimeout(() => {
@@ -1204,21 +1493,8 @@
 			}
 
 			function showDownloadDialog2(downloadConfigs) {
-				/**
-				 * 遮罩层
-				 * @type {HTMLDivElement}
-				 */
-				const overlay = document.createElement('div');
-				/**
-				 * 样式
-				 * @type {HTMLStyleElement}
-				 */
-				const style = document.createElement('style');
-				/**
-				 * 对话框
-				 * @type {HTMLDivElement}
-				 */
-				const dialog = document.createElement('div');
+				const dialog = new Dialog();
+
 				/**
 				 * 复选框列表
 				 * @type {HTMLUListElement}
@@ -1244,79 +1520,12 @@
 				 * @type {HTMLButtonElement}
 				 */
 				const confirmButton = document.createElement('button');
-				/**
-				 * 取消按钮
-				 * @type {HTMLAnchorElement}
-				 */
-				const cancelButton = document.createElement('a');
 
-				// 按esc关闭对话框
-				let closeDialogKeyboardEvent;
-				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
-					if (e.key === 'Escape') {
-						closeDialog();
-					}
-				});
-
-				function closeDialog() {
-					document.removeEventListener('keydown', closeDialogKeyboardEvent);
-					dialog.style.animationName = 'dialog-disappear';
-					dialog.addEventListener('animationend', () => {
-						document.body.removeChild(overlay);
-					});
-				}
-
-				overlay.classList.add('dialog-overlay');
-				{
-					style.textContent = `
-						.dialog-overlay {
-							position: fixed;
-							top: 0;
-							left: 0;
-							width: 100%;
-							height: 100%;
-							background-color: rgba(0, 0, 0, 0.5);
-							user-select: none;
-						}
-						.dialog-container {
-							width: 500px;
-							max-width: calc(100% - 40px);
-							font-size: 14px;
-							position: fixed;
-							z-index: 999;
-							top: 50%;
-							left: 50%;
-							padding: 20px;
-							transform: translate(-50%, -50%);
-							animation: dialog-appear var(--base-transition-duration);
-							border: 1px solid var(--form-border-color);
-							border-radius: 5px;
-							background-color: var(--form-background-color);
-						}
-						@keyframes dialog-appear {
-							0% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-						}
-						@keyframes dialog-disappear {
-							0% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-						}
+				const styles = `
 						.dialog-checkbox-list {
+							margin: 0;
 							overflow-y: auto;
 							max-height: 300px;
-							margin-top: 20px;
 							padding: 5px;
 							list-style-type: none;
 							border-radius: 5px;
@@ -1335,93 +1544,81 @@
 						.dialog-checkbox-list li label:hover {
 							background-color: var(--background-color-1);
 						}
+						.dialog-checkbox-list li label.disabled {
+							opacity: 0.5;
+							cursor: not-allowed;
+							background-color: transparent;
+						}
 						.dialog-button-group {
 							display: flex;
 							align-items: center;
-						}
-						.dialog-cancel-button {
-							margin-right: 20px;
-							margin-left: auto;
-							text-decoration: none;
-							color: var(--text-color-2);
-							transition: color var(--short-transition-duration);
-						}
-						.dialog-cancel-button:hover {
-							color: var(--text-color-1);
-						}
-						.dialog-cancel-button:active {
-							color: var(--primary-color-1);
+							width: 100%;
 						}
 				`;
-					overlay.appendChild(style);
 
-					dialog.classList.add('dialog-container');
-					{
-						// 标题
-						dialog.appendChild(document.createTextNode("从集合中下载文件"));
-
-						checkboxList.classList.add('dialog-checkbox-list');
-						downloadConfigs.forEach((downloadConfig, index) => {
-							const checkboxListItem = document.createElement('li');
-							const checkboxLabel = document.createElement('label');
-							const checkbox = document.createElement('input');
-							checkbox.type = 'checkbox';
-							checkbox.value = index;
-							checkbox.checked = true; // 设置初始状态为全选
-							checkbox.addEventListener('change', () => {
-								// 更新全选框状态
-								selectAllCheckbox.checked = Array.from(checkboxList.querySelectorAll('input')).every(checkbox => checkbox.checked);
-								selectAllCheckbox.indeterminate = !selectAllCheckbox.checked && Array.from(checkboxList.querySelectorAll('input')).some(checkbox => checkbox.checked);
-							});
-							checkboxLabel.appendChild(checkbox);
-							checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
-
-							checkboxListItem.appendChild(checkboxLabel);
-
-							checkboxList.appendChild(checkboxListItem);
-						});
-						dialog.appendChild(checkboxList);
-
-						buttonGroup.classList.add('dialog-button-group');
-						{
-							selectAllLabel.style.display = 'flex';
-							selectAllLabel.style.alignItems = 'center';
-							selectAllLabel.style.gap = '5px';
-							{
-								selectAllCheckbox.type = 'checkbox';
-								selectAllCheckbox.checked = true; // 默认全选
-								selectAllCheckbox.addEventListener('change', () => {
-									// 全选或取消全选
-									checkboxList.querySelectorAll('input').forEach(checkbox => {
-										checkbox.checked = selectAllCheckbox.checked;
-									});
-								});
-								selectAllLabel.appendChild(selectAllCheckbox);
-
-								// 全选文字
-								selectAllLabel.appendChild(document.createTextNode(' 全选'));
-							}
-							buttonGroup.appendChild(selectAllLabel);
-
-							cancelButton.classList.add('dialog-cancel-button');
-							cancelButton.href = 'javascript:;';
-							cancelButton.textContent = '取消';
-							cancelButton.addEventListener('click', closeDialog);
-							buttonGroup.appendChild(cancelButton);
-
-							confirmButton.textContent = '下载';
-							confirmButton.addEventListener('click', () => {
-								const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => downloadConfigs[checkbox.value]);
-								downDownloadConfigs(selectedConfigs);
-								closeDialog();
-							});
-							buttonGroup.appendChild(confirmButton);
-						}
-						dialog.appendChild(buttonGroup);
+				checkboxList.classList.add('dialog-checkbox-list');
+				downloadConfigs.forEach((downloadConfig, index) => {
+					const checkboxListItem = document.createElement('li');
+					const checkboxLabel = document.createElement('label');
+					const checkbox = document.createElement('input');
+					if (downloadConfig.removed) {
+						checkboxLabel.classList.add('disabled');
 					}
-					overlay.appendChild(dialog);
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.disabled = downloadConfig.removed;
+					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(checkboxList.querySelectorAll('input'));
+						selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
+						selectAllCheckbox.indeterminate = !selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
+					});
+					checkboxLabel.appendChild(checkbox);
+					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
+
+					checkboxListItem.appendChild(checkboxLabel);
+
+					checkboxList.appendChild(checkboxListItem);
+				});
+
+				buttonGroup.classList.add('dialog-button-group');
+				{
+					selectAllLabel.style.display = 'flex';
+					selectAllLabel.style.alignItems = 'center';
+					selectAllLabel.style.gap = '5px';
+					{
+						selectAllCheckbox.type = 'checkbox';
+						selectAllCheckbox.checked = true; // 默认全选
+						selectAllCheckbox.addEventListener('change', () => {
+							// 全选或取消全选
+							checkboxList.querySelectorAll('input').forEach(checkbox => {
+								checkbox.checked = selectAllCheckbox.checked && !checkbox.disabled;
+							});
+						});
+						selectAllLabel.appendChild(selectAllCheckbox);
+
+						// 全选文字
+						selectAllLabel.appendChild(document.createTextNode(' 全选'));
+					}
+					buttonGroup.appendChild(selectAllLabel);
+
+					confirmButton.textContent = '下载';
+					confirmButton.style.marginLeft = 'auto';
+					confirmButton.addEventListener('click', () => {
+						const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => downloadConfigs[checkbox.value]);
+						downDownloadConfigs(selectedConfigs);
+						dialog.close();
+					});
+					buttonGroup.appendChild(confirmButton);
 				}
-				document.body.appendChild(overlay);
+
+				dialog.title = '从集合中下载文件';
+				dialog.content = checkboxList;
+				dialog.footer = buttonGroup;
+				dialog.styles = styles;
+
+				dialog.open();
 			}
 
 			function showPlayDialog(downloadFiles) {

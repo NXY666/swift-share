@@ -77,7 +77,7 @@ export class File {
 	}
 
 	get size() {
-		return this.#size;
+		return this.status === FileStatus.REMOVED ? 0 : this.#size;
 	}
 
 	get partSize() {
@@ -136,7 +136,7 @@ export class File {
 
 	/**
 	 * 获取下载配置
-	 * @returns {{name: string, size: number, parts: { index: number, url: string, range: number[2], uploaded: boolean }[], wsUrl: string}}
+	 * @returns {{name: string, size: number, parts: { index: number, url: string, range: number[2], uploaded: boolean }[], wsUrl: string, removed: boolean}}
 	 */
 	getDownloadConfig(apiUrl, allowMultiPart = false) {
 		return {
@@ -144,7 +144,8 @@ export class File {
 			name: this.name,
 			size: this.size,
 			parts: [],
-			wsUrl: this.getSignedDownloadWsUrl(apiUrl)
+			wsUrl: this.getSignedDownloadWsUrl(apiUrl),
+			removed: this.status === FileStatus.REMOVED
 		};
 	}
 
@@ -153,10 +154,14 @@ export class File {
 	}
 
 	remove() {
+		if (this.status === FileStatus.REMOVED) {
+			return false;
+		}
+
 		delete File.#fileMap[this.id];
-		const status = this.status;
 		this.changeStatus(FileStatus.REMOVED);
-		return status === FileStatus.UPLOADING || status === FileStatus.UPLOADED;
+		console.log("[RemoveFile]", this.id, this.name, this.status);
+		return true;
 	}
 
 	getSignedPartUrl(apiUrl, index = -1) {
@@ -202,6 +207,9 @@ export class SimpleFile extends File {
 		super({name, size});
 	}
 
+	/**
+	 * @inheritDoc
+	 */
 	getUploadConfig(apiUrl) {
 		const uploadConfig = super.getUploadConfig(apiUrl);
 		uploadConfig.parts.push({
@@ -228,6 +236,9 @@ export class SimpleFile extends File {
 		}
 	}
 
+	/**
+	 * @inheritDoc
+	 */
 	getDownloadConfig(apiUrl, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig(apiUrl);
 		if (allowMultiPart) {
@@ -359,25 +370,27 @@ export class MultipartFile extends File {
 		}
 	}
 
-	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
+	getDownloadConfig(apiUrl, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig(apiUrl);
-		if (allowMultiPart) {
-			for (let i = 0; i < this.partCount; i++) {
-				// 最后一片可能不完整
+		if (!downloadConfig.removed) {
+			if (allowMultiPart) {
+				for (let i = 0; i < this.partCount; i++) {
+					// 最后一片可能不完整
+					downloadConfig.parts.push({
+						index: i,
+						range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
+						url: this.getSignedPartUrl(apiUrl, i),
+						uploaded: this.#paths[i] !== undefined
+					});
+				}
+			} else {
 				downloadConfig.parts.push({
-					index: i,
-					range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-					url: this.getSignedPartUrl(apiUrl, i),
-					uploaded: this.#paths[i] !== undefined
+					index: -1,
+					range: [0, this.size],
+					url: this.getSignedPartUrl(apiUrl),
+					uploaded: this.status === FileStatus.UPLOADED
 				});
 			}
-		} else {
-			downloadConfig.parts.push({
-				index: -1,
-				range: [0, this.size],
-				url: this.getSignedPartUrl(apiUrl),
-				uploaded: this.status === FileStatus.UPLOADED
-			});
 		}
 		return downloadConfig;
 	}
