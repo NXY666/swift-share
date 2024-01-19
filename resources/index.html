@@ -343,15 +343,13 @@
 				const downloadConfig = downloadConfigs[activeConfigIndex];
 				downloadDialog.activeConfigIndex = activeConfigIndex;
 				downloadDialog.fileProgressMax = downloadConfig.parts.length;
-				downloadDialog.fileProgressValue = null;
-				downloadDialog.totalProgressValue = activeConfigIndex;
 
-				await new Promise(resolve => {
+				await new Promise((resolve, reject) => {
 					// 连接 WebSocket
 					const downloadClient = new WebsocketClient(downloadConfig.wsUrl);
 
 					if (allowMultipart) {
-						downloadDialog.fileProgressValue = 0;
+						downloadDialog.setFileProgressIndeterminate(false);
 
 						// 终止控制器
 						const abortController = new AbortController();
@@ -375,30 +373,35 @@
 								downloadPromises.push(api.get(downloadConfig.parts[downloadIndex].url, {signal: abortController.signal}, {
 									slowRequest: true, bodyType: 'blob'
 								}).then(({data}) => {
+									// 下载完成
 									multipartBlobs[downloadIndex] = data;
-									downloadDialog.fileProgressValue = ++finishedCount;
+									downloadDialog.addFileProgress();
+									downloadDialog.addTotalProgress();
 								}));
 							}
 						};
 						downloadClient.onClose = (code, reason) => {
 							console.log('WebSocket closed.', code, reason);
 							if (code === 4000) {
-								// 说明下载完成，将所有未下载的片段下载下来
+								// 说明已经上传完成，将所有未下载的片段下载下来
 								for (let i = 0; i < downloadConfig.parts.length; i++) {
 									if (!multipartBlobs[i]) {
 										downloadPromises.push(api.get(downloadConfig.parts[i].url, {signal: abortController.signal}, {
 											slowRequest: true, bodyType: 'blob'
 										}).then(({data}) => {
+											// 下载完成
 											multipartBlobs[i] = data;
-											downloadDialog.fileProgressValue = ++finishedCount;
-											console.log(finishedCount);
+										}).finally(() => {
+											downloadDialog.addFileProgress();
+											downloadDialog.addTotalProgress();
 										}));
 									}
 								}
+
+								// 等待所有分片下载完成
 								Promise.all(downloadPromises)
 								.then(() => {
 									downloadDialog.fileProgressValue = downloadConfig.parts.length;
-									console.log("shit");
 
 									const blob = new Blob(multipartBlobs);
 									const a = document.createElement('a');
@@ -408,21 +411,24 @@
 									document.body.appendChild(a);
 									//a.click();
 									document.body.removeChild(a);
+
+									resolve();
 								})
 								.catch(() => {
+									// 终止未完成的下载
 									try {
 										abortController.abort("文件下载失败");
 									} catch {
 									}
-									failedConfigs.push(downloadConfig);
-								})
-								.finally(() => resolve());
+									reject();
+								});
 							} else {
-								failedConfigs.push(downloadConfig);
-								resolve();
+								reject();
 							}
 						};
 					} else {
+						downloadDialog.setFileProgressIndeterminate(true);
+
 						// 监听 WebSocket
 						downloadClient.onClose = (code, reason) => {
 							console.log('WebSocket closed.', code, reason);
@@ -435,24 +441,24 @@
 								document.body.appendChild(a);
 								//a.click();
 								document.body.removeChild(a);
+
+								resolve();
 							} else {
-								failedConfigs.push(downloadConfig);
+								reject();
 							}
-							resolve();
 						};
 					}
 
 					// 打开 WebSocket
 					downloadClient.open();
+				}).catch(() => {
+					failedConfigs.push(downloadConfig);
 				});
 			}
-			downloadDialog.fileProgressMax = 1;
-			downloadDialog.fileProgressValue = 1;
-			downloadDialog.totalProgressValue = downloadConfigs.length;
 			setTimeout(() => {
 				downloadDialog.close();
 				if (failedConfigs.length > 0) {
-					alert(`下载失败的文件：\n${failedConfigs.map(config => config.name).join('\n')}`);
+					alert(`以下文件未能下载：\n${failedConfigs.map(config => config.name).join('\n')}`);
 				}
 			}, 1000);
 		}
@@ -1107,7 +1113,7 @@
 				this.#fileProgress.value = 0;
 
 				// 设置总进度
-				this.#totalProgress.max = downloadConfigs.length;
+				this.#totalProgress.max = downloadConfigs.reduce((total, item) => total + item.parts.length, 0);
 				this.#totalProgress.value = 0;
 
 				this.update();
@@ -1130,20 +1136,37 @@
 			set fileProgressValue(value) {
 				if (value == null) {
 					this.#fileProgress.removeAttribute('value');
-					console.log("is", null);
 				} else {
 					this.#fileProgress.setAttribute('value', value);
-					console.log("is", value);
 					console.trace();
 				}
 				this.update();
 			}
 
-			set totalProgressValue(value) {
-				if (value == null) {
+			addFileProgress() {
+				this.#fileProgress.value++;
+				this.update();
+			}
+
+			setFileProgressIndeterminate(state) {
+				if (state) {
+					this.#fileProgress.removeAttribute('value');
+				} else {
+					this.#fileProgress.setAttribute('value', "0");
+				}
+				this.update();
+			}
+
+			addTotalProgress() {
+				this.#totalProgress.value++;
+				this.update();
+			}
+
+			setTotalProgressIndeterminate(state) {
+				if (state) {
 					this.#totalProgress.removeAttribute('value');
 				} else {
-					this.#totalProgress.setAttribute('value', value);
+					this.#totalProgress.setAttribute('value', "0");
 				}
 				this.update();
 			}
@@ -1152,29 +1175,30 @@
 				const activeConfig = this.#downloadConfigs[this.#activeConfigIndex];
 				const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
 
-				// 设置文件名称
+				// 文件名称
 				this.#fileNameLabel.innerText = activeConfig.name;
 
-				// 设置文件进度百分比文本
+				// 文件进度百分比
 				if (this.#fileProgress.value === this.#fileProgress.max) {
 					this.#filePercentLabel.innerText = '已完成';
 				} else if (isIndeterminate) {
 					this.#filePercentLabel.innerText = '';
 				} else {
-					this.#filePercentLabel.innerText = `${(this.#fileProgress.value / this.#fileProgress.max * 100).toFixed(2)}%`;
+					this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
 				}
 
+				// 总进度
 				if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
 					this.#totalProgressLabel.innerText = `总进度 (${this.#downloadConfigs.length}/${this.#downloadConfigs.length})`;
 				} else {
 					this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#downloadConfigs.length})`;
 				}
 
-				// 设置总进度百分比文本
+				// 总进度百分比
 				if (this.#totalProgress.value === this.#totalProgress.max) {
 					this.#totalPercentLabel.innerText = '已完成';
 				} else {
-					this.#totalPercentLabel.innerText = `${(this.#totalProgress.value / this.#downloadConfigs.length * 100).toFixed(2)}%`;
+					this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
 				}
 			}
 		}
