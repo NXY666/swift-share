@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import DefaultConfig from "../default_config.js";
 import {File} from "./File.js";
+import {Api, Url} from "./Url.js";
 
 export class CodeStore {
 	static #store = {};
@@ -11,7 +12,7 @@ export class CodeStore {
 	 * @return {FileCodeInfo|TextCodeInfo|ShareCodeInfo} 提取码信息
 	 */
 	static getCodeInfo(code) {
-		return this.#store[code];
+		return this.#store[code.toLowerCase()];
 	}
 
 	/**
@@ -83,6 +84,16 @@ class CodeInfo {
 
 	get size() {
 		return this.#size;
+	}
+
+	getSignedCheckpointUrl({host} = {}) {
+		const url = Url.mergeUrl({protocol: "http", host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
+		url.searchParams.set('code', this.#code);
+		return Url.sign(url.toString(), DefaultConfig.FILE_EXPIRE_INTERVAL);
+	}
+
+	isValidUrl(url) {
+		return Url.check(url);
 	}
 
 	hasExpired() {

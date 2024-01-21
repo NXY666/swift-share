@@ -1,7 +1,7 @@
 import DefaultConfig from "../default_config.js";
 import crypto from "crypto";
 import fs from "fs";
-import {Url} from "./Url.js";
+import {Api, Url} from "./Url.js";
 import {Stream} from "./Stream.js";
 import {Readable} from "stream";
 
@@ -16,6 +16,7 @@ export class File {
 	static #nextId = 0;
 
 	static #fileMap = {};
+
 	/**
 	 * 文件ID
 	 * @type {number}
@@ -48,16 +49,28 @@ export class File {
 	#partSize = DefaultConfig.FILE_PART_SIZE;
 
 	/**
-	 * 是否需要 WebSocket 保证上传
-	 * @type {boolean}
+	 * 上传最后期限
+	 * @type {number}
 	 */
-	#needWs = false;
+	#uploadDeadline = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
 
-	constructor({name, size, needWs = true}) {
+	/**
+	 * 上传检查点
+	 * @type {number}
+	 */
+	#uploadCheckpoint = Date.now();
+
+	constructor({name, size}) {
 		File.#fileMap[this.#id] = this;
 		this.#name = name;
 		this.#size = size;
-		this.#needWs = needWs;
+
+		// 上传超时
+		setTimeout(() => {
+			if (this.status !== FileStatus.UPLOADED) {
+				this.remove();
+			}
+		}, DefaultConfig.FILE_UPLOAD_INTERVAL);
 	}
 
 	get id() {
@@ -88,10 +101,6 @@ export class File {
 		return Math.ceil(this.size / this.partSize);
 	}
 
-	get needWs() {
-		return this.#needWs;
-	}
-
 	/**
 	 * 根据 ID 查找文件
 	 * @param {number|string} id
@@ -101,6 +110,19 @@ export class File {
 		return this.#fileMap[id];
 	}
 
+	/**
+	 * 检查点
+	 */
+	refreshUploadCheckpoint() {
+		this.#uploadCheckpoint = Date.now();
+	}
+
+	hasUploadTimeout() {
+		// 检查点时间间隔超过2分钟，或者时间超过最后期限
+		const now = Date.now();
+		return now - this.#uploadCheckpoint > 2 * 60 * 1000 || now > this.#uploadDeadline;
+	}
+
 	// 因为子类要用，所以不能用 private
 	changeStatus(status) {
 		this.#status = status;
@@ -108,25 +130,21 @@ export class File {
 
 	/**
 	 * 获取上传配置
-	 * @returns {{id: number, key: UUID, parts: {index: number, range?: [number, number]}[], wsUrl: string}}
+	 * @returns {{id: number, key: UUID, name: string, parts: {index: number, range?: [number, number]}[], wsUrl: string}}
 	 */
-	getUploadConfig(apiUrl) {
+	getUploadConfig({host} = {}) {
 		return {
 			id: this.id,
 			key: this.key,
+			name: this.name,
 			parts: [],
-			wsUrl: this.getSignedUploadWsUrl(apiUrl)
+			wsUrl: this.getSignedUploadWsUrl({host})
 		};
 	}
 
 	upload() {
 		// 已上传或已删除的文件不可再上传
 		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
-			return false;
-		}
-
-		// 需要ws但未连接websocket的文件不能上传
-		if (this.needWs && this.status === FileStatus.CREATED) {
 			return false;
 		}
 
@@ -138,13 +156,13 @@ export class File {
 	 * 获取下载配置
 	 * @returns {{name: string, size: number, parts: { index: number, url: string, range: number[2], uploaded: boolean }[], wsUrl: string, removed: boolean}}
 	 */
-	getDownloadConfig(apiUrl, allowMultiPart = false) {
+	getDownloadConfig({host} = {}, allowMultiPart = false) {
 		return {
 			id: this.id,
 			name: this.name,
 			size: this.size,
 			parts: [],
-			wsUrl: this.getSignedDownloadWsUrl(apiUrl),
+			wsUrl: this.getSignedDownloadWsUrl({host}),
 			removed: this.status === FileStatus.REMOVED
 		};
 	}
@@ -164,21 +182,21 @@ export class File {
 		return true;
 	}
 
-	getSignedPartUrl(apiUrl, index = -1) {
-		const apiUrlObj = new URL(apiUrl, "http://sign.url/");
-		apiUrlObj.searchParams.set("id", this.id.toString());
-		apiUrlObj.searchParams.set("index", index.toString());
-		return Url.sign(apiUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
+	getSignedPartUrl({host} = {}, index = -1) {
+		const urlObj = Url.mergeUrl({protocol: "http", host, pathname: Api.DOWN_NEW});
+		urlObj.searchParams.set("id", this.id.toString());
+		urlObj.searchParams.set("index", index.toString());
+		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
-	getSignedDownloadWsUrl(apiUrl) {
-		const wsUrlObj = new URL(apiUrl, "ws://sign.url/");
+	getSignedDownloadWsUrl({host} = {}) {
+		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_DOWN});
 		wsUrlObj.searchParams.set("id", this.id.toString());
 		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
-	getSignedUploadWsUrl(apiUrl) {
-		const wsUrlObj = new URL(apiUrl, "ws://sign.url/");
+	getSignedUploadWsUrl({host} = {}) {
+		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_UPLOAD});
 		wsUrlObj.searchParams.set("id", this.id.toString());
 		wsUrlObj.searchParams.set("key", this.key.toString());
 		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
@@ -189,7 +207,7 @@ export class File {
 	 * @param url
 	 * @return {boolean}
 	 */
-	checkSignature(url) {
+	isValidUrl(url) {
 		url = new URL(url, "local://check.sign/").toString();
 		if (Url.check(url)) {
 			const urlObj = new URL(url);
@@ -210,8 +228,8 @@ export class SimpleFile extends File {
 	/**
 	 * @inheritDoc
 	 */
-	getUploadConfig(apiUrl) {
-		const uploadConfig = super.getUploadConfig(apiUrl);
+	getUploadConfig({host} = {}) {
+		const uploadConfig = super.getUploadConfig({host});
 		uploadConfig.parts.push({
 			index: -1
 		});
@@ -239,15 +257,15 @@ export class SimpleFile extends File {
 	/**
 	 * @inheritDoc
 	 */
-	getDownloadConfig(apiUrl, allowMultiPart = false) {
-		const downloadConfig = super.getDownloadConfig(apiUrl);
+	getDownloadConfig({host} = {}, allowMultiPart = false) {
+		const downloadConfig = super.getDownloadConfig({host});
 		if (allowMultiPart) {
 			for (let i = 0; i < this.partCount; i++) {
 				// 最后一片可能不完整
 				downloadConfig.parts.push({
 					index: i,
 					range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-					url: this.getSignedPartUrl(apiUrl, i),
+					url: this.getSignedPartUrl({host}, i),
 					uploaded: this.status === FileStatus.UPLOADED
 				});
 			}
@@ -255,7 +273,7 @@ export class SimpleFile extends File {
 			downloadConfig.parts.push({
 				index: -1,
 				range: [0, this.size],
-				url: this.getSignedPartUrl(apiUrl),
+				url: this.getSignedPartUrl({host}),
 				uploaded: this.status === FileStatus.UPLOADED
 			});
 		}
@@ -304,8 +322,8 @@ export class MultipartFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig(apiUrl) {
-		const uploadConfig = super.getUploadConfig(apiUrl);
+	getUploadConfig({host} = {}) {
+		const uploadConfig = super.getUploadConfig({host});
 		for (let i = 0; i < this.partCount; i++) {
 			// 最后一片可能不完整
 			uploadConfig.parts.push({
@@ -370,8 +388,8 @@ export class MultipartFile extends File {
 		}
 	}
 
-	getDownloadConfig(apiUrl, allowMultiPart = false) {
-		const downloadConfig = super.getDownloadConfig(apiUrl);
+	getDownloadConfig({host} = {}, allowMultiPart = false) {
+		const downloadConfig = super.getDownloadConfig({host});
 		if (!downloadConfig.removed) {
 			if (allowMultiPart) {
 				for (let i = 0; i < this.partCount; i++) {
@@ -379,7 +397,7 @@ export class MultipartFile extends File {
 					downloadConfig.parts.push({
 						index: i,
 						range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-						url: this.getSignedPartUrl(apiUrl, i),
+						url: this.getSignedPartUrl({host}, i),
 						uploaded: this.#paths[i] !== undefined
 					});
 				}
@@ -387,7 +405,7 @@ export class MultipartFile extends File {
 				downloadConfig.parts.push({
 					index: -1,
 					range: [0, this.size],
-					url: this.getSignedPartUrl(apiUrl),
+					url: this.getSignedPartUrl({host}),
 					uploaded: this.status === FileStatus.UPLOADED
 				});
 			}
@@ -412,11 +430,11 @@ export class TextFile extends File {
 	#text;
 
 	constructor({name, size}) {
-		super({name, size, needWs: false});
+		super({name, size});
 	}
 
-	getUploadConfig(apiUrl) {
-		const uploadConfig = super.getUploadConfig(apiUrl);
+	getUploadConfig({host} = {}) {
+		const uploadConfig = super.getUploadConfig({host});
 		uploadConfig.parts.push({
 			index: -1
 		});
@@ -441,12 +459,12 @@ export class TextFile extends File {
 		}
 	}
 
-	getDownloadConfig(apiUrl = "local://download.config/", allowMultiPart = false) {
-		const downloadConfig = super.getDownloadConfig(apiUrl);
+	getDownloadConfig({host} = {}, allowMultiPart = false) {
+		const downloadConfig = super.getDownloadConfig({host});
 		downloadConfig.parts.push({
 			index: -1,
 			range: [0, this.size],
-			url: this.getSignedPartUrl(apiUrl),
+			url: this.getSignedPartUrl({host}),
 			uploaded: this.status === FileStatus.UPLOADED
 		});
 		return downloadConfig;

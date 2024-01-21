@@ -1,6 +1,4 @@
-// noinspection ES6UnusedImports
 import {WebSocket} from 'ws';
-import {File, FileStatus} from "./File.js";
 
 /**
  * WebSocket 客户端
@@ -116,18 +114,18 @@ export class WebSocketPool {
 	#onMessage(connection, message) {
 		message = message.toString();
 
-		// 检查接收到的消息是否为 "ping"，如果是，则发送 "pong" 响应
-		if (message === 'ping') {
-			connection.send('pong');
-			return;
-		}
-
 		// 更新连接的最后活动时间
 		const client = this.#findClientByConnection(connection);
 		if (client) {
 			client.lastActive = Date.now();
 		} else {
 			console.error('未找到连接对应的客户端。');
+		}
+
+		// 检查接收到的消息是否为 "ping"，如果是，则发送 "pong" 响应
+		if (message === 'ping') {
+			connection.send('pong');
+			return;
 		}
 
 		// 处理消息
@@ -217,7 +215,7 @@ export class WebSocketPool {
 				});
 
 				// 发送数据
-				Object.entries(sendingMap).forEach(([connection, messages]) => {
+				sendingMap.forEach((messages, connection) => {
 					connection.send(JSON.stringify(messages));
 				});
 
@@ -271,37 +269,5 @@ export class DownloadWebSocketPool extends WebSocketPool {
 	 */
 	onSend(client, message) {
 		return parseInt(message);
-	}
-}
-
-export class UploadWebSocketPool extends WebSocketPool {
-	downloadWebSocketPool;
-
-	constructor(downloadWebSocketPool) {
-		super();
-		this.downloadWebSocketPool = downloadWebSocketPool;
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	onConnection(client) {
-		// 调整文件状态
-		const {id} = client;
-		const file = File.findFileById(id);
-		file.changeStatus(FileStatus.UPLOADING);
-		// 只能有一个上传连接
-		return this.findClientsById(client.id).length <= 0;
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	onClose(client, code, reason) {
-		const {id} = client;
-		const file = File.findFileById(id);
-		if (file.status !== FileStatus.UPLOADED) {
-			file.remove();
-		}
 	}
 }

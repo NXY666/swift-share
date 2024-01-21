@@ -13,7 +13,8 @@ import {WebSocketServer} from 'ws';
 import DefaultConfig from "./default_config.js";
 import {CodeStore, FileCodeInfo} from "./modules/Code.js";
 import {File, FileStatus, MultipartFile, SimpleFile} from "./modules/File.js";
-import {DownloadWebSocketPool, UploadWebSocketPool} from "./modules/WebSocket.js";
+import {DownloadWebSocketPool} from "./modules/WebSocket.js";
+import {Api, Url} from "./modules/Url.js";
 
 function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
@@ -213,7 +214,7 @@ app.use(bodyParser.json({limit: Infinity}));
 app.use(express.static(ResourcePath));
 
 // biu~
-app.post('/biu', (req, res) => {
+app.post(Api.BIU, (req, res) => {
 	let matched = true, consoleText, scriptText;
 	if (req.body === config.BIU.GET_ALL_CODE_COMMAND) {
 		console.log('biu~GET_ALL_CODE_COMMAND');
@@ -252,17 +253,17 @@ app.post('/biu', (req, res) => {
 });
 
 // 提取码长度
-app.get('/extract/code/length', (req, res) => {
+app.get(Api.EXTRACT_CODE_LENGTH, (req, res) => {
 	res.json({length: config.EXTRACT_CODE_LENGTH});
 });
 
 // 文本暂存空间
-app.get('/upload/text/capacity', (req, res) => {
+app.get(Api.UPLOAD_TEXT_CAPACITY, (req, res) => {
 	res.json({capacity: config.TEXT_STORE_CAPACITY});
 });
 
 // 文本上传
-app.post('/upload/text', (req, res) => {
+app.post(Api.UPLOAD_TEXT, (req, res) => {
 	const text = req.body.toString();
 
 	// 获取store文本的总大小
@@ -290,7 +291,7 @@ app.post('/upload/text', (req, res) => {
 });
 
 // 文本提取
-app.get('/extract/text/:code', (req, res) => {
+app.get(Api.EXTRACT_TEXT, (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const textInfo = codeStore[extractionCode];
 
@@ -307,12 +308,12 @@ app.get('/extract/text/:code', (req, res) => {
 });
 
 // 文件暂存空间
-app.get('/upload/files/capacity', (req, res) => {
+app.get(Api.UPLOAD_FILES_CAPACITY, (req, res) => {
 	res.json({capacity: config.FILE_STORE_CAPACITY});
 });
 
 // 文件上传
-app.post('/upload/files', upload.array('files'), (req, res) => {
+app.post(Api.UPLOAD_FILES, upload.array('files'), (req, res) => {
 	const files = req.files;
 
 	// 获取store文件的总大小
@@ -356,7 +357,7 @@ app.post('/upload/files', upload.array('files'), (req, res) => {
 });
 
 // 文件提取
-app.get('/extract/files/:code', (req, res) => {
+app.get(Api.EXTRACT_FILES, (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const fileInfo = codeStore[extractionCode];
 
@@ -436,7 +437,7 @@ app.get('/extract/files/:code', (req, res) => {
 });
 
 // 文件下载
-app.get('/down/:code', (req, res) => {
+app.get(Api.DOWN, (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
 
@@ -456,7 +457,7 @@ app.get('/down/:code', (req, res) => {
 });
 
 // 申请文件上传
-app.post('/upload/files/apply', (req, res) => {
+app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	const apply = req.body;
 	const {files: applyFiles, allowMultipart} = apply;
 
@@ -477,11 +478,11 @@ app.post('/upload/files/apply', (req, res) => {
 	for (const applyFile of applyFiles) {
 		if (allowMultipart) {
 			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
-			fileUploadConfigs.push(newFile.getUploadConfig(`//${req.headers.host}/upload`));
+			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
 		} else {
 			const newFile = new SimpleFile({name: applyFile.name, size: applyFile.size});
-			fileUploadConfigs.push(newFile.getUploadConfig(`//${req.headers.host}/upload`));
+			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
 		}
 	}
@@ -489,11 +490,36 @@ app.post('/upload/files/apply', (req, res) => {
 	const codeInfo = new FileCodeInfo(localFiles);
 	CodeStore.saveCodeInfo(codeInfo);
 
-	res.json({code: codeInfo.code, configs: fileUploadConfigs});
+	res.json({code: codeInfo.code, checkpoint: codeInfo.getSignedCheckpointUrl({host: req.headers.host}), configs: fileUploadConfigs});
+});
+
+// 文件上传检查点
+app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
+	const url = Url.completeUrl(req.url);
+
+	const codeInfo = CodeStore.getCodeInfo(req.query.code);
+
+	if (!Url.check(url)) {
+		console.log(`Invalid signature: ${url}`);
+		res.status(403).json({message: '无效的签名。'});
+		return;
+	} else if (!codeInfo) {
+		console.log(`Code not found or has expired: ${req.query.code}`);
+		res.status(404).json({message: '提取码不存在或已过期。'});
+		return;
+	} else if (codeInfo.hasExpired()) {
+		console.log(`Checkpoint has expired: ${req.query.code}`);
+		const expDate = new Date(codeInfo.expireTime);
+		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
+		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
+		return;
+	}
+
+	res.json({});
 });
 
 // 上传文件（新）
-app.post('/upload/files/new', upload.single('part'), (req, res) => {
+app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 	let {id: fileId, key: fileKey, index: partIndex} = req.body;
 
 	const file = File.findFileById(fileId);
@@ -516,12 +542,13 @@ app.post('/upload/files/new', upload.single('part'), (req, res) => {
 
 		res.json({});
 	} else {
-		res.status(403).json({message: '上传的文件片段不匹配。'});
+		console.log(`File part upload has been rejected: ${fileId}`);
+		res.status(403).json({message: '上传被拒绝。'});
 	}
 });
 
 // 文件提取（新）
-app.post('/extract/files/new/:code', (req, res) => {
+app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
@@ -544,7 +571,7 @@ app.post('/extract/files/new/:code', (req, res) => {
 			// 生成下载配置
 			const fileDownloadConfigs = [];
 			for (const file of codeInfo.files) {
-				const downloadConfig = file.getDownloadConfig(`//${req.headers.host}/down`, allowMultipart);
+				const downloadConfig = file.getDownloadConfig({host: req.headers.host}, allowMultipart);
 				fileDownloadConfigs.push(downloadConfig);
 			}
 			res.json({configs: fileDownloadConfigs});
@@ -554,10 +581,10 @@ app.post('/extract/files/new/:code', (req, res) => {
 });
 
 // 文件下载（新）
-app.get('/down', (req, res) => {
-	const url = new URL(req.url, "http://downalod/");
+app.get(Api.DOWN_NEW, (req, res) => {
+	const url = Url.completeUrl(req.url);
 
-	const id = parseInt(url.searchParams.get('id'));
+	const id = url.searchParams.get('id');
 
 	const file = File.findFileById(id);
 
@@ -565,7 +592,7 @@ app.get('/down', (req, res) => {
 		console.log(`File not found: ${id}`);
 		res.status(404).send("文件不存在或已过期。");
 		return;
-	} else if (!file.checkSignature(url)) {
+	} else if (!file.isValidUrl(url)) {
 		console.log(`Invalid signature: ${url}`);
 		res.status(404).send("文件不存在或已过期。");
 		return;
@@ -577,7 +604,7 @@ app.get('/down', (req, res) => {
 });
 
 // 文件播放
-app.get('/play/:code', (req, res) => {
+app.get(Api.PLAY, (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
 	const absFilePath = getAbsPath(linkInfo?.path);
@@ -614,15 +641,14 @@ const server = http.createServer(app);
 
 const wss = new WebSocketServer({server});
 
-const downloadWebSocketPool = new DownloadWebSocketPool(),
-	uploadWebSocketPool = new UploadWebSocketPool(downloadWebSocketPool);
+const downloadWebSocketPool = new DownloadWebSocketPool();
 
 // 监听WebSocket连接事件
 wss.on('connection', (ws, req) => {
 	const url = new URL(req.url, "ws://websocket.client/");
 	const {searchParams} = url;
 	switch (url.pathname) {
-		case "/down": {
+		case Api.WS_DOWN: {
 			const id = searchParams.get('id');
 
 			const file = File.findFileById(id);
@@ -631,7 +657,7 @@ wss.on('connection', (ws, req) => {
 				console.log(`File not found: ${id}`);
 				ws.close(4001, "文件不存在或已过期。");
 				return;
-			} else if (!file.checkSignature(url)) {
+			} else if (!file.isValidUrl(url)) {
 				console.log(`Invalid signature: ${url}`);
 				ws.close(4001, "文件不存在或已过期。");
 				return;
@@ -647,44 +673,12 @@ wss.on('connection', (ws, req) => {
 
 			downloadWebSocketPool.addConnection(id, ws);
 
-			const downloadConfig = file.getDownloadConfig(`local://download.config/`, true);
+			const downloadConfig = file.getDownloadConfig(undefined, true);
 			downloadConfig.parts.forEach((part, partIndex) => {
 				if (part.uploaded) {
 					downloadWebSocketPool.send(ws, partIndex);
 				}
 			});
-			break;
-		}
-		case "/upload": {
-			const id = searchParams.get('id');
-			const key = searchParams.get('key');
-
-			const file = File.findFileById(id);
-
-			if (!file) {
-				console.log(`File not found: ${id}`);
-				ws.close(4001, "文件不存在或已过期。");
-				return;
-			} else if (!file.checkSignature(url)) {
-				console.log(`Invalid signature: ${url}`);
-				ws.close(4001, "文件不存在或已过期。");
-				return;
-			} else if (file.key !== key) {
-				console.log(`Invalid file or key: ${key}`);
-				ws.close(4001, "无效的文件或密钥。");
-				return;
-			} else if (file.status === FileStatus.UPLOADED) {
-				console.log(`File uploaded: ${id}`);
-				ws.close(4000, "文件已上传完成。");
-				return;
-			} else if (file.status === FileStatus.REMOVED) {
-				console.log(`File removed: ${id}`);
-				ws.close(4001, "文件已被删除。");
-				return;
-			}
-
-			uploadWebSocketPool.addConnection(id, ws);
-
 			break;
 		}
 		default: {

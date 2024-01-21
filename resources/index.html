@@ -161,6 +161,88 @@
 			box-shadow: 0 0 0 1px var(--primary-color-1) inset;
 		}
 
+		progress {
+			position: relative;
+			overflow: hidden;
+			border: #D0D7DE 1px solid;
+			border-radius: 114514px;
+			background-color: #EFEDED;
+		}
+
+		progress::-webkit-progress-bar {
+			background-color: transparent;
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+		}
+
+		progress[value]::-webkit-progress-value, progress:not([value])::before, progress:not([value])::after {
+			border-radius: 114514px;
+			background-color: var(--primary-color-1);
+		}
+
+		progress[value]::-webkit-progress-value {
+			margin-left: 10px;
+			transition: all 50ms linear;
+			transform: translateX(-10px);
+		}
+
+		progress:not([value])::before {
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			content: '';
+			animation: slow-stripes 2s infinite ease-in-out;
+		}
+
+		@keyframes slow-stripes {
+			0% {
+				animation-timing-function: ease-in;
+				left: -5%;
+				width: 0;
+			}
+			50% {
+				animation-timing-function: ease-out;
+				left: 50%;
+				width: 50%;
+			}
+			60% {
+				left: 100%;
+				width: 50%;
+			}
+			100% {
+				left: 100%;
+				width: 50%;
+			}
+		}
+
+		progress:not([value])::after {
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			content: '';
+			animation: fast-stripes 2s infinite ease-in-out;
+		}
+
+		@keyframes fast-stripes {
+			0% {
+				left: -20%;
+				width: 20%;
+			}
+			50% {
+				left: -20%;
+				width: 20%;
+			}
+			100% {
+				left: 100%;
+				width: 70%;
+			}
+		}
+
 		.title {
 			display: flex;
 			align-items: center;
@@ -340,13 +422,14 @@
 			const failedConfigs = [];
 
 			for (let activeConfigIndex = 0; activeConfigIndex < downloadConfigs.length; activeConfigIndex++) {
-				const downloadConfig = downloadConfigs[activeConfigIndex];
+				const activeConfig = downloadConfigs[activeConfigIndex];
 				downloadDialog.activeConfigIndex = activeConfigIndex;
-				downloadDialog.fileProgressMax = downloadConfig.parts.length;
+				downloadDialog.fileProgressMax = activeConfig.parts.length;
+				downloadDialog.resetFileProgress();
 
 				await new Promise((resolve, reject) => {
 					// 连接 WebSocket
-					const downloadClient = new WebsocketClient(downloadConfig.wsUrl);
+					const downloadClient = new WebsocketClient(activeConfig.wsUrl);
 
 					if (allowMultipart) {
 						downloadDialog.setFileProgressIndeterminate(false);
@@ -356,8 +439,6 @@
 
 						// 用于存储已下载的分片blob
 						const multipartBlobs = [];
-						// proxy number
-						let finishedCount = 0;
 
 						// 用于存储下载的promise
 						const downloadPromises = [];
@@ -370,11 +451,12 @@
 								}
 								multipartBlobs[downloadIndex] = true;
 
-								downloadPromises.push(api.get(downloadConfig.parts[downloadIndex].url, {signal: abortController.signal}, {
+								downloadPromises.push(api.get(activeConfig.parts[downloadIndex].url, {signal: abortController.signal}, {
 									slowRequest: true, bodyType: 'blob'
 								}).then(({data}) => {
 									// 下载完成
 									multipartBlobs[downloadIndex] = data;
+								}).finally(() => {
 									downloadDialog.addFileProgress();
 									downloadDialog.addTotalProgress();
 								}));
@@ -384,13 +466,13 @@
 							console.log('WebSocket closed.', code, reason);
 							if (code === 4000) {
 								// 说明已经上传完成，将所有未下载的片段下载下来
-								for (let i = 0; i < downloadConfig.parts.length; i++) {
-									if (!multipartBlobs[i]) {
-										downloadPromises.push(api.get(downloadConfig.parts[i].url, {signal: abortController.signal}, {
+								for (let partIndex = 0; partIndex < activeConfig.parts.length; partIndex++) {
+									if (!multipartBlobs[partIndex]) {
+										downloadPromises.push(api.get(activeConfig.parts[partIndex].url, {signal: abortController.signal}, {
 											slowRequest: true, bodyType: 'blob'
 										}).then(({data}) => {
 											// 下载完成
-											multipartBlobs[i] = data;
+											multipartBlobs[partIndex] = data;
 										}).finally(() => {
 											downloadDialog.addFileProgress();
 											downloadDialog.addTotalProgress();
@@ -401,13 +483,11 @@
 								// 等待所有分片下载完成
 								Promise.all(downloadPromises)
 								.then(() => {
-									downloadDialog.fileProgressValue = downloadConfig.parts.length;
-
 									const blob = new Blob(multipartBlobs);
 									const a = document.createElement('a');
 									a.style.display = 'none';
 									a.href = URL.createObjectURL(blob);
-									a.download = downloadConfig.name;
+									a.download = activeConfig.name;
 									document.body.appendChild(a);
 									//a.click();
 									document.body.removeChild(a);
@@ -418,8 +498,7 @@
 									// 终止未完成的下载
 									try {
 										abortController.abort("文件下载失败");
-									} catch {
-									}
+									} catch {}
 									reject();
 								});
 							} else {
@@ -436,8 +515,8 @@
 								// 说明下载完成，下载整个文件
 								const a = document.createElement('a');
 								a.style.display = 'none';
-								a.href = downloadConfig.parts[0].url;
-								a.download = downloadConfig.name;
+								a.href = activeConfig.parts[0].url;
+								a.download = activeConfig.name;
 								document.body.appendChild(a);
 								//a.click();
 								document.body.removeChild(a);
@@ -446,13 +525,14 @@
 							} else {
 								reject();
 							}
+							downloadDialog.addFileProgress();
 						};
 					}
 
 					// 打开 WebSocket
 					downloadClient.open();
 				}).catch(() => {
-					failedConfigs.push(downloadConfig);
+					failedConfigs.push(activeConfig);
 				});
 			}
 			setTimeout(() => {
@@ -982,6 +1062,259 @@
 			}
 		}
 
+		class UploadDialog extends Dialog {
+			/**
+			 * 下载对话框容器
+			 * @type {HTMLDivElement}
+			 */
+			#uploadContainer = document.createElement('div');
+			/**
+			 * 文件进度
+			 * @type {HTMLProgressElement}
+			 */
+			#fileProgress = document.createElement('progress');
+			/**
+			 * 文件进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#fileProgressLabelContainer = document.createElement('div');
+			/**
+			 * 文件名称文本
+			 * @type {HTMLSpanElement}
+			 */
+			#fileNameLabel = document.createElement('span');
+			/**
+			 * 文件进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#filePercentLabel = document.createElement('span');
+			/**
+			 * 总进度
+			 * @type {HTMLProgressElement}
+			 */
+			#totalProgress = document.createElement('progress');
+			/**
+			 * 总进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#totalProgressLabelContainer = document.createElement('div');
+			/**
+			 * 总进度文本
+			 * @type {HTMLSpanElement}
+			 */
+			#totalProgressLabel = document.createElement('span');
+			/**
+			 * 总进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#totalPercentLabel = document.createElement('span');
+			/**
+			 * 下载配置
+			 * @type {{}[]}
+			 */
+			#uploadFiles = [];
+			/**
+			 * 当前配置索引
+			 * @type {number}
+			 */
+			#activeConfigIndex = 0;
+			#updateTimeout = null;
+
+			constructor(extractCode, uploadFiles) {
+				super();
+
+				this.#uploadFiles = uploadFiles;
+
+				this.title = '上传文件';
+				this.showCloseButton = false;
+				this.styles = `
+					.dialog-upload-container {
+						width: 100%;
+						height: 100%;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						gap: 5px;
+					}
+					.dialog-upload-progress-label-container {
+						width: 100%;
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						gap: 20px;
+						padding: 5px;
+					}
+					.dialog-upload-progress-label {
+						text-overflow: ellipsis;
+						overflow: hidden;
+						white-space: nowrap;
+					}
+					.dialog-upload-progress {
+						width: 100%;
+						height: 10px;
+						margin-bottom: 5px;
+					}
+					.dialog-upload-tip {
+						width: 100%;
+						height: 100%;
+						position: relative;
+						padding: 10px;
+						border-radius: 3px;
+						font-size: 14px;
+						background-color: #F5F7FA;
+						border-left: 5px solid var(--primary-color-1);
+						margin-bottom: 5px;
+					}
+				`;
+
+				this.#uploadContainer.classList.add('dialog-upload-container');
+				{
+					const tip = document.createElement('div');
+					tip.innerText = `请凭【${extractCode.toUpperCase()}】提取文件。`;
+					// 左侧一条蓝线
+					tip.classList.add('dialog-upload-tip');
+					this.#uploadContainer.appendChild(tip);
+
+					this.#fileProgressLabelContainer.classList.add('dialog-upload-progress-label-container');
+					{
+						this.#fileNameLabel.classList.add('dialog-upload-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#fileNameLabel);
+
+						this.#filePercentLabel.classList.add('dialog-upload-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#filePercentLabel);
+					}
+					this.#uploadContainer.appendChild(this.#fileProgressLabelContainer);
+
+					this.#fileProgress.classList.add('dialog-upload-progress');
+					this.#uploadContainer.appendChild(this.#fileProgress);
+
+					this.#totalProgressLabelContainer.classList.add('dialog-upload-progress-label-container');
+					{
+						this.#totalProgressLabel.classList.add('dialog-upload-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalProgressLabel);
+
+						this.#totalPercentLabel.classList.add('dialog-upload-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalPercentLabel);
+					}
+					this.#uploadContainer.appendChild(this.#totalProgressLabelContainer);
+
+					this.#totalProgress.classList.add('dialog-upload-progress');
+					this.#uploadContainer.appendChild(this.#totalProgress);
+				}
+				this.content = this.#uploadContainer;
+
+				const activeConfig = uploadFiles[0];
+
+				// 设置文件名称
+				this.#fileNameLabel.innerText = activeConfig.name;
+
+				// 设置文件进度
+				this.#fileProgress.max = activeConfig.parts.length;
+				this.#fileProgress.value = 0;
+
+				// 设置总进度
+				this.#totalProgress.max = uploadFiles.reduce((total, item) => total + item.parts.length, 0);
+				this.#totalProgress.value = 0;
+
+				this.update();
+			}
+
+			set activeConfigIndex(value) {
+				this.#activeConfigIndex = value;
+				this.update();
+			}
+
+			set fileProgressMax(value) {
+				if (value == null) {
+					this.#fileProgress.removeAttribute('max');
+				} else {
+					this.#fileProgress.setAttribute('max', value);
+				}
+				this.update();
+			}
+
+			set fileProgressValue(value) {
+				if (value == null) {
+					this.#fileProgress.removeAttribute('value');
+				} else {
+					this.#fileProgress.setAttribute('value', value);
+					console.trace();
+				}
+				this.update();
+			}
+
+			addFileProgress() {
+				this.#fileProgress.value++;
+				this.update();
+			}
+
+			resetFileProgress() {
+				this.#fileProgress.value = 0;
+				this.update();
+			}
+
+			setFileProgressIndeterminate(state) {
+				if (state) {
+					this.#fileProgress.removeAttribute('value');
+				} else {
+					this.#fileProgress.setAttribute('value', "0");
+				}
+				this.update();
+			}
+
+			addTotalProgress() {
+				this.#totalProgress.value++;
+				this.update();
+			}
+
+			setTotalProgressIndeterminate(state) {
+				if (state) {
+					this.#totalProgress.removeAttribute('value');
+				} else {
+					this.#totalProgress.setAttribute('value', "0");
+				}
+				this.update();
+			}
+
+			update() {
+				if (!this.#updateTimeout) {
+					this.#updateTimeout = setTimeout(() => {
+						this.#updateTimeout = null;
+
+						const activeConfig = this.#uploadFiles[this.#activeConfigIndex];
+						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
+
+						// 文件名称
+						this.#fileNameLabel.innerText = activeConfig.name;
+
+						// 文件进度百分比
+						if (this.#fileProgress.value === this.#fileProgress.max) {
+							this.#filePercentLabel.innerText = '已完成';
+						} else if (isIndeterminate) {
+							this.#filePercentLabel.innerText = '';
+						} else {
+							this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
+						}
+
+						// 总进度
+						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#uploadFiles.length}/${this.#uploadFiles.length})`;
+						} else {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#uploadFiles.length})`;
+						}
+
+						// 总进度百分比
+						if (this.#totalProgress.value === this.#totalProgress.max) {
+							this.#totalPercentLabel.innerText = '已完成';
+						} else {
+							this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
+						}
+					});
+				}
+			}
+		}
+
 		class DownloadDialog extends Dialog {
 			/**
 			 * 下载对话框容器
@@ -1038,6 +1371,7 @@
 			 * @type {number}
 			 */
 			#activeConfigIndex = 0;
+			#updateTimeout = null;
 
 			constructor(downloadConfigs) {
 				super();
@@ -1071,8 +1405,8 @@
 					}
 					.dialog-download-progress {
 						width: 100%;
-						height: 20px;
-						margin: -5px 0 5px 0;
+						height: 10px;
+						margin-bottom: 5px;
 					}
 				`;
 
@@ -1148,6 +1482,11 @@
 				this.update();
 			}
 
+			resetFileProgress() {
+				this.#fileProgress.value = 0;
+				this.update();
+			}
+
 			setFileProgressIndeterminate(state) {
 				if (state) {
 					this.#fileProgress.removeAttribute('value');
@@ -1172,33 +1511,39 @@
 			}
 
 			update() {
-				const activeConfig = this.#downloadConfigs[this.#activeConfigIndex];
-				const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
+				if (!this.#updateTimeout) {
+					this.#updateTimeout = setTimeout(() => {
+						this.#updateTimeout = null;
 
-				// 文件名称
-				this.#fileNameLabel.innerText = activeConfig.name;
+						const activeConfig = this.#downloadConfigs[this.#activeConfigIndex];
+						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
 
-				// 文件进度百分比
-				if (this.#fileProgress.value === this.#fileProgress.max) {
-					this.#filePercentLabel.innerText = '已完成';
-				} else if (isIndeterminate) {
-					this.#filePercentLabel.innerText = '';
-				} else {
-					this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
-				}
+						// 文件名称
+						this.#fileNameLabel.innerText = activeConfig.name;
 
-				// 总进度
-				if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
-					this.#totalProgressLabel.innerText = `总进度 (${this.#downloadConfigs.length}/${this.#downloadConfigs.length})`;
-				} else {
-					this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#downloadConfigs.length})`;
-				}
+						// 文件进度百分比
+						if (this.#fileProgress.value === this.#fileProgress.max) {
+							this.#filePercentLabel.innerText = '已完成';
+						} else if (isIndeterminate) {
+							this.#filePercentLabel.innerText = '';
+						} else {
+							this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
+						}
 
-				// 总进度百分比
-				if (this.#totalProgress.value === this.#totalProgress.max) {
-					this.#totalPercentLabel.innerText = '已完成';
-				} else {
-					this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
+						// 总进度
+						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#downloadConfigs.length}/${this.#downloadConfigs.length})`;
+						} else {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#downloadConfigs.length})`;
+						}
+
+						// 总进度百分比
+						if (this.#totalProgress.value === this.#totalProgress.max) {
+							this.#totalPercentLabel.innerText = '已完成';
+						} else {
+							this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
+						}
+					});
 				}
 			}
 		}
@@ -1421,73 +1766,82 @@
 			uploadPartFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const localFiles = uploadPartFileInput.files;
-				if (!localFiles.length) {
+				const blobFiles = uploadPartFileInput.files;
+				if (!blobFiles.length) {
 					return;
-				} else if (Array.from(localFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
+				} else if (Array.from(blobFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
 					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
 					return;
 				}
 
 				disableForm(uploadPartFileForm);
 
-				const allowMultipart = checkBlob();
-
 				api.post('/upload/files/apply', {
-					files: (Array.from(localFiles).map(file => ({
+					files: (Array.from(blobFiles).map(file => ({
 						name: file.name,
 						size: file.size
 					}))),
-					allowMultipart
+					allowMultipart: checkBlob()
 				})
 				.then(async ({data}) => {
 					const {configs} = data;
+					console.log(configs);
 
 					const extractCode = data.code;
-					const postPromises = [];
-					for (let i = 0; i < configs.length; i++) {
-						const uploadFileConfig = configs[i];
-						const blobFile = localFiles[i];
 
-						postPromises.push(new Promise((resolve, reject) => {
-							const uploadFileAbortController = new AbortController();
+					const uploadDialog = new UploadDialog(extractCode, configs);
+					uploadDialog.open();
+
+					const failedConfigs = [];
+					for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+						const activeConfig = configs[activeConfigIndex];
+						const blobFile = blobFiles[activeConfigIndex];
+
+						uploadDialog.activeConfigIndex = activeConfigIndex;
+						uploadDialog.fileProgressMax = activeConfig.parts.length;
+						uploadDialog.resetFileProgress();
+
+						await new Promise((resolve, reject) => {
+							const abortController = new AbortController();
 							const uploadFilePromises = [];
-							const uploadFileWebSocket = new WebsocketClient(uploadFileConfig.wsUrl);
-							// 确保连接成功再开始上传
-							uploadFileWebSocket.onOpen = () => {
-								for (const uploadPartConfig of uploadFileConfig.parts) {
-									const formData = new FormData();
-									formData.append('id', uploadFileConfig.id);
-									formData.append('key', uploadFileConfig.key);
-									formData.append('index', uploadPartConfig.index);
-									// -1 表示整个文件
-									formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
-									uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: uploadFileAbortController.signal}, {slowRequest: true}));
-								}
-								Promise.all(uploadFilePromises)
-								.then(() => resolve())
-								.catch(error => {
-									try {
-										uploadFileAbortController.abort("文件上传失败");
-									} catch {}
-									reject(error);
-								})
-								.finally(() => uploadFileWebSocket.close());
-							};
-							// 启动 WebSocket 并开始上传
-							uploadFileWebSocket.open();
-						}));
+							for (const uploadPartConfig of activeConfig.parts) {
+								const formData = new FormData();
+								formData.append('id', activeConfig.id);
+								formData.append('key', activeConfig.key);
+								formData.append('index', uploadPartConfig.index);
+								// -1 表示整个文件
+								formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
+								uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}).then(() => {
+									uploadDialog.addFileProgress();
+									uploadDialog.addTotalProgress();
+								}));
+							}
+							Promise.all(uploadFilePromises)
+							.then(() => resolve())
+							.catch(() => {
+								// 终止未完成的上传
+								try {
+									abortController.abort("文件上传失败");
+								} catch {}
+								reject();
+							});
+						}).catch(() => {
+							failedConfigs.push(activeConfig);
+						});
 					}
 
-					// 全部成功才行
-					await Promise.all(postPromises)
-					.then(() => alert(`文件上传成功。请凭【${extractCode}】提取文件。`))
-					.catch(error => {
-						throw error;
-					});
+					setTimeout(() => {
+						uploadDialog.close();
+						if (failedConfigs.length > 0) {
+							alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
+						}
+						alert(`文件上传成功。请凭【${extractCode}】提取文件。`);
+					}, 1000);
 				})
 				.catch(({message}) => alert(message))
-				.finally(() => enableForm(uploadPartFileForm));
+				.finally(() => {
+					enableForm(uploadPartFileForm);
+				});
 			});
 
 			let extractPartFileCode = document.getElementById('extractPartFileCode');
