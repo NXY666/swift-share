@@ -561,25 +561,36 @@
 
 		class api {
 			static #requestQueue = [];
+
 			static #requestingCount = 0;
-			static #maxRequestingCount = 16;
+			static #slowRequestingCount = 0;
+
+			static #maxRequestingCount = 8;
+			static #maxSlowRequestingCount = 8;
+
 			static #processQueue = async () => {
-				if (this.#requestQueue.length > 0 && this.#requestingCount < this.#maxRequestingCount) {
-					const now = Date.now();
-					let maxValue = 0, maxValueIndex = -1;
+				if (this.#requestQueue.length > 0) {
 					for (let i = 0; i < this.#requestQueue.length; i++) {
 						const request = this.#requestQueue[i];
-						const value = (now - request.pushTime) * (request.slowRequest ? 1 : 2);
-						if (value > maxValue) {
-							maxValue = value;
-							maxValueIndex = i;
+						if ((request.slowRequest && this.#slowRequestingCount >= this.#maxSlowRequestingCount) ||
+							(!request.slowRequest && this.#requestingCount >= this.#maxRequestingCount)) {
+							continue;
 						}
+
+						this.#requestQueue.splice(i, 1);
+						if (request.slowRequest) {
+							this.#slowRequestingCount++;
+							await request.callback();
+							this.#slowRequestingCount--;
+						} else {
+							this.#requestingCount++;
+							await request.callback();
+							this.#requestingCount--;
+						}
+						setTimeout(this.#processQueue);
+						return;
 					}
-					const request = this.#requestQueue.splice(maxValueIndex, 1)[0];
-					this.#requestingCount++;
-					await request.callback();
-					this.#requestingCount--;
-					setTimeout(this.#processQueue);
+					console.log("Request full.", `normal: (${this.#requestingCount}/${this.#maxRequestingCount})`, `slow: (${this.#slowRequestingCount}/${this.#maxSlowRequestingCount})`);
 				}
 			};
 
@@ -1776,6 +1787,7 @@
 
 				disableForm(uploadPartFileForm);
 
+				let checkpointTimeout = null;
 				api.post('/upload/files/apply', {
 					files: (Array.from(blobFiles).map(file => ({
 						name: file.name,
@@ -1784,8 +1796,15 @@
 					allowMultipart: checkBlob()
 				})
 				.then(async ({data}) => {
-					const {configs} = data;
-					console.log(configs);
+					const {configs, checkpointUrl} = data;
+					console.log(data);
+
+					// 每隔15秒检查一次
+					checkpointTimeout = setTimeout(function checkpoint() {
+						api.get(checkpointUrl).finally(() => {
+							checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
+						});
+					});
 
 					const extractCode = data.code;
 
@@ -1811,7 +1830,7 @@
 								formData.append('index', uploadPartConfig.index);
 								// -1 表示整个文件
 								formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
-								uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}).then(() => {
+								uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}).finally(() => {
 									uploadDialog.addFileProgress();
 									uploadDialog.addTotalProgress();
 								}));
@@ -1841,6 +1860,7 @@
 				.catch(({message}) => alert(message))
 				.finally(() => {
 					enableForm(uploadPartFileForm);
+					clearTimeout(checkpointTimeout);
 				});
 			});
 

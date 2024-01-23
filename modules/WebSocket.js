@@ -1,4 +1,6 @@
 import {WebSocket} from 'ws';
+import EventEmitter from "events";
+import {File, FileStatus} from "./File.js";
 
 /**
  * WebSocket 客户端
@@ -39,7 +41,7 @@ class Client {
 	}
 }
 
-export class WebSocketPool {
+export class WebSocketPool extends EventEmitter {
 	#waitList = [];
 	#waitTimeout = 500;
 	#waitTimeoutId = null;
@@ -73,10 +75,13 @@ export class WebSocketPool {
 		if (!this.#clients[id]) {
 			this.#clients[id] = [];
 		}
+
 		const newClient = new Client(id, connection, data);
-		if (this.onConnection(newClient) === false) {
+		if (this.clientHandler(newClient) === false) {
 			throw new Error('连接池拒绝接受此连接。');
 		}
+		this.emit('connect', newClient);
+
 		this.#clients[id].push(newClient);
 
 		// 添加连接到连接映射
@@ -104,7 +109,7 @@ export class WebSocketPool {
 	 * @param {Client} client
 	 * @return {boolean} 是否接受此连接
 	 */
-	onConnection(client) {
+	clientHandler(client) {
 		return true;
 	}
 
@@ -129,15 +134,7 @@ export class WebSocketPool {
 		}
 
 		// 处理消息
-		this.onMessage(client, message);
-	}
-
-	/**
-	 * 处理连接的消息
-	 * @param {Client} client
-	 * @param {string} message
-	 */
-	onMessage(client, message) {
+		this.emit('message', client, message);
 	}
 
 	/**
@@ -146,7 +143,7 @@ export class WebSocketPool {
 	#onClose(connection, code, reason) {
 		const client = this.#findClientByConnection(connection);
 
-		this.onClose(client, code, reason);
+		this.emit('beforeClose', client, code, reason);
 
 		const {id} = client;
 		// 从 ID 映射中移除连接
@@ -156,17 +153,10 @@ export class WebSocketPool {
 			idClients.splice(index, 1);
 		}
 
+		this.emit('close', client, code, reason);
+
 		// 输出关闭的连接信息
 		console.log(`Connection closed with code ${code} and reason: ${reason}`);
-	}
-
-	/**
-	 * 处理连接的关闭
-	 * @param {Client} client
-	 * @param {number} code
-	 * @param {string} reason
-	 */
-	onClose(client, code, reason) {
 	}
 
 	/**
@@ -200,7 +190,7 @@ export class WebSocketPool {
 
 	queue(connection, message) {
 		const client = this.#findClientByConnection(connection);
-		this.#waitList.push({connection, message: this.onSend(client, message)});
+		this.#waitList.push({connection, message: this.messageHandler(client, message)});
 
 		if (this.#waitTimeoutId === null) {
 			const waitTimeoutCallback = () => {
@@ -233,7 +223,7 @@ export class WebSocketPool {
 	 * @param {any} message
 	 * @return {any}
 	 */
-	onSend(client, message) {
+	messageHandler(client, message) {
 		return message;
 	}
 
@@ -264,10 +254,49 @@ export class WebSocketPool {
 }
 
 export class DownloadWebSocketPool extends WebSocketPool {
+	constructor() {
+		super();
+		this.on('connect', this.onConnect);
+		this.once('beforeClose', this.onBeforeClose);
+	}
+
+	onConnect(client) {
+		const {id, connection: conn} = client;
+
+		const file = File.findFileById(id);
+
+		// 发送已上传的文件片段
+		const downloadConfig = file.getDownloadConfig(undefined, true);
+		downloadConfig.parts.forEach((part, partIndex) => {
+			if (part.uploaded) {
+				this.send(conn, partIndex);
+			}
+		});
+
+		// 文件状态改变时
+		file.on('changeStatus', (status) => {
+			console.log(`File ${id} status changed to ${status}.`);
+			switch (status) {
+				case FileStatus.UPLOADED:
+					this.closeAll(id, 4000, '文件已上传完成。');
+					break;
+				case FileStatus.REMOVED:
+					this.closeAll(id, 4001, '文件已被移除。');
+					break;
+			}
+		});
+	}
+
+	onBeforeClose(client, code, reason) {
+		const {id} = client;
+		const file = File.findFileById(id);
+		file.off('changeStatus', this.onConnect);
+	}
+
 	/**
 	 * @inheritDoc
 	 */
-	onSend(client, message) {
+	messageHandler(client, message) {
 		return parseInt(message);
 	}
 }

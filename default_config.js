@@ -64,6 +64,15 @@ export default {
 	 * @type {number}
 	 */
 	FILE_UPLOAD_INTERVAL: 30 * 60 * 1000,
+	/**
+	 * 文件上传最大检查点间隔
+	 * @type {number}
+	 */
+	FILE_UPLOAD_CHECKPOINT_INTERVAL: 60 * 1000,
+	/**
+	 * 文件分片大小（单位：字节）
+	 * @type {number}
+	 */
 	FILE_PART_SIZE: 10 * 1024 * 1024,
 	/**
 	 * 链接过期时间（单位：毫秒）

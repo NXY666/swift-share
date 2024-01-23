@@ -71,9 +71,9 @@ export class Url {
 	 */
 	static mergeUrl({protocol, host, pathname}) {
 		const url = new URL("http://localhost/");
-		url.protocol = protocol;
-		url.host = host;
-		url.pathname = pathname;
+		url.protocol = protocol ?? "";
+		url.host = host ?? "";
+		url.pathname = pathname ?? "";
 		return url;
 	}
 

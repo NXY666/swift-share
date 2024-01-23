@@ -4,6 +4,7 @@ import fs from "fs";
 import {Api, Url} from "./Url.js";
 import {Stream} from "./Stream.js";
 import {Readable} from "stream";
+import EventEmitter from "events";
 
 export class FileStatus {
 	static CREATED = 0;
@@ -12,7 +13,7 @@ export class FileStatus {
 	static REMOVED = 3;
 }
 
-export class File {
+export class File extends EventEmitter {
 	static #nextId = 0;
 
 	static #fileMap = {};
@@ -53,22 +54,25 @@ export class File {
 	 * @type {number}
 	 */
 	#uploadDeadline = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
-
 	/**
 	 * 上传检查点
 	 * @type {number}
 	 */
-	#uploadCheckpoint = Date.now();
+	#checkpoint = Date.now();
 
 	constructor({name, size}) {
+		super();
+
 		File.#fileMap[this.#id] = this;
 		this.#name = name;
 		this.#size = size;
 
 		// 上传超时
 		setTimeout(() => {
+			// 上传超时，删除文件
 			if (this.status !== FileStatus.UPLOADED) {
 				this.remove();
+				console.log(`File ${this.id} reached upload deadline but not uploaded.`);
 			}
 		}, DefaultConfig.FILE_UPLOAD_INTERVAL);
 	}
@@ -111,21 +115,22 @@ export class File {
 	}
 
 	/**
-	 * 检查点
+	 * 刷新检查点
 	 */
-	refreshUploadCheckpoint() {
-		this.#uploadCheckpoint = Date.now();
+	checkpoint() {
+		this.#checkpoint = Date.now();
 	}
 
 	hasUploadTimeout() {
-		// 检查点时间间隔超过2分钟，或者时间超过最后期限
+		// 检查点时间间隔超过5分钟，或者时间超过最后期限
 		const now = Date.now();
-		return now - this.#uploadCheckpoint > 2 * 60 * 1000 || now > this.#uploadDeadline;
+		return now - this.#checkpoint > DefaultConfig.FILE_UPLOAD_CHECKPOINT_INTERVAL || now > this.#uploadDeadline;
 	}
 
 	// 因为子类要用，所以不能用 private
 	changeStatus(status) {
 		this.#status = status;
+		this.emit("changeStatus", status);
 	}
 
 	/**
@@ -145,6 +150,11 @@ export class File {
 	upload() {
 		// 已上传或已删除的文件不可再上传
 		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
+			return false;
+		}
+
+		// 上传超时的文件不可再上传
+		if (this.hasUploadTimeout()) {
 			return false;
 		}
 
@@ -178,7 +188,9 @@ export class File {
 
 		delete File.#fileMap[this.id];
 		this.changeStatus(FileStatus.REMOVED);
+
 		console.log("[RemoveFile]", this.id, this.name, this.status);
+		this.emit("remove");
 		return true;
 	}
 

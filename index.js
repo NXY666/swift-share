@@ -490,7 +490,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	const codeInfo = new FileCodeInfo(localFiles);
 	CodeStore.saveCodeInfo(codeInfo);
 
-	res.json({code: codeInfo.code, checkpoint: codeInfo.getSignedCheckpointUrl({host: req.headers.host}), configs: fileUploadConfigs});
+	res.json({code: codeInfo.code, checkpointUrl: codeInfo.getSignedCheckpointUrl({host: req.headers.host}), configs: fileUploadConfigs});
 });
 
 // 文件上传检查点
@@ -508,12 +508,14 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 		res.status(404).json({message: '提取码不存在或已过期。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
-		console.log(`Checkpoint has expired: ${req.query.code}`);
 		const expDate = new Date(codeInfo.expireTime);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
+		console.log(`Code has expired: ${req.query.code}`);
 		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
 		return;
 	}
+
+	codeInfo.checkpoint();
 
 	res.json({});
 });
@@ -671,14 +673,8 @@ wss.on('connection', (ws, req) => {
 				return;
 			}
 
+			// 添加到连接池
 			downloadWebSocketPool.addConnection(id, ws);
-
-			const downloadConfig = file.getDownloadConfig(undefined, true);
-			downloadConfig.parts.forEach((part, partIndex) => {
-				if (part.uploaded) {
-					downloadWebSocketPool.send(ws, partIndex);
-				}
-			});
 			break;
 		}
 		default: {
@@ -718,6 +714,9 @@ server.listen(port, () => {
 				delete linkStore[code];
 			}
 		}
+
+		// 全部提取码自检
+		CodeStore.checkAll();
 	}, 60 * 1000);
 });
 

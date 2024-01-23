@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import DefaultConfig from "../default_config.js";
-import {File} from "./File.js";
+import {File, FileStatus} from "./File.js";
 import {Api, Url} from "./Url.js";
 
 export class CodeStore {
@@ -13,6 +13,23 @@ export class CodeStore {
 	 */
 	static getCodeInfo(code) {
 		return this.#store[code.toLowerCase()];
+	}
+
+	/**
+	 * 移除提取码信息
+	 * @param {string} code 提取码
+	 */
+	static removeCodeInfo(code) {
+		delete this.#store[code.toLowerCase()];
+	}
+
+	/**
+	 * 全部提取码自检
+	 */
+	static checkAll() {
+		for (const codeInfo of Object.values(this.#store)) {
+			codeInfo.check();
+		}
 	}
 
 	/**
@@ -86,18 +103,39 @@ class CodeInfo {
 		return this.#size;
 	}
 
+	/**
+	 * 获取用于刷新上传文件检查点的URL
+	 * @param host
+	 * @return {string}
+	 */
 	getSignedCheckpointUrl({host} = {}) {
 		const url = Url.mergeUrl({protocol: "http", host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
 		return Url.sign(url.toString(), DefaultConfig.FILE_EXPIRE_INTERVAL);
 	}
 
-	isValidUrl(url) {
-		return Url.check(url);
+	/**
+	 * 刷新上传文件检查点
+	 */
+	checkpoint() {
+	}
+
+	/**
+	 * 提取码状态自检
+	 */
+	check() {
+		// 本体已过期，则删除记录
+		if (this.hasExpired()) {
+			this.remove();
+		}
 	}
 
 	hasExpired() {
 		return Date.now() > this._expireTime;
+	}
+
+	remove() {
+		CodeStore.removeCodeInfo(this.#code.toString());
 	}
 }
 
@@ -129,7 +167,7 @@ export class FileCodeInfo extends CodeInfo {
 	constructor(files) {
 		super('files', files.reduce((size, file) => size + file.size, 0));
 		this.#files = files;
-		this._expireTime = Date.now() + DefaultConfig.FILE_EXPIRE_INTERVAL;
+		this._expireTime = Date.now() + DefaultConfig.FILE_EXPIRE_INTERVAL + DefaultConfig.LINK_EXPIRE_INTERVAL;
 	}
 
 	/**
@@ -138,6 +176,31 @@ export class FileCodeInfo extends CodeInfo {
 	 */
 	get files() {
 		return this.#files;
+	}
+
+	checkpoint() {
+		this.#files.forEach(file => file.checkpoint());
+	}
+
+	check() {
+		super.check();
+		this.#files.forEach(file => {
+			switch (file.status) {
+				case FileStatus.CREATED:
+				case FileStatus.UPLOADING: {
+					// 文件未及时上传，则删除文件
+					if (file.hasUploadTimeout()) {
+						file.remove();
+					}
+					break;
+				}
+			}
+		});
+	}
+
+	remove() {
+		super.remove();
+		this.#files.forEach(file => file.remove());
 	}
 }
 
