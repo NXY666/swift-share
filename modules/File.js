@@ -130,7 +130,7 @@ export class File extends EventEmitter {
 	// 因为子类要用，所以不能用 private
 	changeStatus(status) {
 		this.#status = status;
-		this.emit("changeStatus", status);
+		this.emit("statusChange", status);
 	}
 
 	/**
@@ -248,22 +248,30 @@ export class SimpleFile extends File {
 		return uploadConfig;
 	}
 
+	/**
+	 * 上传
+	 * @param {number} index
+	 * @param file
+	 * @return {boolean}
+	 */
 	upload(index, file) {
-		if (super.upload()) {
-			// 检查索引
-			if (index !== -1) {
-				return false;
-			}
-			// 检查文件大小
-			if (file.size !== this.size) {
-				return false;
-			}
-			this.#path = file.path;
-			this.changeStatus(FileStatus.UPLOADED);
-			return true;
-		} else {
+		if (!super.upload()) {
 			return false;
 		}
+
+		// 检查索引
+		if (index !== -1) {
+			return false;
+		}
+
+		// 检查文件大小
+		if (file.size !== this.size) {
+			return false;
+		}
+
+		this.#path = file.path;
+		this.changeStatus(FileStatus.UPLOADED);
+		return true;
 	}
 
 	/**
@@ -271,7 +279,7 @@ export class SimpleFile extends File {
 	 */
 	getDownloadConfig({host} = {}, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig({host});
-		if (allowMultiPart) {
+		if (allowMultiPart && this.partCount > 1) {
 			for (let i = 0; i < this.partCount; i++) {
 				// 最后一片可能不完整
 				downloadConfig.parts.push({
@@ -353,25 +361,27 @@ export class MultipartFile extends File {
 	 * @return {boolean}
 	 */
 	upload(index, file) {
-		if (super.upload()) {
-			// 检查索引
-			if (index < 0 || index >= this.partCount) {
-				return false;
-			}
-			const uploadConfig = this.getUploadConfig();
-			const activePart = uploadConfig.parts[index];
-			// 检查文件大小
-			if (file.size !== activePart.range[1] - activePart.range[0]) {
-				return false;
-			}
-			this.#paths[index] = file.path;
-			if (this.#paths.filter(item => item).length === this.partCount) {
-				this.changeStatus(FileStatus.UPLOADED);
-			}
-			return true;
-		} else {
+		if (!super.upload()) {
 			return false;
 		}
+
+		// 检查索引
+		if (index < 0 || index >= this.partCount) {
+			return false;
+		}
+
+		// 检查文件大小
+		const uploadConfig = this.getUploadConfig();
+		const activePart = uploadConfig.parts[index];
+		if (file.size !== activePart.range[1] - activePart.range[0]) {
+			return false;
+		}
+
+		this.#paths[index] = file.path;
+		if (this.#paths.filter(item => item).length === this.partCount) {
+			this.changeStatus(FileStatus.UPLOADED);
+		}
+		return true;
 	}
 
 	download(index) {
@@ -403,7 +413,7 @@ export class MultipartFile extends File {
 	getDownloadConfig({host} = {}, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig({host});
 		if (!downloadConfig.removed) {
-			if (allowMultiPart) {
+			if (allowMultiPart && this.partCount > 1) {
 				for (let i = 0; i < this.partCount; i++) {
 					// 最后一片可能不完整
 					downloadConfig.parts.push({
@@ -453,22 +463,30 @@ export class TextFile extends File {
 		return uploadConfig;
 	}
 
+	/**
+	 * 上传
+	 * @param {number} index
+	 * @param text
+	 * @return {boolean}
+	 */
 	upload(index, text) {
-		if (super.upload()) {
-			// 检查索引
-			if (index !== -1) {
-				return false;
-			}
-			// 检查文件大小
-			if (text.length !== this.size) {
-				return false;
-			}
-			this.#text = text;
-			this.changeStatus(FileStatus.UPLOADED);
-			return true;
-		} else {
+		if (!super.upload()) {
 			return false;
 		}
+
+		// 检查索引
+		if (index !== -1) {
+			return false;
+		}
+
+		// 检查文件大小
+		if (text.length !== this.size) {
+			return false;
+		}
+
+		this.#text = text;
+		this.changeStatus(FileStatus.UPLOADED);
+		return true;
 	}
 
 	getDownloadConfig({host} = {}, allowMultiPart = false) {

@@ -254,6 +254,8 @@ export class WebSocketPool extends EventEmitter {
 }
 
 export class DownloadWebSocketPool extends WebSocketPool {
+	fileStatusChangeListenerMap = new Map();
+
 	constructor() {
 		super();
 		this.on('connect', this.onConnect);
@@ -273,8 +275,7 @@ export class DownloadWebSocketPool extends WebSocketPool {
 			}
 		});
 
-		// 文件状态改变时
-		file.on('changeStatus', (status) => {
+		const fileStatusChangeListener = (status) => {
 			console.log(`File ${id} status changed to ${status}.`);
 			switch (status) {
 				case FileStatus.UPLOADED:
@@ -284,13 +285,21 @@ export class DownloadWebSocketPool extends WebSocketPool {
 					this.closeAll(id, 4001, '文件已被移除。');
 					break;
 			}
-		});
+		};
+
+		this.fileStatusChangeListenerMap.set(conn, fileStatusChangeListener);
+
+		// 文件状态改变时
+		file.on('statusChange', fileStatusChangeListener);
 	}
 
 	onBeforeClose(client, code, reason) {
 		const {id} = client;
+
 		const file = File.findFileById(id);
-		file.off('changeStatus', this.onConnect);
+
+		file.off('statusChange', this.fileStatusChangeListenerMap.get(client.connection));
+		this.fileStatusChangeListenerMap.delete(client.connection);
 	}
 
 	/**

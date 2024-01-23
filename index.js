@@ -476,7 +476,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 	const fileUploadConfigs = [], localFiles = [];
 	for (const applyFile of applyFiles) {
-		if (allowMultipart) {
+		if (allowMultipart && applyFile.size > DefaultConfig.FILE_PART_SIZE) {
 			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
 			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
@@ -522,29 +522,31 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 
 // 上传文件（新）
 app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
-	let {id: fileId, key: fileKey, index: partIndex} = req.body;
+	let {id, key, index} = req.body;
 
-	const file = File.findFileById(fileId);
+	index = parseInt(index);
 
-	if (file?.key !== fileKey) {
-		console.log(`Invalid file or key: ${fileKey}`);
+	const file = File.findFileById(id);
+
+	if (file?.key !== key) {
+		console.log(`Invalid file or key: ${key}`);
 		res.status(403).json({message: '无效的文件或密钥。'});
 		return;
 	}
 
-	if (file.upload(partIndex, req.file)) {
-		console.log(`File part uploaded: ${fileId}`);
+	if (file.upload(index, req.file)) {
+		console.log(`File part uploaded: ${id}`);
 
 		// 如果上传完成，则关闭所有连接；否则广播文件片段
 		if (file.status === FileStatus.UPLOADED) {
-			downloadWebSocketPool.closeAll(fileId, 4000, "文件上传完成。");
+			downloadWebSocketPool.closeAll(id, 4000, "文件上传完成。");
 		} else {
-			downloadWebSocketPool.broadcast(fileId, partIndex);
+			downloadWebSocketPool.broadcast(id, index);
 		}
 
 		res.json({});
 	} else {
-		console.log(`File part upload has been rejected: ${fileId}`);
+		console.log(`File part upload has been rejected: ${id}`);
 		res.status(403).json({message: '上传被拒绝。'});
 	}
 });

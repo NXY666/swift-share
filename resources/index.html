@@ -412,28 +412,24 @@
 			return !!(Blob && URL && URL.createObjectURL);
 		}
 
-		async function downDownloadConfigs(downloadConfigs) {
+		async function downloadConfigs(configs) {
 			// 判断能不能用blob合成文件
 			const allowMultipart = checkBlob();
 
-			const downloadDialog = new DownloadDialog(downloadConfigs);
+			const downloadDialog = new DownloadDialog(configs);
 			downloadDialog.open();
 
 			const failedConfigs = [];
 
-			for (let activeConfigIndex = 0; activeConfigIndex < downloadConfigs.length; activeConfigIndex++) {
-				const activeConfig = downloadConfigs[activeConfigIndex];
+			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+				const activeConfig = configs[activeConfigIndex];
 				downloadDialog.activeConfigIndex = activeConfigIndex;
-				downloadDialog.fileProgressMax = activeConfig.parts.length;
-				downloadDialog.resetFileProgress();
 
 				await new Promise((resolve, reject) => {
 					// 连接 WebSocket
 					const downloadClient = new WebsocketClient(activeConfig.wsUrl);
 
 					if (allowMultipart) {
-						downloadDialog.setFileProgressIndeterminate(false);
-
 						// 终止控制器
 						const abortController = new AbortController();
 
@@ -485,12 +481,9 @@
 								.then(() => {
 									const blob = new Blob(multipartBlobs);
 									const a = document.createElement('a');
-									a.style.display = 'none';
 									a.href = URL.createObjectURL(blob);
 									a.download = activeConfig.name;
-									document.body.appendChild(a);
-									//a.click();
-									document.body.removeChild(a);
+									// a.click();
 
 									resolve();
 								})
@@ -506,8 +499,6 @@
 							}
 						};
 					} else {
-						downloadDialog.setFileProgressIndeterminate(true);
-
 						// 监听 WebSocket
 						downloadClient.onClose = (code, reason) => {
 							console.log('WebSocket closed.', code, reason);
@@ -1119,11 +1110,12 @@
 			 * @type {HTMLSpanElement}
 			 */
 			#totalPercentLabel = document.createElement('span');
+
 			/**
 			 * 下载配置
 			 * @type {{}[]}
 			 */
-			#uploadFiles = [];
+			#configs = [];
 			/**
 			 * 当前配置索引
 			 * @type {number}
@@ -1131,10 +1123,10 @@
 			#activeConfigIndex = 0;
 			#updateTimeout = null;
 
-			constructor(extractCode, uploadFiles) {
+			constructor(extractCode, configs) {
 				super();
 
-				this.#uploadFiles = uploadFiles;
+				this.#configs = configs;
 
 				this.title = '上传文件';
 				this.showCloseButton = false;
@@ -1215,7 +1207,7 @@
 				}
 				this.content = this.#uploadContainer;
 
-				const activeConfig = uploadFiles[0];
+				const activeConfig = configs[0];
 
 				// 设置文件名称
 				this.#fileNameLabel.innerText = activeConfig.name;
@@ -1225,7 +1217,7 @@
 				this.#fileProgress.value = 0;
 
 				// 设置总进度
-				this.#totalProgress.max = uploadFiles.reduce((total, item) => total + item.parts.length, 0);
+				this.#totalProgress.max = configs.reduce((total, item) => total + item.parts.length, 0);
 				this.#totalProgress.value = 0;
 
 				this.update();
@@ -1233,24 +1225,16 @@
 
 			set activeConfigIndex(value) {
 				this.#activeConfigIndex = value;
-				this.update();
-			}
 
-			set fileProgressMax(value) {
-				if (value == null) {
-					this.#fileProgress.removeAttribute('max');
-				} else {
-					this.#fileProgress.setAttribute('max', value);
-				}
-				this.update();
-			}
-
-			set fileProgressValue(value) {
-				if (value == null) {
-					this.#fileProgress.removeAttribute('value');
-				} else {
-					this.#fileProgress.setAttribute('value', value);
-					console.trace();
+				const activeConfig = this.#configs[value];
+				if (activeConfig) {
+					if (activeConfig.parts.length > 1) {
+						this.#fileProgress.max = activeConfig.parts.length;
+						this.#fileProgress.value = 0;
+					} else {
+						this.#fileProgress.max = 1;
+						this.#fileProgress.removeAttribute('value');
+					}
 				}
 				this.update();
 			}
@@ -1265,26 +1249,8 @@
 				this.update();
 			}
 
-			setFileProgressIndeterminate(state) {
-				if (state) {
-					this.#fileProgress.removeAttribute('value');
-				} else {
-					this.#fileProgress.setAttribute('value', "0");
-				}
-				this.update();
-			}
-
 			addTotalProgress() {
 				this.#totalProgress.value++;
-				this.update();
-			}
-
-			setTotalProgressIndeterminate(state) {
-				if (state) {
-					this.#totalProgress.removeAttribute('value');
-				} else {
-					this.#totalProgress.setAttribute('value', "0");
-				}
 				this.update();
 			}
 
@@ -1293,7 +1259,7 @@
 					this.#updateTimeout = setTimeout(() => {
 						this.#updateTimeout = null;
 
-						const activeConfig = this.#uploadFiles[this.#activeConfigIndex];
+						const activeConfig = this.#configs[this.#activeConfigIndex];
 						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
 
 						// 文件名称
@@ -1310,9 +1276,9 @@
 
 						// 总进度
 						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
-							this.#totalProgressLabel.innerText = `总进度 (${this.#uploadFiles.length}/${this.#uploadFiles.length})`;
+							this.#totalProgressLabel.innerText = `总进度 (${this.#configs.length}/${this.#configs.length})`;
 						} else {
-							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#uploadFiles.length})`;
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#configs.length})`;
 						}
 
 						// 总进度百分比
@@ -1372,11 +1338,12 @@
 			 * @type {HTMLSpanElement}
 			 */
 			#totalPercentLabel = document.createElement('span');
+
 			/**
 			 * 下载配置
-			 * @type {{}[]}
+			 * @type {any[]}
 			 */
-			#downloadConfigs = [];
+			#configs = [];
 			/**
 			 * 当前配置索引
 			 * @type {number}
@@ -1384,10 +1351,10 @@
 			#activeConfigIndex = 0;
 			#updateTimeout = null;
 
-			constructor(downloadConfigs) {
+			constructor(configs) {
 				super();
 
-				this.#downloadConfigs = downloadConfigs;
+				this.#configs = configs;
 
 				this.title = '下载文件';
 				this.showCloseButton = false;
@@ -1451,40 +1418,28 @@
 				}
 				this.content = this.#downloadContainer;
 
-				const activeConfig = downloadConfigs[0];
-
 				// 设置文件进度
-				this.#fileProgress.max = activeConfig.parts.length;
-				this.#fileProgress.value = 0;
+				this.activeConfigIndex = 0;
 
 				// 设置总进度
-				this.#totalProgress.max = downloadConfigs.reduce((total, item) => total + item.parts.length, 0);
-				this.#totalProgress.value = 0;
+				this.initTotalProgress();
 
 				this.update();
 			}
 
 			set activeConfigIndex(value) {
 				this.#activeConfigIndex = value;
-				this.update();
-			}
 
-			set fileProgressMax(value) {
-				if (value == null) {
-					this.#fileProgress.removeAttribute('max');
+				const activeConfig = this.#configs[value];
+
+				if (activeConfig.parts.length > 1) {
+					this.#fileProgress.max = activeConfig.parts.length;
+					this.#fileProgress.value = 0;
 				} else {
-					this.#fileProgress.setAttribute('max', value);
-				}
-				this.update();
-			}
-
-			set fileProgressValue(value) {
-				if (value == null) {
+					this.#fileProgress.max = 1;
 					this.#fileProgress.removeAttribute('value');
-				} else {
-					this.#fileProgress.setAttribute('value', value);
-					console.trace();
 				}
+
 				this.update();
 			}
 
@@ -1498,26 +1453,15 @@
 				this.update();
 			}
 
-			setFileProgressIndeterminate(state) {
-				if (state) {
-					this.#fileProgress.removeAttribute('value');
-				} else {
-					this.#fileProgress.setAttribute('value', "0");
+			initTotalProgress() {
+				this.#totalProgress.max = this.#configs.reduce((total, item) => total + item.parts.length, 0);
+				if (this.#totalProgress.max > 1) {
+					this.#totalProgress.value = 0;
 				}
-				this.update();
 			}
 
 			addTotalProgress() {
 				this.#totalProgress.value++;
-				this.update();
-			}
-
-			setTotalProgressIndeterminate(state) {
-				if (state) {
-					this.#totalProgress.removeAttribute('value');
-				} else {
-					this.#totalProgress.setAttribute('value', "0");
-				}
 				this.update();
 			}
 
@@ -1526,7 +1470,7 @@
 					this.#updateTimeout = setTimeout(() => {
 						this.#updateTimeout = null;
 
-						const activeConfig = this.#downloadConfigs[this.#activeConfigIndex];
+						const activeConfig = this.#configs[this.#activeConfigIndex];
 						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
 
 						// 文件名称
@@ -1543,9 +1487,9 @@
 
 						// 总进度
 						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
-							this.#totalProgressLabel.innerText = `总进度 (${this.#downloadConfigs.length}/${this.#downloadConfigs.length})`;
+							this.#totalProgressLabel.innerText = `总进度 (${this.#configs.length}/${this.#configs.length})`;
 						} else {
-							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#downloadConfigs.length})`;
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#configs.length})`;
 						}
 
 						// 总进度百分比
@@ -1797,7 +1741,6 @@
 				})
 				.then(async ({data}) => {
 					const {configs, checkpointUrl} = data;
-					console.log(data);
 
 					// 每隔15秒检查一次
 					checkpointTimeout = setTimeout(function checkpoint() {
@@ -1817,8 +1760,6 @@
 						const blobFile = blobFiles[activeConfigIndex];
 
 						uploadDialog.activeConfigIndex = activeConfigIndex;
-						uploadDialog.fileProgressMax = activeConfig.parts.length;
-						uploadDialog.resetFileProgress();
 
 						await new Promise((resolve, reject) => {
 							const abortController = new AbortController();
@@ -1884,7 +1825,7 @@
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1) {
-						downDownloadConfigs(configs);
+						downloadConfigs(configs);
 					} else {
 						showDownloadDialog2(configs);
 					}
@@ -2124,7 +2065,7 @@
 				document.body.appendChild(overlay);
 			}
 
-			function showDownloadDialog2(downloadConfigs) {
+			function showDownloadDialog2(configs) {
 				const dialog = new Dialog();
 
 				/**
@@ -2189,7 +2130,7 @@
 				`;
 
 				checkboxList.classList.add('dialog-checkbox-list');
-				downloadConfigs.forEach((downloadConfig, index) => {
+				configs.forEach((downloadConfig, index) => {
 					const checkboxListItem = document.createElement('li');
 					const checkboxLabel = document.createElement('label');
 					const checkbox = document.createElement('input');
@@ -2238,8 +2179,8 @@
 					confirmButton.textContent = '下载';
 					confirmButton.style.marginLeft = 'auto';
 					confirmButton.addEventListener('click', () => {
-						const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => downloadConfigs[checkbox.value]);
-						downDownloadConfigs(selectedConfigs);
+						const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => configs[checkbox.value]);
+						downloadConfigs(selectedConfigs);
 						dialog.close();
 					});
 					buttonGroup.appendChild(confirmButton);
