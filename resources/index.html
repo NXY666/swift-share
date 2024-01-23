@@ -243,6 +243,61 @@
 			}
 		}
 
+		.switch, .switch label {
+			display: inline-block;
+			box-sizing: border-box;
+		}
+
+		.switch label {
+			position: relative;
+			display: inline-block;
+			box-sizing: border-box;
+			width: 3.5em;
+			height: 1.5em;
+			cursor: pointer;
+			transition: all 0.1s ease-out;
+			border-radius: 0.875em;
+			background-image: linear-gradient(90deg, #D6D7DC 0, #D6D7DC 51%, #8CB9F3 0, #8CB9F3);
+			background-size: 7em 1.5em;
+		}
+
+		.switch label:before {
+			position: absolute;
+			top: -0.25em;
+			left: -0.5em;
+			display: block;
+			width: 2em;
+			height: 2em;
+			content: '';
+			transition: all 0.1s ease-out;
+			border-radius: 2em;
+			background-color: white;
+			box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .4);
+		}
+
+		.switch input {
+			display: none;
+		}
+
+		.switch input:checked + label {
+			background-position: 3.4em;
+		}
+
+		.switch input:checked + label:before {
+			transform: translateX(2.5em);
+			background-color: #1A73E8;
+		}
+
+		.switch input:disabled + label {
+			cursor: not-allowed !important;
+			background: #CCC !important;
+		}
+
+		.switch input:disabled + label:before {
+			background: #CCC !important;
+			box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.5) !important;
+		}
+
 		.title {
 			display: flex;
 			align-items: center;
@@ -280,6 +335,14 @@
 		#playFileVideoContainer {
 			font-size: 0;
 			border: var(--form-border-color) 1px solid;
+		}
+
+		#premiumModeSwitch {
+			transition: box-shadow var(--short-transition-duration);
+		}
+
+		#premiumModeSwitch:hover {
+			box-shadow: 0 1px 6px rgba(32, 33, 36, .28);
 		}
 	</style>
 </head>
@@ -377,6 +440,16 @@
 	<a href="https://github.com/NXY666/SwiftShare"
 	   style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;">快传 - SwiftShare</a>
 
+	<!-- 右下角fixed 高级模式开关 -->
+	<div id="premiumModeSwitch"
+		 style="font-size: 12px; position: fixed; right: 10px; bottom: 10px; padding: 10px 15px; user-select: none; display: flex; align-items: center; background-color:#FFF; border-radius: 500px;">
+		高级模式
+		<div class="switch" style="font-size: 9px; margin-left: 15px; display: flex;">
+			<input id="premiumMode" name="premiumMode" type="checkbox">
+			<label for="premiumMode"></label>
+		</div>
+	</div>
+
 	<script>
 		function disableForm(form) {
 			const formId = form.id;
@@ -407,14 +480,13 @@
 			document.body.removeChild(a);
 		}
 
-		// 判断blob功能是否可用
-		function checkBlob() {
-			return !!(Blob && URL && URL.createObjectURL);
+		function isPremiumMode() {
+			return document.getElementById("premiumMode").checked;
 		}
 
 		async function downloadConfigs(configs) {
 			// 判断能不能用blob合成文件
-			const allowMultipart = checkBlob();
+			const allowMultipart = isPremiumMode();
 
 			const downloadDialog = new DownloadDialog(configs);
 			downloadDialog.open();
@@ -505,18 +577,16 @@
 							if (code === 4000) {
 								// 说明下载完成，下载整个文件
 								const a = document.createElement('a');
-								a.style.display = 'none';
 								a.href = activeConfig.parts[0].url;
 								a.download = activeConfig.name;
-								document.body.appendChild(a);
 								//a.click();
-								document.body.removeChild(a);
 
 								resolve();
 							} else {
 								reject();
 							}
 							downloadDialog.addFileProgress();
+							downloadDialog.addTotalProgress();
 						};
 					}
 
@@ -1737,7 +1807,7 @@
 						name: file.name,
 						size: file.size
 					}))),
-					allowMultipart: checkBlob()
+					allowMultipart: isPremiumMode()
 				})
 				.then(async ({data}) => {
 					const {configs, checkpointUrl} = data;
@@ -1819,7 +1889,7 @@
 				disableForm(extractPartFileForm);
 
 				// 判断能不能用blob
-				const allowMultipart = checkBlob();
+				const allowMultipart = isPremiumMode();
 
 				api.post(`/extract/files/new/${extractionCode}`, {allowMultipart})
 				.then(({data}) => {
