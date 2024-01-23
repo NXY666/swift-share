@@ -11,7 +11,7 @@ import {spawnSync} from "child_process";
 import http from "http";
 import {WebSocketServer} from 'ws';
 import DefaultConfig from "./default_config.js";
-import {CodeStore, FileCodeInfo} from "./modules/Code.js";
+import {CodeStore, FileCodeInfo, TextCodeInfo} from "./modules/Code.js";
 import {File, FileStatus, MultipartFile, SimpleFile} from "./modules/File.js";
 import {DownloadWebSocketPool} from "./modules/WebSocket.js";
 import {Api, Url} from "./modules/Url.js";
@@ -262,51 +262,6 @@ app.get(Api.UPLOAD_TEXT_CAPACITY, (req, res) => {
 	res.json({capacity: config.TEXT_STORE_CAPACITY});
 });
 
-// 文本上传
-app.post(Api.UPLOAD_TEXT, (req, res) => {
-	const text = req.body.toString();
-
-	// 获取store文本的总大小
-	let totalSize = 0;
-	for (const [, info] of Object.entries(codeStore)) {
-		if (info.type === "text") {
-			totalSize += info.size;
-		}
-	}
-	if (totalSize + text.length > config.TEXT_STORE_CAPACITY) {
-		console.log(`Text store is full: ${totalSize} + ${text.length} > ${config.TEXT_STORE_CAPACITY}`);
-		res.status(403).json({message: '文本暂存空间已满，请稍后再试。'});
-		return;
-	}
-
-	const extractionCode = generateExtractionCode(config.EXTRACT_CODE_LENGTH);
-	codeStore[extractionCode] = {
-		type: "text", text,
-		size: text.length,
-		expiration: Date.now() + config.TEXT_EXPIRE_INTERVAL
-	};
-
-	console.log(`Text uploaded: ${extractionCode}`);
-	res.json({code: extractionCode.toUpperCase()});
-});
-
-// 文本提取
-app.get(Api.EXTRACT_TEXT, (req, res) => {
-	const extractionCode = req.params.code.toLowerCase();
-	const textInfo = codeStore[extractionCode];
-
-	if (!textInfo || Date.now() > textInfo.expiration) {
-		console.log(`Text not found or has expired: ${extractionCode}`);
-		res.status(404).json({message: '提取码不存在或已过期。'});
-	} else if (textInfo.type !== "text") {
-		console.log(`Specified code is not a text: ${extractionCode}`);
-		res.status(400).json({message: '指定的提取码类型不是文本。'});
-	} else {
-		console.log(`Text extracted: ${extractionCode}`);
-		res.json({text: textInfo.text});
-	}
-});
-
 // 文件暂存空间
 app.get(Api.UPLOAD_FILES_CAPACITY, (req, res) => {
 	res.json({capacity: config.FILE_STORE_CAPACITY});
@@ -436,37 +391,82 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 	}
 });
 
-// 文件下载
-app.get(Api.DOWN, (req, res) => {
+// 文件播放
+app.get(Api.PLAY, (req, res) => {
 	const downCode = req.params.code.toLowerCase();
 	const linkInfo = linkStore[downCode];
-
 	const absFilePath = getAbsPath(linkInfo?.path);
 
 	if (!linkInfo || Date.now() > linkInfo.expiration) {
-		console.log(`Download link not found or has expired: ${downCode}`);
-		res.status(404).send("下载链接不存在或已过期。");
+		console.log(`Play link not found or has expired: ${downCode}`);
+		res.status(404).send("播放链接不存在或已过期。");
 	} else if (!fs.existsSync(absFilePath)) {
 		console.log(`File not found: ${absFilePath}`);
 		res.status(404).send("文件不存在。");
 	} else {
-		console.log(`File downloaded: ${downCode}`);
-		res.setHeader('Content-Disposition', `attachment; filename=${path.basename(linkInfo.originalName)}`);
+		console.log(`File played: ${downCode}`);
+		res.type("video/*");
+		res.setHeader('Content-Disposition', `inline; filename=${path.basename(linkInfo.originalName)}`);
 		res.sendFile(absFilePath);
+	}
+});
+
+// 文本上传（新）
+app.post(Api.UPLOAD_TEXT_NEW, (req, res) => {
+	const text = req.body.toString();
+
+	let storeUsedSize = CodeStore.getUsedSpace("text");
+
+	if (storeUsedSize + text.length > config.TEXT_STORE_CAPACITY) {
+		console.log(`Text store is full: ${storeUsedSize} + ${text.length} > ${config.TEXT_STORE_CAPACITY}`);
+		res.status(403).json({message: '文本暂存空间已满，请稍后再试。'});
+		return;
+	}
+
+	const codeInfo = new TextCodeInfo(text);
+	CodeStore.saveCodeInfo(codeInfo);
+
+	res.json({code: codeInfo.code});
+});
+
+// 文本提取（新）
+app.get(Api.EXTRACT_TEXT_NEW, (req, res) => {
+	const extractionCode = req.params.code.toLowerCase();
+	const codeInfo = CodeStore.getCodeInfo(extractionCode);
+
+	if (!codeInfo) {
+		console.log(`Text not found or has expired: ${extractionCode}`);
+		res.status(404).json({message: '提取码不存在或已过期。'});
+		return;
+	} else if (codeInfo.hasExpired()) {
+		const expDate = new Date(codeInfo.expireTime);
+		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
+		console.log(`Text has expired: ${extractionCode}`);
+		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
+		return;
+	}
+
+	switch (codeInfo.type) {
+		case "text": {
+			console.log(`Text extracted: ${extractionCode}`);
+			res.json({text: codeInfo.text});
+			break;
+		}
+		default: {
+			console.log(`Specified code is not a text: ${extractionCode}`);
+			res.status(400).json({message: '指定的提取码类型不是文本。'});
+			break;
+		}
 	}
 });
 
 // 申请文件上传
 app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
-	const apply = req.body;
-	const {files: applyFiles, allowMultipart} = apply;
+	const {files, allowMultipart} = req.body;
 
 	let storeUsedSize = CodeStore.getUsedSpace("files");
 
-	let filesSize = 0;
-	for (const file of applyFiles) {
-		filesSize += file.size;
-	}
+	let filesSize = files.reduce((size, file) => size + file.size, 0);
 
 	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
 		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
@@ -475,13 +475,13 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	}
 
 	const fileUploadConfigs = [], localFiles = [];
-	for (const applyFile of applyFiles) {
-		if (allowMultipart && applyFile.size > DefaultConfig.FILE_PART_SIZE) {
-			const newFile = new MultipartFile({name: applyFile.name, size: applyFile.size});
+	for (const file of files) {
+		if (allowMultipart && file.size > DefaultConfig.FILE_PART_SIZE) {
+			const newFile = new MultipartFile({name: file.name, size: file.size});
 			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
 		} else {
-			const newFile = new SimpleFile({name: applyFile.name, size: applyFile.size});
+			const newFile = new SimpleFile({name: file.name, size: file.size});
 			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
 		}
@@ -490,7 +490,10 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	const codeInfo = new FileCodeInfo(localFiles);
 	CodeStore.saveCodeInfo(codeInfo);
 
-	res.json({code: codeInfo.code, checkpointUrl: codeInfo.getSignedCheckpointUrl({host: req.headers.host}), configs: fileUploadConfigs});
+	res.json({
+		code: codeInfo.code, checkpointUrl: codeInfo.getSignedCheckpointUrl({host: req.headers.host}),
+		configs: fileUploadConfigs
+	});
 });
 
 // 文件上传检查点
@@ -520,7 +523,7 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 	res.json({});
 });
 
-// 上传文件（新）
+// 文件上传（新）
 app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 	let {id, key, index} = req.body;
 
@@ -581,6 +584,12 @@ app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
 			res.json({configs: fileDownloadConfigs});
 			break;
 		}
+		default: {
+			console.log(`Specified code is not a file: ${extractionCode}`);
+			res.status(400).json({message: '指定的提取码类型不是文件。'});
+			break;
+
+		}
 	}
 });
 
@@ -605,26 +614,6 @@ app.get(Api.DOWN_NEW, (req, res) => {
 
 	// 读取整个流的内容
 	file.download(parseInt(req.query.index)).pipe(res);
-});
-
-// 文件播放
-app.get(Api.PLAY, (req, res) => {
-	const downCode = req.params.code.toLowerCase();
-	const linkInfo = linkStore[downCode];
-	const absFilePath = getAbsPath(linkInfo?.path);
-
-	if (!linkInfo || Date.now() > linkInfo.expiration) {
-		console.log(`Play link not found or has expired: ${downCode}`);
-		res.status(404).send("播放链接不存在或已过期。");
-	} else if (!fs.existsSync(absFilePath)) {
-		console.log(`File not found: ${absFilePath}`);
-		res.status(404).send("文件不存在。");
-	} else {
-		console.log(`File played: ${downCode}`);
-		res.type("video/*");
-		res.setHeader('Content-Disposition', `inline; filename=${path.basename(linkInfo.originalName)}`);
-		res.sendFile(absFilePath);
-	}
 });
 
 function delCode(code) {

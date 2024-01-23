@@ -358,46 +358,11 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文本</h2>
-			<form id="uploadTextForm" style="display: flex; flex-direction: column;">
-				<label for="uploadTextInput" style="display: none;"></label>
-				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"
-						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
-				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
-			</form>
-		</div>
-	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">提取文本</h2>
-			<form id="extractTextForm" style="display: flex; gap: 15px;">
-				<label for="extractTextCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractTextCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">提取</button>
-			</form>
-			<pre id="extractedText"
-				 style="border: solid var(--form-border-color); border-width: 1px 1px 0 1px; text-align: left; margin-bottom: 0; margin-top: 15px; overflow: auto; min-height: 150px; max-height: 300px; background-color: var(--background-color-2); border-radius: 5px 5px 0 0; padding: 10px; color: var(--form-color);">:)</pre>
-			<button id="copyExtractedTextButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
-		</div>
-	</div>
-
-	<div class="width-full box">
-		<div class="box-inner">
 			<h2 style="margin-top: 0;">上传文件</h2>
 			<form id="uploadFileForm" style="display: flex; gap: 15px;">
 				<label for="uploadFileInput" style="display: none;"></label>
 				<input id="uploadFileInput" multiple style="flex: 6; width: 0;" type="file">
 				<button style="flex: 1;">上传</button>
-			</form>
-		</div>
-	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">下载文件</h2>
-			<form id="extractFileForm" style="display: flex; gap: 15px;">
-				<label for="extractFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractFileCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">下载</button>
 			</form>
 		</div>
 	</div>
@@ -418,7 +383,32 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传分片文件</h2>
+			<h2 style="margin-top: 0;">上传文本（新）</h2>
+			<form id="uploadTextNewForm" style="display: flex; flex-direction: column;">
+				<label for="uploadTextNewInput" style="display: none;"></label>
+				<textarea cols="50" id="uploadTextNewInput" maxlength="67108864" placeholder="文本" rows="8"
+						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
+				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
+			</form>
+		</div>
+	</div>
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">提取文本（新）</h2>
+			<form id="extractTextNewForm" style="display: flex; gap: 15px;">
+				<label for="extractTextNewCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractTextNewCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">提取</button>
+			</form>
+			<pre id="extractedNewText"
+				 style="border: solid var(--form-border-color); border-width: 1px 1px 0 1px; text-align: left; margin-bottom: 0; margin-top: 15px; overflow: auto; min-height: 150px; max-height: 300px; background-color: var(--background-color-2); border-radius: 5px 5px 0 0; padding: 10px; color: var(--form-color);">:)</pre>
+			<button id="copyExtractedTextNewButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
+		</div>
+	</div>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">上传文件（新）</h2>
 			<form id="uploadPartFileForm" style="display: flex; gap: 15px;">
 				<label for="uploadPartFileInput" style="display: none;"></label>
 				<input id="uploadPartFileInput" multiple style="flex: 6; width: 0;" type="file">
@@ -428,7 +418,7 @@
 	</div>
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">分片下载文件</h2>
+			<h2 style="margin-top: 0;">下载文件（新）</h2>
 			<form id="extractPartFileForm" style="display: flex; gap: 15px;">
 				<label for="extractPartFileCode" style="display: none;"></label>
 				<input autocomplete="off" id="extractPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
@@ -468,16 +458,6 @@
 					delete element.dataset.disabledBy;
 				}
 			});
-		}
-
-		function downloadFile(code, fileName = 'download') {
-			const a = document.createElement('a');
-			a.style.display = 'none';
-			a.href = `${host}/down/${code}`;
-			a.download = fileName;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
 		}
 
 		function isPremiumMode() {
@@ -1613,95 +1593,6 @@
 				sendBiu();
 			});
 
-			let uploadTextInput = document.getElementById('uploadTextInput');
-			let uploadTextForm = document.getElementById('uploadTextForm');
-
-			uploadTextInput.addEventListener('keydown', (e) => {
-				if (e.ctrlKey && e.key === 'Enter') {
-					uploadTextForm.dispatchEvent(new Event('submit'));
-				}
-			});
-			uploadTextForm.addEventListener('submit', (e) => {
-				e.preventDefault();
-
-				const text = uploadTextInput.value;
-				if (text.trim() === '') {
-					return;
-				} else if (text.length > uploadTextCapacity) {
-					alert(`上传文本长度不能超过 ${parseBytes(uploadTextCapacity)} 。`);
-					return;
-				}
-
-				disableForm(uploadTextForm);
-
-				api.post("/upload/text", text)
-				.then(({data}) => alert(`文本上传成功。请凭【${data.code}】提取文本。`))
-				.catch(({message}) => alert(message))
-				.finally(() => enableForm(uploadTextForm));
-			});
-
-			const extractTextForm = document.getElementById('extractTextForm');
-			const extractTextCode = document.getElementById('extractTextCode');
-			const extractedText = document.getElementById('extractedText');
-			const copyExtractedTextButton = document.getElementById('copyExtractedTextButton');
-
-			extractTextForm.addEventListener("submit", (e) => {
-				e.preventDefault();
-
-				const code = extractTextCode.value;
-
-				if (extractCodeLength && code.length !== extractCodeLength) {
-					return;
-				}
-
-				disableForm(extractTextForm);
-
-				api.get(`/extract/text/${code}`)
-				.then(({data}) => {
-					extractedText.style.backgroundColor = 'var(--background-color-2)';
-					extractedText.style.color = 'var(--form-color)';
-					extractedText.textContent = `${data.text}`;
-				})
-				.catch(({message}) => {
-					extractedText.style.backgroundColor = 'var(--form-background-error-color)';
-					extractedText.style.color = 'var(--form-error-color)';
-					extractedText.textContent = message;
-				})
-				.finally(() => enableForm(extractTextForm));
-			});
-			copyExtractedTextButton.addEventListener('click', async () => {
-				const text = extractedText.textContent;
-				if (text.trim() === '') {
-					return;
-				}
-
-				try {
-					await navigator.clipboard.writeText(text);
-				} catch {
-					const textArea = document.createElement("textarea");
-
-					textArea.style.position = 'fixed';
-					textArea.style.top = "0";
-					textArea.style.left = "0";
-
-					textArea.style.opacity = "0";
-
-					textArea.value = text;
-
-					document.body.appendChild(textArea);
-					textArea.focus();
-					textArea.select();
-
-					try {
-						// noinspection JSDeprecatedSymbols
-						document.execCommand('copy');
-					} catch {
-					} finally {
-						document.body.removeChild(textArea);
-					}
-				}
-			});
-
 			let uploadFileInput = document.getElementById('uploadFileInput');
 			let uploadFileForm = document.getElementById('uploadFileForm');
 
@@ -1727,32 +1618,6 @@
 				.then(({data}) => alert(`文件上传成功。请凭【${data.code}】提取文件。`))
 				.catch(({message}) => alert(message))
 				.finally(() => enableForm(uploadFileForm));
-			});
-
-			let extractFileCode = document.getElementById('extractFileCode');
-			let extractFileForm = document.getElementById('extractFileForm');
-
-			extractFileForm.addEventListener('submit', (e) => {
-				e.preventDefault();
-
-				const extractionCode = extractFileCode.value;
-				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
-					return;
-				}
-
-				disableForm(extractFileForm);
-
-				api.get(`/extract/files/${extractionCode}`)
-				.then(({data}) => {
-					const codes = data.codes;
-					if (codes.length === 1) {
-						downloadFile(codes[0].code, codes[0].name);
-					} else {
-						showDownloadDialog(codes);
-					}
-				})
-				.catch(({message}) => alert(`文件提取失败：${message}`))
-				.finally(() => enableForm(extractFileForm));
 			});
 
 			let playFileCode = document.getElementById('playFileCode');
@@ -1783,6 +1648,95 @@
 			});
 			playFileVideo.addEventListener('error', (ignore) => {
 				console.error(playFileVideo.error.message);
+			});
+
+			let uploadTextNewInput = document.getElementById('uploadTextNewInput');
+			let uploadTextNewForm = document.getElementById('uploadTextNewForm');
+
+			uploadTextNewInput.addEventListener('keydown', (e) => {
+				if (e.ctrlKey && e.key === 'Enter') {
+					uploadTextNewForm.dispatchEvent(new Event('submit'));
+				}
+			});
+			uploadTextNewForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const text = uploadTextNewInput.value;
+				if (text.trim() === '') {
+					return;
+				} else if (text.length > uploadTextCapacity) {
+					alert(`上传文本长度不能超过 ${parseBytes(uploadTextCapacity)} 。`);
+					return;
+				}
+
+				disableForm(uploadTextNewForm);
+
+				api.post("/upload/text/new", text)
+				.then(({data}) => alert(`文本上传成功。请凭【${data.code}】提取文本。`))
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(uploadTextNewForm));
+			});
+
+			const extractTextNewForm = document.getElementById('extractTextNewForm');
+			const extractTextNewCode = document.getElementById('extractTextNewCode');
+			const extractedNewText = document.getElementById('extractedNewText');
+			const copyExtractedTextNewButton = document.getElementById('copyExtractedTextNewButton');
+
+			extractTextNewForm.addEventListener("submit", (e) => {
+				e.preventDefault();
+
+				const code = extractTextNewCode.value;
+
+				if (extractCodeLength && code.length !== extractCodeLength) {
+					return;
+				}
+
+				disableForm(extractTextNewForm);
+
+				api.get(`/extract/text/new/${code}`)
+				.then(({data}) => {
+					extractedNewText.style.backgroundColor = 'var(--background-color-2)';
+					extractedNewText.style.color = 'var(--form-color)';
+					extractedNewText.textContent = `${data.text}`;
+				})
+				.catch(({message}) => {
+					extractedNewText.style.backgroundColor = 'var(--form-background-error-color)';
+					extractedNewText.style.color = 'var(--form-error-color)';
+					extractedNewText.textContent = message;
+				})
+				.finally(() => enableForm(extractTextNewForm));
+			});
+			copyExtractedTextNewButton.addEventListener('click', async () => {
+				const text = extractedNewText.textContent;
+				if (text.trim() === '') {
+					return;
+				}
+
+				try {
+					await navigator.clipboard.writeText(text);
+				} catch {
+					const textArea = document.createElement("textarea");
+
+					textArea.style.position = 'fixed';
+					textArea.style.top = "0";
+					textArea.style.left = "0";
+
+					textArea.style.opacity = "0";
+
+					textArea.value = text;
+
+					document.body.appendChild(textArea);
+					textArea.focus();
+					textArea.select();
+
+					try {
+						// noinspection JSDeprecatedSymbols
+						document.execCommand('copy');
+					} catch {
+					} finally {
+						document.body.removeChild(textArea);
+					}
+				}
 			});
 
 			let uploadPartFileInput = document.getElementById('uploadPartFileInput');
@@ -1897,245 +1851,14 @@
 					if (configs.length === 1) {
 						downloadConfigs(configs);
 					} else {
-						showDownloadDialog2(configs);
+						showDownloadDialog(configs);
 					}
 				})
 				.catch(({message}) => alert(`文件提取失败：${message}`))
 				.finally(() => enableForm(extractPartFileForm));
 			});
 
-			function showDownloadDialog(downloadFiles) {
-				/**
-				 * 遮罩层
-				 * @type {HTMLDivElement}
-				 */
-				const overlay = document.createElement('div');
-				/**
-				 * 样式
-				 * @type {HTMLStyleElement}
-				 */
-				const style = document.createElement('style');
-				/**
-				 * 对话框
-				 * @type {HTMLDivElement}
-				 */
-				const dialog = document.createElement('div');
-				/**
-				 * 复选框列表
-				 * @type {HTMLUListElement}
-				 */
-				const checkboxList = document.createElement('ul');
-				/**
-				 * 按钮组
-				 * @type {HTMLDivElement}
-				 */
-				const buttonGroup = document.createElement('div');
-				/**
-				 * 全选标签
-				 * @type {HTMLLabelElement}
-				 */
-				const selectAllLabel = document.createElement('label');
-				/**
-				 * 全选复选框
-				 * @type {HTMLInputElement}
-				 */
-				const selectAllCheckbox = document.createElement('input');
-				/**
-				 * 确认按钮
-				 * @type {HTMLButtonElement}
-				 */
-				const confirmButton = document.createElement('button');
-				/**
-				 * 取消按钮
-				 * @type {HTMLAnchorElement}
-				 */
-				const cancelButton = document.createElement('a');
-
-				// 按esc关闭对话框
-				let closeDialogKeyboardEvent;
-				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
-					if (e.key === 'Escape') {
-						closeDialog();
-					}
-				});
-
-				function closeDialog() {
-					document.removeEventListener('keydown', closeDialogKeyboardEvent);
-					dialog.style.animationName = 'dialog-disappear';
-					dialog.addEventListener('animationend', () => {
-						document.body.removeChild(overlay);
-					});
-				}
-
-				overlay.classList.add('dialog-overlay');
-				{
-					style.textContent = `
-						.dialog-overlay {
-							position: fixed;
-							top: 0;
-							left: 0;
-							width: 100%;
-							height: 100%;
-							background-color: rgba(0, 0, 0, 0.5);
-							user-select: none;
-						}
-						.dialog-container {
-							width: 500px;
-							max-width: calc(100% - 40px);
-							font-size: 14px;
-							position: fixed;
-							z-index: 999;
-							top: 50%;
-							left: 50%;
-							padding: 20px;
-							transform: translate(-50%, -50%);
-							animation: dialog-appear var(--base-transition-duration);
-							border: 1px solid var(--form-border-color);
-							border-radius: 5px;
-							background-color: var(--form-background-color);
-						}
-						@keyframes dialog-appear {
-							0% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-						}
-						@keyframes dialog-disappear {
-							0% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-						}
-						.dialog-checkbox-list {
-							overflow-y: auto;
-							max-height: 300px;
-							margin-top: 20px;
-							padding: 5px;
-							list-style-type: none;
-							border-radius: 5px;
-							background-color: var(--background-color-2);
-							// box-shadow: inset 0 0 5px -2px grey;
-						}
-						.dialog-checkbox-list:after {
-							content: '';
-							position: absolute;
-							left: rem(0);
-							right: rem(0);
-							top: rem(0);
-							bottom: rem(0);
-						}
-						.dialog-checkbox-list li label {
-							display: flex;
-							align-items: center;
-							overflow-wrap: anywhere;
-							transition: background-color var(--short-transition-duration);
-							padding: 10px;
-							border-radius: 5px;
-							gap: 10px;
-						}
-						.dialog-checkbox-list li label:hover {
-							background-color: var(--background-color-1);
-						}
-						.dialog-button-group {
-							display: flex;
-							align-items: center;
-						}
-						.dialog-cancel-button {
-							margin-right: 20px;
-							margin-left: auto;
-							text-decoration: none;
-							color: var(--text-color-2);
-							transition: color var(--short-transition-duration);
-						}
-						.dialog-cancel-button:hover {
-							color: var(--text-color-1);
-						}
-						.dialog-cancel-button:active {
-							color: var(--primary-color-1);
-						}
-				`;
-					overlay.appendChild(style);
-
-					dialog.classList.add('dialog-container');
-					{
-						// 标题
-						dialog.appendChild(document.createTextNode("从集合中下载文件"));
-
-						checkboxList.classList.add('dialog-checkbox-list');
-						downloadFiles.forEach(code => {
-							const checkboxListItem = document.createElement('li');
-							const checkboxLabel = document.createElement('label');
-							const checkbox = document.createElement('input');
-							checkbox.type = 'checkbox';
-							checkbox.value = code.code;
-							checkbox.checked = true; // 设置初始状态为全选
-							checkbox.addEventListener('change', () => {
-								// 更新全选框状态
-								selectAllCheckbox.checked = Array.from(checkboxList.querySelectorAll('input')).every(checkbox => checkbox.checked);
-								selectAllCheckbox.indeterminate = !selectAllCheckbox.checked && Array.from(checkboxList.querySelectorAll('input')).some(checkbox => checkbox.checked);
-							});
-							checkboxLabel.appendChild(checkbox);
-							checkboxLabel.appendChild(document.createTextNode(` ${code.name}`));
-
-							checkboxListItem.appendChild(checkboxLabel);
-
-							checkboxList.appendChild(checkboxListItem);
-						});
-						dialog.appendChild(checkboxList);
-
-						buttonGroup.classList.add('dialog-button-group');
-						{
-							selectAllLabel.style.display = 'flex';
-							selectAllLabel.style.alignItems = 'center';
-							selectAllLabel.style.gap = '5px';
-							{
-								selectAllCheckbox.type = 'checkbox';
-								selectAllCheckbox.checked = true; // 默认全选
-								selectAllCheckbox.addEventListener('change', () => {
-									// 全选或取消全选
-									checkboxList.querySelectorAll('input').forEach(checkbox => {
-										checkbox.checked = selectAllCheckbox.checked;
-									});
-								});
-								selectAllLabel.appendChild(selectAllCheckbox);
-
-								// 全选文字
-								selectAllLabel.appendChild(document.createTextNode(' 全选'));
-							}
-							buttonGroup.appendChild(selectAllLabel);
-
-							cancelButton.classList.add('dialog-cancel-button');
-							cancelButton.href = 'javascript:;';
-							cancelButton.textContent = '取消';
-							cancelButton.addEventListener('click', closeDialog);
-							buttonGroup.appendChild(cancelButton);
-
-							confirmButton.textContent = '下载';
-							confirmButton.addEventListener('click', () => {
-								const selectedCodes = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => checkbox.value);
-								selectedCodes.forEach(code => {
-									downloadFile(code);
-								});
-								closeDialog();
-							});
-							buttonGroup.appendChild(confirmButton);
-						}
-						dialog.appendChild(buttonGroup);
-					}
-					overlay.appendChild(dialog);
-				}
-				document.body.appendChild(overlay);
-			}
-
-			function showDownloadDialog2(configs) {
+			function showDownloadDialog(configs) {
 				const dialog = new Dialog();
 
 				/**

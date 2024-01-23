@@ -1,4 +1,4 @@
-import { PassThrough } from 'stream';
+import {PassThrough} from 'stream';
 
 export class Stream {
 	static mergeStreams(streams) {

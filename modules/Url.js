@@ -93,24 +93,24 @@ export const Api = {
 	EXTRACT_CODE_LENGTH: "/extract/code/length",
 
 	UPLOAD_TEXT_CAPACITY: "/upload/text/capacity",
-	UPLOAD_TEXT: "/upload/text",
-
-	EXTRACT_TEXT: "/extract/text/:code",
 
 	UPLOAD_FILES_CAPACITY: "/upload/files/capacity",
 	UPLOAD_FILES: "/upload/files",
 
 	EXTRACT_FILES: "/extract/files/:code",
-	DOWN: "/down/:code",
+
+	PLAY: "/play/:code",
+
+	UPLOAD_TEXT_NEW: "/upload/text/new",
+	EXTRACT_TEXT_NEW: "/extract/text/new/:code",
 
 	UPLOAD_FILES_APPLY: "/upload/files/apply",
 	UPLOAD_FILES_NEW: "/upload/files/new",
 	UPLOAD_FILES_CHECKPOINT: "/upload/files/checkpoint",
 
 	EXTRACT_FILES_NEW: "/extract/files/new/:code",
-	DOWN_NEW: "/down",
 
-	PLAY: "/play/:code",
+	DOWN_NEW: "/down",
 
 	WS_UPLOAD: "/upload",
 	WS_DOWN: "/down"
