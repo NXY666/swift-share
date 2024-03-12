@@ -111,6 +111,7 @@ export const Api = {
 	EXTRACT_FILES_NEW: "/extract/files/new/:code",
 
 	DOWN_NEW: "/down",
+	PLAY_NEW: "/play",
 
 	WS_UPLOAD: "/upload",
 	WS_DOWN: "/down"

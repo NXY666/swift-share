@@ -332,11 +332,6 @@
 			box-shadow: 0 2px 1px var(--primary-color-3);
 		}
 
-		#playFileVideoContainer {
-			font-size: 0;
-			border: var(--form-border-color) 1px solid;
-		}
-
 		#premiumModeSwitch {
 			transition: box-shadow var(--short-transition-duration);
 		}
@@ -355,31 +350,6 @@
 		</svg>
 		快传
 	</h1>
-
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文件</h2>
-			<form id="uploadFileForm" style="display: flex; gap: 15px;">
-				<label for="uploadFileInput" style="display: none;"></label>
-				<input id="uploadFileInput" multiple style="flex: 6; width: 0;" type="file">
-				<button style="flex: 1;">上传</button>
-			</form>
-		</div>
-	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">播放视频</h2>
-			<form id="playFileForm" style="display: flex; gap: 15px;">
-				<label for="playFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="playFileCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">播放</button>
-			</form>
-			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
-				<video controls="controls" id="playFileVideo" style="width: 100%; border-radius: 5px;">
-				</video>
-			</div>
-		</div>
-	</div>
 
 	<div class="width-full box">
 		<div class="box-inner">
@@ -424,6 +394,21 @@
 				<input autocomplete="off" id="extractPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
 				<button style="flex: 1;">下载</button>
 			</form>
+		</div>
+	</div>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">播放视频（新）</h2>
+			<form id="playPartFileForm" style="display: flex; gap: 15px;">
+				<label for="playPartFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="playPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">播放</button>
+			</form>
+			<div id="playPartFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
+				<video controls="controls" id="playPartFileVideo" style="width: 100%; border-radius: 5px;">
+				</video>
+			</div>
 		</div>
 	</div>
 
@@ -535,7 +520,7 @@
 									const a = document.createElement('a');
 									a.href = URL.createObjectURL(blob);
 									a.download = activeConfig.name;
-									// a.click();
+									a.click();
 
 									resolve();
 								})
@@ -559,7 +544,7 @@
 								const a = document.createElement('a');
 								a.href = activeConfig.parts[0].url;
 								a.download = activeConfig.name;
-								//a.click();
+								a.click();
 
 								resolve();
 							} else {
@@ -606,15 +591,14 @@
 			static #requestingCount = 0;
 			static #slowRequestingCount = 0;
 
-			static #maxRequestingCount = 8;
-			static #maxSlowRequestingCount = 8;
+			static #maxRequestingCount = 16;
+			static #maxSlowRequestingCount = 4;
 
 			static #processQueue = async () => {
 				if (this.#requestQueue.length > 0) {
 					for (let i = 0; i < this.#requestQueue.length; i++) {
 						const request = this.#requestQueue[i];
-						if ((request.slowRequest && this.#slowRequestingCount >= this.#maxSlowRequestingCount) ||
-							(!request.slowRequest && this.#requestingCount >= this.#maxRequestingCount)) {
+						if (request.slowRequest ? this.#slowRequestingCount >= this.#maxSlowRequestingCount : this.#requestingCount >= this.#maxRequestingCount) {
 							continue;
 						}
 
@@ -1593,69 +1577,12 @@
 				sendBiu();
 			});
 
-			let uploadFileInput = document.getElementById('uploadFileInput');
-			let uploadFileForm = document.getElementById('uploadFileForm');
-
-			uploadFileForm.addEventListener('submit', (e) => {
-				e.preventDefault();
-
-				const files = uploadFileInput.files;
-				if (!files.length) {
-					return;
-				} else if (Array.from(files).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
-					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
-					return;
-				}
-
-				disableForm(uploadFileForm);
-
-				const formData = new FormData();
-				for (const file of files) {
-					formData.append('files', file);
-				}
-
-				api.post("/upload/files", formData)
-				.then(({data}) => alert(`文件上传成功。请凭【${data.code}】提取文件。`))
-				.catch(({message}) => alert(message))
-				.finally(() => enableForm(uploadFileForm));
-			});
-
-			let playFileCode = document.getElementById('playFileCode');
-			let playFileForm = document.getElementById('playFileForm');
-			let playFileVideoContainer = document.getElementById('playFileVideoContainer');
-			let playFileVideo = document.getElementById('playFileVideo');
-
-			playFileForm.addEventListener('submit', (e) => {
-				e.preventDefault();
-
-				const extractionCode = playFileCode.value;
-				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
-					return;
-				}
-
-				disableForm(playFileForm);
-
-				api.get(`${host}/extract/files/${extractionCode}`)
-				.then(({data}) => {
-					if (data.length === 1) {
-						playFileVideo.src = `${host}/play/${data[0].code}`;
-					} else {
-						showPlayDialog(data);
-					}
-				})
-				.catch(({message}) => alert(message))
-				.finally(() => enableForm(playFileForm));
-			});
-			playFileVideo.addEventListener('error', (ignore) => {
-				console.error(playFileVideo.error.message);
-			});
-
 			let uploadTextNewInput = document.getElementById('uploadTextNewInput');
 			let uploadTextNewForm = document.getElementById('uploadTextNewForm');
 
 			uploadTextNewInput.addEventListener('keydown', (e) => {
 				if (e.ctrlKey && e.key === 'Enter') {
-					uploadTextNewForm.dispatchEvent(new Event('submit'));
+					uploadTextNewForm.dispatchEvent(new SubmitEvent('submit'));
 				}
 			});
 			uploadTextNewForm.addEventListener('submit', (e) => {
@@ -1858,6 +1785,37 @@
 				.finally(() => enableForm(extractPartFileForm));
 			});
 
+			let playPartFileCode = document.getElementById('playPartFileCode');
+			let playPartFileForm = document.getElementById('playPartFileForm');
+			let playPartFileVideo = document.getElementById('playPartFileVideo');
+
+			playPartFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const extractionCode = playPartFileCode.value;
+				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
+					return;
+				}
+
+				disableForm(playPartFileForm);
+
+				// 判断能不能用blob
+				const allowMultipart = isPremiumMode();
+
+				api.post(`/extract/files/new/${extractionCode}`, {allowMultipart})
+				.then(({data}) => {
+					const {configs} = data;
+					if (configs.length === 1) {
+						console.log(configs);
+						playPartFileVideo.src = configs[0].parts[0].url.replace("down", "play");
+					} else {
+						// showDownloadDialog(configs);
+					}
+				})
+				.catch(({message}) => alert(`文件提取失败：${message}`))
+				.finally(() => enableForm(playPartFileForm));
+			});
+
 			function showDownloadDialog(configs) {
 				const dialog = new Dialog();
 
@@ -1973,7 +1931,9 @@
 					confirmButton.style.marginLeft = 'auto';
 					confirmButton.addEventListener('click', () => {
 						const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => configs[checkbox.value]);
-						downloadConfigs(selectedConfigs);
+						if (selectedConfigs.length !== 0) {
+							downloadConfigs(selectedConfigs);
+						}
 						dialog.close();
 					});
 					buttonGroup.appendChild(confirmButton);
@@ -1985,204 +1945,6 @@
 				dialog.styles = styles;
 
 				dialog.open();
-			}
-
-			function showPlayDialog(downloadFiles) {
-				/**
-				 * 遮罩层
-				 * @type {HTMLDivElement}
-				 */
-				const overlay = document.createElement('div');
-				/**
-				 * 样式
-				 * @type {HTMLStyleElement}
-				 */
-				const style = document.createElement('style');
-				/**
-				 * 对话框
-				 * @type {HTMLDivElement}
-				 */
-				const dialog = document.createElement('div');
-				/**
-				 * 复选框列表
-				 * @type {HTMLUListElement}
-				 */
-				const checkboxList = document.createElement('ul');
-				/**
-				 * 按钮组
-				 * @type {HTMLDivElement}
-				 */
-				const buttonGroup = document.createElement('div');
-				/**
-				 * 确认按钮
-				 * @type {HTMLButtonElement}
-				 */
-				const confirmButton = document.createElement('button');
-				/**
-				 * 取消按钮
-				 * @type {HTMLAnchorElement}
-				 */
-				const cancelButton = document.createElement('a');
-
-				// 按esc关闭对话框
-				let closeDialogKeyboardEvent;
-				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
-					if (e.key === 'Escape') {
-						closeDialog();
-					}
-				});
-
-				function closeDialog() {
-					document.removeEventListener('keydown', closeDialogKeyboardEvent);
-					dialog.style.animationName = 'dialog-disappear';
-					dialog.addEventListener('animationend', () => {
-						document.body.removeChild(overlay);
-					});
-				}
-
-				overlay.classList.add('dialog-overlay');
-				{
-					style.textContent = `
-						.dialog-overlay {
-							position: fixed;
-							top: 0;
-							left: 0;
-							width: 100%;
-							height: 100%;
-							background-color: rgba(0, 0, 0, 0.5);
-							user-select: none;
-						}
-						.dialog-container {
-							width: 500px;
-							max-width: calc(100% - 40px);
-							font-size: 14px;
-							position: fixed;
-							z-index: 999;
-							top: 50%;
-							left: 50%;
-							padding: 20px;
-							transform: translate(-50%, -50%);
-							animation: dialog-appear var(--base-transition-duration);
-							border: 1px solid var(--form-border-color);
-							border-radius: 5px;
-							background-color: var(--form-background-color);
-						}
-						@keyframes dialog-appear {
-							0% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-						}
-						@keyframes dialog-disappear {
-							0% {
-								transform: translate(-50%, -50%) scale(1);
-								opacity: 1;
-							}
-							100% {
-								transform: translate(-50%, -50%) scale(0.8);
-								opacity: 0;
-							}
-						}
-						.dialog-checkbox-list {
-							overflow-y: auto;
-							max-height: 300px;
-							margin-top: 20px;
-							padding: 5px;
-							list-style-type: none;
-							border-radius: 5px;
-							background-color: var(--background-color-2);
-							box-shadow: inset 0 0 5px -2px grey;
-						}
-						.dialog-checkbox-list li label {
-							display: flex;
-							align-items: center;
-							overflow-wrap: anywhere;
-							transition: background-color var(--short-transition-duration);
-							padding: 10px;
-							border-radius: 5px;
-							gap: 10px;
-						}
-						.dialog-checkbox-list li label:hover {
-							background-color: var(--background-color-1);
-						}
-						.dialog-button-group {
-							display: flex;
-							align-items: center;
-						}
-						.dialog-cancel-button {
-							margin-right: 20px;
-							margin-left: auto;
-							text-decoration: none;
-							color: var(--text-color-2);
-							transition: color var(--short-transition-duration);
-						}
-						.dialog-cancel-button:hover {
-							color: var(--text-color-1);
-						}
-						.dialog-cancel-button:active {
-							color: var(--primary-color-1);
-						}
-				`;
-					overlay.appendChild(style);
-
-					dialog.classList.add('dialog-container');
-					{
-						// 标题
-						dialog.appendChild(document.createTextNode("从集合中播放视频"));
-
-						checkboxList.classList.add('dialog-checkbox-list');
-						downloadFiles.forEach(code => {
-							const checkboxListItem = document.createElement('li');
-							const checkboxLabel = document.createElement('label');
-							const checkbox = document.createElement('input');
-							checkbox.type = 'radio';
-							checkbox.value = code.code;
-							checkbox.addEventListener('change', () => {
-								checkboxList.querySelectorAll('input').forEach(checkbox => {
-									checkbox.checked = false;
-								});
-								checkbox.checked = true;
-							});
-							checkboxLabel.appendChild(checkbox);
-							checkboxLabel.appendChild(document.createTextNode(` ${code.name}`));
-
-							checkboxListItem.appendChild(checkboxLabel);
-
-							checkboxList.appendChild(checkboxListItem);
-						});
-						dialog.appendChild(checkboxList);
-
-						buttonGroup.classList.add('dialog-button-group');
-						{
-							cancelButton.classList.add('dialog-cancel-button');
-							cancelButton.href = 'javascript:;';
-							cancelButton.textContent = '取消';
-							cancelButton.addEventListener('click', closeDialog);
-							buttonGroup.appendChild(cancelButton);
-
-							confirmButton.textContent = '播放';
-							confirmButton.addEventListener('click', () => {
-								const selectedCode = checkboxList.querySelector('input:checked')?.value;
-								if (!selectedCode) {
-									return;
-								}
-
-								playFileVideoContainer.classList.remove('error');
-								playFileVideo.src = `${host}/play/${selectedCode}`;
-
-								closeDialog();
-							});
-							buttonGroup.appendChild(confirmButton);
-						}
-						dialog.appendChild(buttonGroup);
-					}
-					overlay.appendChild(dialog);
-				}
-				document.body.appendChild(overlay);
 			}
 		});
 	</script>

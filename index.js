@@ -613,7 +613,52 @@ app.get(Api.DOWN_NEW, (req, res) => {
 	console.log(`File downloaded: ${req.query.id}`);
 
 	// 读取整个流的内容
-	file.download(parseInt(req.query.index)).pipe(res);
+	const downloadStream = file.indexDownloadStream(parseInt(req.query.index));
+	res.on('close', () => {
+		downloadStream.destroy();
+	});
+	downloadStream.pipe(res);
+});
+
+// 文件播放（新）
+app.get(Api.PLAY_NEW, (req, res) => {
+	const url = Url.completeUrl(req.url);
+
+	const id = url.searchParams.get('id');
+
+	const file = File.findFileById(id);
+
+	if (!file) {
+		console.log(`File not found: ${id}`);
+		res.status(404).send("文件不存在或已过期。");
+		return;
+	} else if (!file.isValidUrl(url)) {
+		console.log(`Invalid signature: ${url}`);
+		// res.status(404).send("文件不存在或已过期。");
+		// return;
+	}
+	console.log(`File played: ${req.query.id}`);
+
+	// 获取range
+	let [rangeStart, rangeEnd] = req.headers.range?.replace("bytes=", "").split("-") ?? [];
+	if (rangeStart || rangeEnd) {
+		rangeStart = rangeStart || 0;
+		rangeEnd = rangeEnd || file.size - 1;
+		res.status(206);
+		res.setHeader('Content-Length', rangeEnd - rangeStart + 1);
+		res.setHeader('Accept-Ranges', 'bytes');
+		res.setHeader('Content-Range', `bytes ${rangeStart}-${rangeEnd}/${file.size}`);
+	}
+
+	res.type("video/*");
+	res.setHeader('Content-Disposition', `inline; filename=${path.basename(file.name)}`);
+
+	// 读取整个流的内容
+	let downloadStream = file.rangeDownloadStream(req.headers.range);
+	res.on('close', () => {
+		downloadStream.destroy();
+	});
+	downloadStream.pipe(res);
 });
 
 function delCode(code) {

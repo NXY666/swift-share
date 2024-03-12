@@ -3,7 +3,6 @@ import crypto from "crypto";
 import fs from "fs";
 import {Api, Url} from "./Url.js";
 import {Stream} from "./Stream.js";
-import {Readable} from "stream";
 import EventEmitter from "events";
 
 export class FileStatus {
@@ -177,7 +176,11 @@ export class File extends EventEmitter {
 		};
 	}
 
-	download() {
+	indexDownloadStream(index) {
+		throw new Error("Not implemented");
+	}
+
+	rangeDownloadStream(range) {
 		throw new Error("Not implemented");
 	}
 
@@ -300,7 +303,7 @@ export class SimpleFile extends File {
 		return downloadConfig;
 	}
 
-	download(index) {
+	indexDownloadStream(index) {
 		if (index === -1) {
 			const downloadConfig = this.getDownloadConfig(undefined, false);
 			const activePart = downloadConfig.parts[0];
@@ -322,6 +325,20 @@ export class SimpleFile extends File {
 				return null;
 			}
 		}
+	}
+
+	rangeDownloadStream(range) {
+		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
+		const [start, end] = range?.replace("bytes=", "").split("-") ?? [];
+		let startNum = parseInt(start);
+		let endNum = parseInt(end);
+		if (isNaN(startNum)) {
+			startNum = 0;
+		}
+		if (isNaN(endNum)) {
+			endNum = this.size - 1;
+		}
+		return fs.createReadStream(this.#path, {start: startNum, end: endNum});
 	}
 
 	remove() {
@@ -384,7 +401,7 @@ export class MultipartFile extends File {
 		return true;
 	}
 
-	download(index) {
+	indexDownloadStream(index) {
 		if (index === -1) {
 			const downloadConfig = this.getDownloadConfig(undefined, false);
 			const activePart = downloadConfig.parts[0];
@@ -408,6 +425,31 @@ export class MultipartFile extends File {
 				return Stream.mergeStreams([]);
 			}
 		}
+	}
+
+	rangeDownloadStream(range) {
+		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
+		const [start, end] = range.replace("bytes=", "").split("-");
+		let startNum = parseInt(start);
+		let endNum = parseInt(end);
+		if (isNaN(startNum)) {
+			startNum = 0;
+		}
+		if (isNaN(endNum)) {
+			endNum = this.size - 1;
+		}
+		const partStart = Math.floor(startNum / this.partSize);
+		const partEnd = Math.floor(endNum / this.partSize);
+		const partStreams = [];
+		for (let i = partStart; i <= partEnd; i++) {
+			const partRange = [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)];
+			const partStream = fs.createReadStream(this.#paths[i], {
+				start: Math.max(partRange[0], startNum) - partRange[0],
+				end: Math.min(partRange[1], endNum + 1) - partRange[0]
+			});
+			partStreams.push(partStream);
+		}
+		return Stream.mergeStreams(partStreams);
 	}
 
 	getDownloadConfig({host} = {}, allowMultiPart = false) {
@@ -444,83 +486,6 @@ export class MultipartFile extends File {
 					console.error("[RemoveMultipartFile]", e);
 				}
 			});
-		}
-	}
-}
-
-export class TextFile extends File {
-	#text;
-
-	constructor({name, size}) {
-		super({name, size});
-	}
-
-	getUploadConfig({host} = {}) {
-		const uploadConfig = super.getUploadConfig({host});
-		uploadConfig.parts.push({
-			index: -1
-		});
-		return uploadConfig;
-	}
-
-	/**
-	 * 上传
-	 * @param {number} index
-	 * @param text
-	 * @return {boolean}
-	 */
-	upload(index, text) {
-		if (!super.upload()) {
-			return false;
-		}
-
-		// 检查索引
-		if (index !== -1) {
-			return false;
-		}
-
-		// 检查文件大小
-		if (text.length !== this.size) {
-			return false;
-		}
-
-		this.#text = text;
-		this.changeStatus(FileStatus.UPLOADED);
-		return true;
-	}
-
-	getDownloadConfig({host} = {}, allowMultiPart = false) {
-		const downloadConfig = super.getDownloadConfig({host});
-		downloadConfig.parts.push({
-			index: -1,
-			range: [0, this.size],
-			url: this.getSignedPartUrl({host}),
-			uploaded: this.status === FileStatus.UPLOADED
-		});
-		return downloadConfig;
-	}
-
-	download(index) {
-		if (index === -1) {
-			const downloadConfig = this.getDownloadConfig(undefined, false);
-			const activePart = downloadConfig.parts[0];
-			if (activePart.uploaded) {
-				// 文本转成流
-				const textStream = new Readable();
-				textStream.push(this.#text);
-				textStream.push(null);
-				return textStream;
-			} else {
-				return null;
-			}
-		} else {
-			return null;
-		}
-	}
-
-	remove() {
-		if (super.remove()) {
-			this.#text = null;
 		}
 	}
 }
