@@ -1,17 +1,17 @@
 import crypto from "crypto";
-import DefaultConfig from "../default_config.js";
+import DefaultConfig from "../resources/default_config.js";
 import {File, FileStatus} from "./File.js";
 import {Api, Url} from "./Url.js";
 
 export class CodeStore {
-	static #store = {};
+	static #store: { [key: string]: CodeInfo } = {};
 
 	/**
 	 * 获取提取码信息
 	 * @param {string} code 提取码
 	 * @return {FileCodeInfo|TextCodeInfo|ShareCodeInfo} 提取码信息
 	 */
-	static getCodeInfo(code) {
+	static getCodeInfo(code: string): CodeInfo {
 		return this.#store[code.toLowerCase()];
 	}
 
@@ -19,7 +19,7 @@ export class CodeStore {
 	 * 移除提取码信息
 	 * @param {string} code 提取码
 	 */
-	static removeCodeInfo(code) {
+	static removeCodeInfo(code: string): void {
 		delete this.#store[code.toLowerCase()];
 	}
 
@@ -36,7 +36,7 @@ export class CodeStore {
 	 * 保存提取码信息
 	 * @param {FileCodeInfo|TextCodeInfo|ShareCodeInfo} codeInfo 提取码信息
 	 */
-	static saveCodeInfo(codeInfo) {
+	static saveCodeInfo(codeInfo: CodeInfo) {
 		const code = this.#getUniqueCode();
 		codeInfo.code = code;
 		this.#store[code] = codeInfo;
@@ -51,11 +51,11 @@ export class CodeStore {
 		}
 	}
 
-	static #generateCode(length) {
+	static #generateCode(length: number) {
 		return crypto.randomBytes(length).toString('hex');
 	}
 
-	static getUsedSpace(type) {
+	static getUsedSpace(type: string) {
 		let size = 0;
 		for (const codeInfo of Object.values(this.#store)) {
 			if (codeInfo.type === type) {
@@ -67,11 +67,11 @@ export class CodeStore {
 }
 
 class CodeInfo {
-	#code = null;
-	#type;
-	#size;
+	#code: string = null;
+	#type: string;
+	#size: number;
 
-	constructor(type, size = 0) {
+	constructor(type: string, size = 0) {
 		this.#type = type;
 		this.#size = size;
 	}
@@ -108,7 +108,7 @@ class CodeInfo {
 	 * @param host
 	 * @return {string}
 	 */
-	getSignedCheckpointUrl({host} = {}) {
+	getSignedCheckpointUrl({host}): string {
 		const url = Url.mergeUrl({protocol: "http", host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
 		return Url.sign(url.toString(), DefaultConfig.FILE_EXPIRE_INTERVAL);
@@ -140,9 +140,9 @@ class CodeInfo {
 }
 
 export class TextCodeInfo extends CodeInfo {
-	#text;
+	readonly #text: string;
 
-	constructor(text) {
+	constructor(text: string) {
 		super('text', text.length);
 		this.#text = text;
 		this._expireTime = Date.now() + DefaultConfig.TEXT_EXPIRE_INTERVAL;
@@ -158,13 +158,12 @@ export class FileCodeInfo extends CodeInfo {
 	 * 文件列表
 	 * @type {File[]}
 	 */
-	#files;
+	#files: File[];
 
 	/**
-	 *
 	 * @param {File[]} files
 	 */
-	constructor(files) {
+	constructor(files: File[]) {
 		super('files', files.reduce((size, file) => size + file.size, 0));
 		this.#files = files;
 		this._expireTime = Date.now() + DefaultConfig.FILE_EXPIRE_INTERVAL + DefaultConfig.LINK_EXPIRE_INTERVAL;
@@ -174,7 +173,7 @@ export class FileCodeInfo extends CodeInfo {
 	 * 文件列表
 	 * @return {File[]}
 	 */
-	get files() {
+	get files(): File[] {
 		return this.#files;
 	}
 
@@ -205,9 +204,9 @@ export class FileCodeInfo extends CodeInfo {
 }
 
 export class ShareCodeInfo extends CodeInfo {
-	#path;
+	readonly #path: string;
 
-	constructor(path) {
+	constructor(path: string) {
 		super('share', 0);
 		this.#path = path;
 	}

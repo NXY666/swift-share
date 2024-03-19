@@ -3,7 +3,7 @@ import crypto from "crypto";
 export class Url {
 	static #secret = crypto.randomUUID();
 
-	static #digest(text) {
+	static #digest(text: string) {
 		// 创建一个哈希对象
 		const hash = crypto.createHash('sha256');
 
@@ -14,7 +14,7 @@ export class Url {
 		return hash.digest('hex');
 	}
 
-	static sign(url, expireInterval) {
+	static sign(url: CommonURL, expireInterval: number) {
 		const expireTime = Date.now() + expireInterval;
 
 		const urlObj = new URL(url);
@@ -34,7 +34,7 @@ export class Url {
 		return urlObj.toString();
 	}
 
-	static check(url) {
+	static check(url: CommonURL) {
 		const urlObj = new URL(url);
 
 		const expireTime = urlObj.searchParams.get('url-expr');
@@ -53,7 +53,7 @@ export class Url {
 		return this.#digest(toSign) === signature;
 	}
 
-	static unSign(url) {
+	static unSign(url: CommonURL) {
 		const urlObj = new URL(url);
 		const params = new URLSearchParams(urlObj.searchParams);
 		params.delete('url-expr');
@@ -64,12 +64,12 @@ export class Url {
 
 	/**
 	 * 合并 URL
-	 * @param {string} [protocol] 协议
-	 * @param {string} [host] 主机
-	 * @param {string} [pathname] 路径
-	 * @return {module:url.URL}
+	 * @param [protocol] 协议
+	 * @param [host] 主机
+	 * @param [pathname] 路径
+	 * @return
 	 */
-	static mergeUrl({protocol, host, pathname}) {
+	static mergeUrl({protocol, host, pathname}: { protocol?: string, host?: string, pathname?: string }): URL {
 		const url = new URL("http://localhost/");
 		url.protocol = protocol ?? "";
 		url.host = host ?? "";
@@ -79,10 +79,10 @@ export class Url {
 
 	/**
 	 * 补全 URL
-	 * @param {string} url
-	 * @return {module:url.URL}
+	 * @param url
+	 * @return
 	 */
-	static completeUrl(url) {
+	static completeUrl(url: string): URL {
 		return new URL(url, "http://localhost/");
 	}
 }
@@ -95,11 +95,6 @@ export const Api = {
 	UPLOAD_TEXT_CAPACITY: "/upload/text/capacity",
 
 	UPLOAD_FILES_CAPACITY: "/upload/files/capacity",
-	UPLOAD_FILES: "/upload/files",
-
-	EXTRACT_FILES: "/extract/files/:code",
-
-	PLAY: "/play/:code",
 
 	UPLOAD_TEXT_NEW: "/upload/text/new",
 	EXTRACT_TEXT_NEW: "/extract/text/new/:code",

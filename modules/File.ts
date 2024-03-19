@@ -1,9 +1,10 @@
-import DefaultConfig from "../default_config.js";
+import DefaultConfig from "../resources/default_config.js";
 import crypto from "crypto";
 import fs from "fs";
 import {Api, Url} from "./Url.js";
 import {Stream} from "./Stream.js";
 import EventEmitter from "events";
+import {PassThrough} from "stream";
 
 export class FileStatus {
 	static CREATED = 0;
@@ -12,54 +13,76 @@ export class FileStatus {
 	static REMOVED = 3;
 }
 
-export class File extends EventEmitter {
+type DownloadPart = {
+	index: number;
+	url: string;
+	range: number[];
+	uploaded: boolean;
+}
+
+type DownloadConfig = {
+	id: ObjectKey;
+	name: string;
+	size: number;
+	parts: DownloadPart[];
+	playUrl: string;
+	wsUrl: string;
+	removed: boolean;
+}
+
+type UploadPart = {
+	index: number;
+	range?: [number, number];
+}
+
+type UploadConfig = {
+	id: ObjectKey;
+	key: crypto.UUID;
+	name: string;
+	parts: UploadPart[];
+	wsUrl: string;
+}
+
+export abstract class File extends EventEmitter {
 	static #nextId = 0;
 
 	static #fileMap = {};
 
 	/**
 	 * 文件ID
-	 * @type {number}
 	 */
-	#id = File.#nextId++;
+	#id: number = File.#nextId++;
 	/**
 	 * 访问 UUID
-	 * @type {UUID}
 	 */
-	#key = crypto.randomUUID();
+	#key: crypto.UUID = crypto.randomUUID();
 	/**
 	 * 文件状态
-	 * @type {number}
 	 */
-	#status = FileStatus.CREATED;
+	#status: number = FileStatus.CREATED;
 	/**
 	 * 文件名
-	 * @type {string}
 	 */
-	#name;
+	#name: string;
 	/**
 	 * 文件大小
-	 * @type {number}
 	 */
-	#size;
+	#size: number;
 	/**
 	 * 分片大小
-	 * @type {number}
 	 */
-	#partSize = DefaultConfig.FILE_PART_SIZE;
+	#partSize: number = DefaultConfig.FILE_PART_SIZE;
 
 	/**
 	 * 上传最后期限
-	 * @type {number}
 	 */
-	#uploadDeadline = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
+	#uploadDeadline: number = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
 	/**
 	 * 上传检查点
-	 * @type {number}
 	 */
-	#checkpoint = Date.now();
+	#checkpoint: number = Date.now();
 
-	constructor({name, size}) {
+	protected constructor({name, size}) {
 		super();
 
 		File.#fileMap[this.#id] = this;
@@ -92,6 +115,10 @@ export class File extends EventEmitter {
 		return this.#name;
 	}
 
+	get originalname() {
+		return Buffer.from(this.#name, "utf-8").toString("latin1");
+	}
+
 	get size() {
 		return this.status === FileStatus.REMOVED ? 0 : this.#size;
 	}
@@ -106,10 +133,10 @@ export class File extends EventEmitter {
 
 	/**
 	 * 根据 ID 查找文件
-	 * @param {number|string} id
-	 * @return {File}
+	 * @param id
+	 * @return
 	 */
-	static findFileById(id) {
+	static findFileById(id: ObjectKey): File {
 		return this.#fileMap[id];
 	}
 
@@ -127,7 +154,7 @@ export class File extends EventEmitter {
 	}
 
 	// 因为子类要用，所以不能用 private
-	changeStatus(status) {
+	changeStatus(status: number) {
 		this.#status = status;
 		this.emit("statusChange", status);
 	}
@@ -136,7 +163,7 @@ export class File extends EventEmitter {
 	 * 获取上传配置
 	 * @returns {{id: number, key: UUID, name: string, parts: {index: number, range?: [number, number]}[], wsUrl: string}}
 	 */
-	getUploadConfig({host} = {}) {
+	getUploadConfig({host}): UploadConfig {
 		return {
 			id: this.id,
 			key: this.key,
@@ -146,7 +173,7 @@ export class File extends EventEmitter {
 		};
 	}
 
-	upload() {
+	canUpload(): boolean {
 		// 已上传或已删除的文件不可再上传
 		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
 			return false;
@@ -161,30 +188,29 @@ export class File extends EventEmitter {
 		return true;
 	}
 
+	abstract upload(index: number, file: Express.Multer.File): boolean;
+
 	/**
 	 * 获取下载配置
-	 * @returns {{name: string, size: number, parts: { index: number, url: string, range: number[2], uploaded: boolean }[], wsUrl: string, removed: boolean}}
+	 * @returns
 	 */
-	getDownloadConfig({host} = {}, allowMultiPart = false) {
+	getDownloadConfig({host}: { host?: string } = {}, _allowMultiPart?: boolean): DownloadConfig {
 		return {
 			id: this.id,
 			name: this.name,
 			size: this.size,
 			parts: [],
+			playUrl: this.getSignedPlayUrl({host}),
 			wsUrl: this.getSignedDownloadWsUrl({host}),
 			removed: this.status === FileStatus.REMOVED
 		};
 	}
 
-	indexDownloadStream(index) {
-		throw new Error("Not implemented");
-	}
+	abstract indexDownloadStream(index: number): fs.ReadStream | PassThrough;
 
-	rangeDownloadStream(range) {
-		throw new Error("Not implemented");
-	}
+	abstract rangeDownloadStream(range: string): fs.ReadStream | PassThrough;
 
-	remove() {
+	canRemove() {
 		if (this.status === FileStatus.REMOVED) {
 			return false;
 		}
@@ -197,20 +223,28 @@ export class File extends EventEmitter {
 		return true;
 	}
 
-	getSignedPartUrl({host} = {}, index = -1) {
+	abstract remove(): void;
+
+	getSignedPartUrl({host}, index = -1) {
 		const urlObj = Url.mergeUrl({protocol: "http", host, pathname: Api.DOWN_NEW});
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("index", index.toString());
 		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
-	getSignedDownloadWsUrl({host} = {}) {
+	getSignedPlayUrl({host}) {
+		const urlObj = Url.mergeUrl({protocol: "http", host, pathname: Api.PLAY_NEW});
+		urlObj.searchParams.set("id", this.id.toString());
+		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
+	}
+
+	getSignedDownloadWsUrl({host}) {
 		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_DOWN});
 		wsUrlObj.searchParams.set("id", this.id.toString());
 		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
-	getSignedUploadWsUrl({host} = {}) {
+	getSignedUploadWsUrl({host}) {
 		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_UPLOAD});
 		wsUrlObj.searchParams.set("id", this.id.toString());
 		wsUrlObj.searchParams.set("key", this.key.toString());
@@ -219,10 +253,8 @@ export class File extends EventEmitter {
 
 	/**
 	 * 检查签名
-	 * @param url
-	 * @return {boolean}
 	 */
-	isValidUrl(url) {
+	isValidUrl(url: CommonURL): boolean {
 		url = new URL(url, "local://check.sign/").toString();
 		if (Url.check(url)) {
 			const urlObj = new URL(url);
@@ -234,7 +266,7 @@ export class File extends EventEmitter {
 }
 
 export class SimpleFile extends File {
-	#path;
+	#path: string;
 
 	constructor({name, size}) {
 		super({name, size});
@@ -243,7 +275,7 @@ export class SimpleFile extends File {
 	/**
 	 * @inheritDoc
 	 */
-	getUploadConfig({host} = {}) {
+	getUploadConfig({host}) {
 		const uploadConfig = super.getUploadConfig({host});
 		uploadConfig.parts.push({
 			index: -1
@@ -257,8 +289,8 @@ export class SimpleFile extends File {
 	 * @param file
 	 * @return {boolean}
 	 */
-	upload(index, file) {
-		if (!super.upload()) {
+	upload(index: number, file: Express.Multer.File): boolean {
+		if (!super.canUpload()) {
 			return false;
 		}
 
@@ -275,12 +307,12 @@ export class SimpleFile extends File {
 		this.#path = file.path;
 		this.changeStatus(FileStatus.UPLOADED);
 		return true;
-	}
+	};
 
 	/**
 	 * @inheritDoc
 	 */
-	getDownloadConfig({host} = {}, allowMultiPart = false) {
+	getDownloadConfig({host}: { host?: string } = {}, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig({host});
 		if (allowMultiPart && this.partCount > 1) {
 			for (let i = 0; i < this.partCount; i++) {
@@ -303,7 +335,7 @@ export class SimpleFile extends File {
 		return downloadConfig;
 	}
 
-	indexDownloadStream(index) {
+	indexDownloadStream(index: number) {
 		if (index === -1) {
 			const downloadConfig = this.getDownloadConfig(undefined, false);
 			const activePart = downloadConfig.parts[0];
@@ -327,7 +359,7 @@ export class SimpleFile extends File {
 		}
 	}
 
-	rangeDownloadStream(range) {
+	rangeDownloadStream(range: string) {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
 		const [start, end] = range?.replace("bytes=", "").split("-") ?? [];
 		let startNum = parseInt(start);
@@ -342,7 +374,7 @@ export class SimpleFile extends File {
 	}
 
 	remove() {
-		if (super.remove()) {
+		if (super.canRemove()) {
 			try {
 				fs.unlinkSync(this.#path);
 			} catch (e) {
@@ -359,7 +391,7 @@ export class MultipartFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig({host} = {}) {
+	getUploadConfig({host}: { host?: string } = {}) {
 		const uploadConfig = super.getUploadConfig({host});
 		for (let i = 0; i < this.partCount; i++) {
 			// 最后一片可能不完整
@@ -371,14 +403,8 @@ export class MultipartFile extends File {
 		return uploadConfig;
 	}
 
-	/**
-	 * 上传
-	 * @param {number} index
-	 * @param file
-	 * @return {boolean}
-	 */
-	upload(index, file) {
-		if (!super.upload()) {
+	upload(index: number, file: Express.Multer.File): boolean {
+		if (!super.canUpload()) {
 			return false;
 		}
 
@@ -401,7 +427,7 @@ export class MultipartFile extends File {
 		return true;
 	}
 
-	indexDownloadStream(index) {
+	indexDownloadStream(index: number) {
 		if (index === -1) {
 			const downloadConfig = this.getDownloadConfig(undefined, false);
 			const activePart = downloadConfig.parts[0];
@@ -427,11 +453,10 @@ export class MultipartFile extends File {
 		}
 	}
 
-	rangeDownloadStream(range) {
+	rangeDownloadStream(range: string = "bytes=-") {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
 		const [start, end] = range.replace("bytes=", "").split("-");
-		let startNum = parseInt(start);
-		let endNum = parseInt(end);
+		let startNum = parseInt(start), endNum = parseInt(end);
 		if (isNaN(startNum)) {
 			startNum = 0;
 		}
@@ -452,7 +477,7 @@ export class MultipartFile extends File {
 		return Stream.mergeStreams(partStreams);
 	}
 
-	getDownloadConfig({host} = {}, allowMultiPart = false) {
+	getDownloadConfig({host}, allowMultiPart = false) {
 		const downloadConfig = super.getDownloadConfig({host});
 		if (!downloadConfig.removed) {
 			if (allowMultiPart && this.partCount > 1) {
@@ -478,7 +503,7 @@ export class MultipartFile extends File {
 	}
 
 	remove() {
-		if (super.remove()) {
+		if (super.canRemove()) {
 			this.#paths.forEach(path => {
 				try {
 					fs.unlinkSync(path);

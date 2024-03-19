@@ -1,7 +1,8 @@
 import {PassThrough} from 'stream';
+import fs from "fs";
 
 export class Stream {
-	static mergeStreams(streams) {
+	static mergeStreams(streams: fs.ReadStream[]): PassThrough {
 		// 创建一个 PassThrough 流，用于合并多个流
 		const combinedStream = new PassThrough();
 		// 检测是否已经被destroy
@@ -11,7 +12,7 @@ export class Stream {
 		});
 
 		// 使用递归函数来依次连接流
-		function connectStreams(index) {
+		function connectStreams(index: number) {
 			if (index < streams.length) {
 				streams[index].on('data', (chunk) => {
 					if (destroyed) {

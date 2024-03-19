@@ -10,7 +10,7 @@ class Client {
 	 * 标识符
 	 * @type {number|string}
 	 */
-	id;
+	id: ObjectKey;
 
 	/**
 	 * WebSocket 连接
@@ -22,15 +22,15 @@ class Client {
 	 * 附加数据
 	 * @type {Object}
 	 */
-	#data = {};
+	#data: object = {};
 
 	/**
 	 * 最后活动时间
 	 * @type {number}
 	 */
-	lastActive = Date.now();
+	lastActive: number = Date.now();
 
-	constructor(id, connection, data) {
+	constructor(id: ObjectKey, connection, data: object) {
 		this.id = id;
 		this.connection = connection;
 		data && Object.assign(this.#data, data);
@@ -70,7 +70,7 @@ export class WebSocketPool extends EventEmitter {
 	 * @param {WebSocket} connection WebSocket 连接
 	 * @param {Object} [data] 附加数据
 	 */
-	addConnection(id, connection, data) {
+	addConnection(id: ObjectKey, connection: WebSocket, data?: object) {
 		// 添加连接到 ID 映射
 		if (!this.#clients[id]) {
 			this.#clients[id] = [];

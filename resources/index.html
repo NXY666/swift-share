@@ -353,7 +353,7 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文本（新）</h2>
+			<h2 style="margin-top: 0;">上传文本</h2>
 			<form id="uploadTextNewForm" style="display: flex; flex-direction: column;">
 				<label for="uploadTextNewInput" style="display: none;"></label>
 				<textarea cols="50" id="uploadTextNewInput" maxlength="67108864" placeholder="文本" rows="8"
@@ -364,7 +364,7 @@
 	</div>
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">提取文本（新）</h2>
+			<h2 style="margin-top: 0;">提取文本</h2>
 			<form id="extractTextNewForm" style="display: flex; gap: 15px;">
 				<label for="extractTextNewCode" style="display: none;"></label>
 				<input autocomplete="off" id="extractTextNewCode" placeholder="提取码" style="flex: 6;" type="text">
@@ -378,7 +378,7 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文件（新）</h2>
+			<h2 style="margin-top: 0;">上传文件</h2>
 			<form id="uploadPartFileForm" style="display: flex; gap: 15px;">
 				<label for="uploadPartFileInput" style="display: none;"></label>
 				<input id="uploadPartFileInput" multiple style="flex: 6; width: 0;" type="file">
@@ -388,7 +388,7 @@
 	</div>
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">下载文件（新）</h2>
+			<h2 style="margin-top: 0;">下载文件</h2>
 			<form id="extractPartFileForm" style="display: flex; gap: 15px;">
 				<label for="extractPartFileCode" style="display: none;"></label>
 				<input autocomplete="off" id="extractPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
@@ -399,7 +399,7 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">播放视频（新）</h2>
+			<h2 style="margin-top: 0;">播放视频</h2>
 			<form id="playPartFileForm" style="display: flex; gap: 15px;">
 				<label for="playPartFileCode" style="display: none;"></label>
 				<input autocomplete="off" id="playPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
@@ -1537,6 +1537,221 @@
 			}
 		}
 
+		class SelectDownloadDialog extends Dialog {
+			/**
+			 * 复选框列表
+			 * @type {HTMLUListElement}
+			 */
+			#checkboxList = document.createElement('ul');
+			/**
+			 * 按钮组
+			 * @type {HTMLDivElement}
+			 */
+			#buttonGroup = document.createElement('div');
+			/**
+			 * 全选标签
+			 * @type {HTMLLabelElement}
+			 */
+			#selectAllLabel = document.createElement('label');
+			/**
+			 * 全选复选框
+			 * @type {HTMLInputElement}
+			 */
+			#selectAllCheckbox = document.createElement('input');
+			/**
+			 * 确认按钮
+			 * @type {HTMLButtonElement}
+			 */
+			#confirmButton = document.createElement('button');
+
+			/**
+			 * 下载配置
+			 * @type {any[]}
+			 */
+			#configs = [];
+
+			constructor(configs) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '从集合中下载文件';
+				this.styles = `.dialog-checkbox-list {
+						margin: 0;
+						overflow-y: auto;
+						max-height: 300px;
+						padding: 5px;
+						list-style-type: none;
+						border-radius: 5px;
+						background-color: var(--background-color-2);
+						border: 1px solid #DCDFE6;
+					}
+					.dialog-checkbox-list li label {
+						display: flex;
+						align-items: center;
+						overflow-wrap: anywhere;
+						transition: background-color var(--short-transition-duration);
+						padding: 10px;
+						border-radius: 5px;
+						gap: 10px;
+					}
+					.dialog-checkbox-list li label:hover {
+						background-color: var(--background-color-1);
+					}
+					.dialog-checkbox-list li label.disabled {
+						opacity: 0.5;
+						cursor: not-allowed;
+						background-color: transparent;
+					}
+					.dialog-button-group {
+						display: flex;
+						align-items: center;
+						width: 100%;
+					}`;
+
+				this.#checkboxList.classList.add('dialog-checkbox-list');
+				configs.forEach((downloadConfig, index) => {
+					const checkboxListItem = document.createElement('li');
+					const checkboxLabel = document.createElement('label');
+					const checkbox = document.createElement('input');
+					if (downloadConfig.removed) {
+						checkboxLabel.classList.add('disabled');
+					}
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.disabled = downloadConfig.removed;
+					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
+					});
+					checkboxLabel.appendChild(checkbox);
+					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
+
+					checkboxListItem.appendChild(checkboxLabel);
+
+					this.#checkboxList.appendChild(checkboxListItem);
+				});
+
+				this.#buttonGroup.classList.add('dialog-button-group');
+				{
+					this.#selectAllLabel.style.display = 'flex';
+					this.#selectAllLabel.style.alignItems = 'center';
+					this.#selectAllLabel.style.gap = '5px';
+					{
+						this.#selectAllCheckbox.type = 'checkbox';
+						this.#selectAllCheckbox.checked = true; // 默认全选
+						this.#selectAllCheckbox.addEventListener('change', () => {
+							// 全选或取消全选
+							this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
+								checkbox.checked = this.#selectAllCheckbox.checked && !checkbox.disabled;
+							});
+						});
+						this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
+
+						// 全选文字
+						this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+					}
+					this.#buttonGroup.appendChild(this.#selectAllLabel);
+
+					this.#confirmButton.textContent = '下载';
+					this.#confirmButton.style.marginLeft = 'auto';
+					this.#confirmButton.addEventListener('click', () => {
+						const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
+						if (selectedConfigs.length !== 0) {
+							downloadConfigs(selectedConfigs);
+						}
+						this.close();
+					});
+					this.#buttonGroup.appendChild(this.#confirmButton);
+				}
+
+				this.content = this.#checkboxList;
+				this.footer = this.#buttonGroup;
+			}
+		}
+
+		// 选择播放，单选
+		class SelectPlayDialog extends Dialog {
+			/**
+			 * 单选框列表
+			 * @type {HTMLUListElement}
+			 */
+			#radioList = document.createElement('ul');
+			/**
+			 * 确认按钮
+			 * @type {HTMLButtonElement}
+			 */
+			#confirmButton = document.createElement('button');
+
+			/**
+			 * 播放配置
+			 * @type {any[]}
+			 */
+			#configs = [];
+
+			constructor(configs, callback) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '从集合中播放媒体';
+				this.styles = `.dialog-radio-list {
+						margin: 0;
+						overflow-y: auto;
+						max-height: 300px;
+						padding: 5px;
+						list-style-type: none;
+						border-radius: 5px;
+						background-color: var(--background-color-2);
+						border: 1px solid #DCDFE6;
+					}
+					.dialog-radio-list li label {
+						display: flex;
+						align-items: center;
+						overflow-wrap: anywhere;
+						transition: background-color var(--short-transition-duration);
+						padding: 10px;
+						border-radius: 5px;
+						gap: 10px;
+					}
+					.dialog-radio-list li label:hover {
+						background-color: var(--background-color-1);
+					}`;
+
+				this.#radioList.classList.add('dialog-radio-list');
+				configs.forEach((playConfig, index) => {
+					const radioListItem = document.createElement('li');
+					const radioLabel = document.createElement('label');
+					const radio = document.createElement('input');
+					radio.type = 'radio';
+					radio.name = 'play';
+					radio.value = index;
+					radioLabel.appendChild(radio);
+					radioLabel.appendChild(document.createTextNode(` ${playConfig.name}`));
+
+					radioListItem.appendChild(radioLabel);
+
+					this.#radioList.appendChild(radioListItem);
+				});
+
+				this.#confirmButton.textContent = '播放';
+				this.#confirmButton.style.marginLeft = 'auto';
+				this.#confirmButton.addEventListener('click', () => {
+					const selectedConfig = this.#configs[this.#radioList.querySelector('input:checked')?.value];
+					if (selectedConfig) {
+						callback(selectedConfig);
+					}
+					this.close();
+				});
+
+				this.content = this.#radioList;
+				this.footer = this.#confirmButton;
+			}
+		}
+
 		let extractCodeLength = null, uploadTextCapacity = null, uploadFileCapacity = null;
 
 		setTimeout(() => {
@@ -1778,7 +1993,7 @@
 					if (configs.length === 1) {
 						downloadConfigs(configs);
 					} else {
-						showDownloadDialog(configs);
+						new SelectDownloadDialog(configs).open();
 					}
 				})
 				.catch(({message}) => alert(`文件提取失败：${message}`))
@@ -1806,146 +2021,16 @@
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1) {
-						console.log(configs);
-						playPartFileVideo.src = configs[0].parts[0].url.replace("down", "play");
+						playPartFileVideo.src = configs[0].playUrl;
 					} else {
-						// showDownloadDialog(configs);
+						new SelectPlayDialog(configs, (config) => {
+							playPartFileVideo.src = config.playUrl;
+						}).open();
 					}
 				})
 				.catch(({message}) => alert(`文件提取失败：${message}`))
 				.finally(() => enableForm(playPartFileForm));
 			});
-
-			function showDownloadDialog(configs) {
-				const dialog = new Dialog();
-
-				/**
-				 * 复选框列表
-				 * @type {HTMLUListElement}
-				 */
-				const checkboxList = document.createElement('ul');
-				/**
-				 * 按钮组
-				 * @type {HTMLDivElement}
-				 */
-				const buttonGroup = document.createElement('div');
-				/**
-				 * 全选标签
-				 * @type {HTMLLabelElement}
-				 */
-				const selectAllLabel = document.createElement('label');
-				/**
-				 * 全选复选框
-				 * @type {HTMLInputElement}
-				 */
-				const selectAllCheckbox = document.createElement('input');
-				/**
-				 * 确认按钮
-				 * @type {HTMLButtonElement}
-				 */
-				const confirmButton = document.createElement('button');
-
-				const styles = `
-						.dialog-checkbox-list {
-							margin: 0;
-							overflow-y: auto;
-							max-height: 300px;
-							padding: 5px;
-							list-style-type: none;
-							border-radius: 5px;
-							background-color: var(--background-color-2);
-							border: 1px solid #DCDFE6;
-						}
-						.dialog-checkbox-list li label {
-							display: flex;
-							align-items: center;
-							overflow-wrap: anywhere;
-							transition: background-color var(--short-transition-duration);
-							padding: 10px;
-							border-radius: 5px;
-							gap: 10px;
-						}
-						.dialog-checkbox-list li label:hover {
-							background-color: var(--background-color-1);
-						}
-						.dialog-checkbox-list li label.disabled {
-							opacity: 0.5;
-							cursor: not-allowed;
-							background-color: transparent;
-						}
-						.dialog-button-group {
-							display: flex;
-							align-items: center;
-							width: 100%;
-						}
-				`;
-
-				checkboxList.classList.add('dialog-checkbox-list');
-				configs.forEach((downloadConfig, index) => {
-					const checkboxListItem = document.createElement('li');
-					const checkboxLabel = document.createElement('label');
-					const checkbox = document.createElement('input');
-					if (downloadConfig.removed) {
-						checkboxLabel.classList.add('disabled');
-					}
-					checkbox.type = 'checkbox';
-					checkbox.value = index;
-					checkbox.disabled = downloadConfig.removed;
-					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
-					checkbox.addEventListener('change', () => {
-						// 更新全选框状态
-						const checkboxItems = Array.from(checkboxList.querySelectorAll('input'));
-						selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
-						selectAllCheckbox.indeterminate = !selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
-					});
-					checkboxLabel.appendChild(checkbox);
-					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
-
-					checkboxListItem.appendChild(checkboxLabel);
-
-					checkboxList.appendChild(checkboxListItem);
-				});
-
-				buttonGroup.classList.add('dialog-button-group');
-				{
-					selectAllLabel.style.display = 'flex';
-					selectAllLabel.style.alignItems = 'center';
-					selectAllLabel.style.gap = '5px';
-					{
-						selectAllCheckbox.type = 'checkbox';
-						selectAllCheckbox.checked = true; // 默认全选
-						selectAllCheckbox.addEventListener('change', () => {
-							// 全选或取消全选
-							checkboxList.querySelectorAll('input').forEach(checkbox => {
-								checkbox.checked = selectAllCheckbox.checked && !checkbox.disabled;
-							});
-						});
-						selectAllLabel.appendChild(selectAllCheckbox);
-
-						// 全选文字
-						selectAllLabel.appendChild(document.createTextNode(' 全选'));
-					}
-					buttonGroup.appendChild(selectAllLabel);
-
-					confirmButton.textContent = '下载';
-					confirmButton.style.marginLeft = 'auto';
-					confirmButton.addEventListener('click', () => {
-						const selectedConfigs = Array.from(checkboxList.querySelectorAll('input:checked')).map(checkbox => configs[checkbox.value]);
-						if (selectedConfigs.length !== 0) {
-							downloadConfigs(selectedConfigs);
-						}
-						dialog.close();
-					});
-					buttonGroup.appendChild(confirmButton);
-				}
-
-				dialog.title = '从集合中下载文件';
-				dialog.content = checkboxList;
-				dialog.footer = buttonGroup;
-				dialog.styles = styles;
-
-				dialog.open();
-			}
 		});
 	</script>
 </body>
