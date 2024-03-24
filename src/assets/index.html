@@ -37,6 +37,7 @@
 			--dialog-header-close-color: var(--text-color-1);
 			--dialog-header-close-hover-color: var(--primary-color-1);
 			--dialog-background-color: var(--background-color-1);
+			--dialog-background-color-reverse: var(--background-color-2);
 			--dialog-border-color: var(--border-color);
 
 			--progress-thumb-color: var(--primary-color-1);
@@ -86,6 +87,7 @@
 				--dialog-header-close-color: var(--text-color-1);
 				--dialog-header-close-hover-color: var(--primary-color-1);
 				--dialog-background-color: var(--background-color-2);
+				--dialog-background-color-reverse: var(--background-color-1);
 				--dialog-border-color: #3C4043;
 
 				--form-input-color: var(--color);
@@ -1636,7 +1638,7 @@
 						padding: 5px;
 						list-style-type: none;
 						border-radius: 5px;
-						background-color: var(--form-background-color);
+						background-color: var(--dialog-background-color-reverse);
 						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-checkbox-list li label {
@@ -1649,7 +1651,7 @@
 						gap: 10px;
 					}
 					.dialog-checkbox-list li label:hover {
-						background-color: var(--form-background-hover-color);
+						background-color: var(--dialog-background-color);
 					}
 					.dialog-checkbox-list li label.disabled {
 						opacity: 0.5;
@@ -1759,7 +1761,7 @@
 						padding: 5px;
 						list-style-type: none;
 						border-radius: 5px;
-						background-color: var(--background-color-2);
+						background-color: var(--dialog-background-color-reverse);
 						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-radio-list li label {
@@ -1772,7 +1774,7 @@
 						gap: 10px;
 					}
 					.dialog-radio-list li label:hover {
-						background-color: var(--background-color-1);
+						background-color: var(--dialog-background-color);
 					}`;
 
 				this.#radioList.classList.add('dialog-radio-list');
