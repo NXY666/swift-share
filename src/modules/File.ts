@@ -1,8 +1,8 @@
-import DefaultConfig from "../resources/default_config.js";
+import DefaultConfig from "@/default_config.js";
 import crypto from "crypto";
 import fs from "fs";
-import {Api, Url} from "./Url.js";
-import {Stream} from "./Stream.js";
+import {Api, Url} from "./Url";
+import {Stream} from "./Stream";
 import EventEmitter from "events";
 import {PassThrough} from "stream";
 

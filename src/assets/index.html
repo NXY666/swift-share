@@ -5,25 +5,48 @@
 	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
 	<style>
 		:root {
+			/* 基础色 */
 			--color: black;
+
 			--primary-color-1: #0969DA;
 			--primary-color-2: #669EFF;
 			--primary-color-3: #B4CFFF;
+
 			--text-color-1: #333333;
 			--text-color-2: #606266;
 			--text-color-3: #C0C4CC;
+
+			--material-primary-color-1: #0B57D0;
+			--material-primary-color-2: #64B5F6;
+			--material-primary-color-3: #BBDEFB;
+
+			--material-secondary-color-1: #D32F2F;
+
 			--background-color-1: #FFFFFF;
-			--background-color-2: #F5F7FA;
+			--background-color-2: #F6F8FA;
+
+			--border-color: #DCDFE6;
+			--border-hover-color: #C8C9CC;
+			--border-active-color: #CDD0D6;
 
 			--scrollbar-thumb-color: #DEDFE1;
 			--scrollbar-thumb-hover-color: #C8C9CC;
 
+			--dialog-header-background-color: var(--background-color-2);
+			--dialog-header-color: var(--text-color-1);
+			--dialog-header-close-color: var(--text-color-1);
+			--dialog-header-close-hover-color: var(--primary-color-1);
+			--dialog-background-color: var(--background-color-1);
+			--dialog-border-color: var(--border-color);
+
+			--progress-thumb-color: var(--primary-color-1);
+
 			--form-input-color: var(--color);
 			--form-color: var(--text-color-2);
 			--form-error-color: #9F3A38;
-			--form-border-color: #DCDFE6;
-			--form-border-hover-color: #D4D7DE;
-			--form-border-active-color: #CDD0D6;
+			--form-border-color: var(--border-color);
+			--form-border-hover-color: var(--border-hover-color);
+			--form-border-active-color: var(--border-active-color);
 			--form-background-color: var(--background-color-1);
 			--form-background-error-color: #FEE2E2;
 			--form-background-hover-color: #F4F4F5;
@@ -39,24 +62,38 @@
 		@media (prefers-color-scheme: dark) {
 			:root {
 				--color: white;
-				--primary-color-1: #4285F4;
-				--primary-color-2: #669EFF;
+
+				--primary-color-1: #669EFF;
+				--primary-color-2: #4285F4;
 				--primary-color-3: #4D72B3;
+
 				--text-color-1: #CCCCCC;
 				--text-color-2: #808080;
 				--text-color-3: #4D4D4D;
-				--background-color-2: #010409;
-				--background-color-1: #0D1117;
+
+				--background-color-2: #0D1117;
+				--background-color-1: #161B22;
+
+				--border-color: #3C4043;
+				--border-hover-color: #8B949E;
+				--border-active-color: #6E7681;
 
 				--scrollbar-thumb-color: #242628;
 				--scrollbar-thumb-hover-color: #3A3D41;
 
+				--dialog-header-background-color: var(--background-color-1);
+				--dialog-header-color: var(--text-color-1);
+				--dialog-header-close-color: var(--text-color-1);
+				--dialog-header-close-hover-color: var(--primary-color-1);
+				--dialog-background-color: var(--background-color-2);
+				--dialog-border-color: #3C4043;
+
 				--form-input-color: var(--color);
 				--form-color: var(--text-color-1);
 				--form-error-color: #F97583;
-				--form-border-color: #3C4043;
-				--form-border-hover-color: #8B949E;
-				--form-border-active-color: #6E7681;
+				--form-border-color: var(--border-color);
+				--form-border-hover-color: var(--border-hover-color);
+				--form-border-active-color: var(--border-active-color);
 				--form-background-color: var(--background-color-1);
 				--form-background-error-color: #420E09;
 				--form-background-hover-color: #21262D;
@@ -144,7 +181,7 @@
 			opacity: 0.6;
 		}
 
-		input, textarea {
+		input:not([type=checkbox]):not([type=radio]), textarea {
 			font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
 			padding: 5px 10px;
 			transition: border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
@@ -156,7 +193,7 @@
 		}
 
 		input:focus:not([type=checkbox]):not([type=radio]),
-		textarea:focus:not([type=checkbox]):not([type=radio]) {
+		textarea:focus {
 			border-color: var(--primary-color-1);
 			box-shadow: 0 0 0 1px var(--primary-color-1) inset;
 		}
@@ -164,9 +201,9 @@
 		progress {
 			position: relative;
 			overflow: hidden;
-			border: #D0D7DE 1px solid;
+			border: var(--form-border-color) 1px solid;
 			border-radius: 114514px;
-			background-color: #EFEDED;
+			background-color: var(--background-color-2);
 		}
 
 		progress::-webkit-progress-bar {
@@ -333,11 +370,27 @@
 		}
 
 		#premiumModeSwitch {
+			font-size: 12px;
+			position: fixed;
+			right: 10px;
+			bottom: 10px;
+			display: flex;
+			align-items: center;
+			padding: 10px 15px;
+			user-select: none;
 			transition: box-shadow var(--short-transition-duration);
+			border-radius: 500px;
+			background-color: var(--background-color-1);
 		}
 
 		#premiumModeSwitch:hover {
 			box-shadow: 0 1px 6px rgba(32, 33, 36, .28);
+		}
+
+		.premium-mode-switch {
+			font-size: 9px;
+			display: flex;
+			margin-left: 15px;
 		}
 	</style>
 </head>
@@ -416,10 +469,9 @@
 	   style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;">快传 - SwiftShare</a>
 
 	<!-- 右下角fixed 高级模式开关 -->
-	<div id="premiumModeSwitch"
-		 style="font-size: 12px; position: fixed; right: 10px; bottom: 10px; padding: 10px 15px; user-select: none; display: flex; align-items: center; background-color:#FFF; border-radius: 500px;">
+	<div id="premiumModeSwitch">
 		高级模式
-		<div class="switch" style="font-size: 9px; margin-left: 15px; display: flex;">
+		<div class="switch premium-mode-switch">
 			<input id="premiumMode" name="premiumMode" type="checkbox">
 			<label for="premiumMode"></label>
 		</div>
@@ -958,9 +1010,9 @@
 							left: 50%;
 							transform: translateX(-50%);
 							animation: dialog-appear var(--base-transition-duration);
-							border: 1px solid var(--form-border-color);
+							border: 1px solid var(--dialog-border-color);
 							border-radius: 5px;
-							background-color: var(--form-background-color);
+							background-color: var(--dialog-background-color);
 							box-shadow: 0 0 18px rgba(0,0,0,.3);
 						}
 						@keyframes dialog-appear {
@@ -985,20 +1037,20 @@
 						}
 						.dialog-header {
 							padding: 16px;
-							border-bottom: 1px solid #D0D7DE;
+							border-bottom: 1px solid var(--dialog-border-color);
 							border-top-left-radius: 5px;
 							border-top-right-radius: 5px;
-							background-color: #F5F7FA;
+							background-color: var(--dialog-header-background-color);
 							display: flex;
 							align-items: center;
 						}
 						.dialog-close-button {
 							margin-left: auto;
 							cursor: pointer;
-							color: #656D76;
+							color: var(--dialog-header-close-color);
 						}
 						.dialog-close-button:hover {
-							color: var(--primary-color-1);
+							color: var(--dialog-header-close-hover-color);
 						}
 						.dialog-body {
 							padding: 16px;
@@ -1199,7 +1251,7 @@
 						padding: 10px;
 						border-radius: 3px;
 						font-size: 14px;
-						background-color: #F5F7FA;
+						background-color: var(--background-color-2);
 						border-left: 5px solid var(--primary-color-1);
 						margin-bottom: 5px;
 					}
@@ -1576,15 +1628,16 @@
 				this.#configs = configs;
 
 				this.title = '从集合中下载文件';
-				this.styles = `.dialog-checkbox-list {
+				this.styles = `
+					.dialog-checkbox-list {
 						margin: 0;
 						overflow-y: auto;
 						max-height: 300px;
 						padding: 5px;
 						list-style-type: none;
 						border-radius: 5px;
-						background-color: var(--background-color-2);
-						border: 1px solid #DCDFE6;
+						background-color: var(--form-background-color);
+						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-checkbox-list li label {
 						display: flex;
@@ -1596,7 +1649,7 @@
 						gap: 10px;
 					}
 					.dialog-checkbox-list li label:hover {
-						background-color: var(--background-color-1);
+						background-color: var(--form-background-hover-color);
 					}
 					.dialog-checkbox-list li label.disabled {
 						opacity: 0.5;
@@ -1698,7 +1751,8 @@
 				this.#configs = configs;
 
 				this.title = '从集合中播放媒体';
-				this.styles = `.dialog-radio-list {
+				this.styles = `
+					.dialog-radio-list {
 						margin: 0;
 						overflow-y: auto;
 						max-height: 300px;
@@ -1706,7 +1760,7 @@
 						list-style-type: none;
 						border-radius: 5px;
 						background-color: var(--background-color-2);
-						border: 1px solid #DCDFE6;
+						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-radio-list li label {
 						display: flex;
@@ -1752,12 +1806,9 @@
 			}
 		}
 
-		let extractCodeLength = null, uploadTextCapacity = null, uploadFileCapacity = null;
+		let uploadTextCapacity = null, uploadFileCapacity = null;
 
 		setTimeout(() => {
-			api.get("/extract/code/length")
-			.then(({data}) => extractCodeLength = data.length * 2);
-
 			api.get("/upload/text/capacity")
 			.then(({data}) => uploadTextCapacity = data.capacity);
 
@@ -1814,7 +1865,7 @@
 				disableForm(uploadTextNewForm);
 
 				api.post("/upload/text/new", text)
-				.then(({data}) => alert(`文本上传成功。请凭【${data.code}】提取文本。`))
+				.then(({data}) => alert(`文本上传成功。请凭【${data.code.toUpperCase()}】提取文本。`))
 				.catch(({message}) => alert(message))
 				.finally(() => enableForm(uploadTextNewForm));
 			});
@@ -1827,15 +1878,14 @@
 			extractTextNewForm.addEventListener("submit", (e) => {
 				e.preventDefault();
 
-				const code = extractTextNewCode.value;
-
-				if (extractCodeLength && code.length !== extractCodeLength) {
+				const extractionCode = extractTextNewCode.value;
+				if (!extractionCode.length) {
 					return;
 				}
 
 				disableForm(extractTextNewForm);
 
-				api.get(`/extract/text/new/${code}`)
+				api.get(`/extract/text/new/${extractionCode}`)
 				.then(({data}) => {
 					extractedNewText.style.backgroundColor = 'var(--background-color-2)';
 					extractedNewText.style.color = 'var(--form-color)';
@@ -1961,7 +2011,7 @@
 						if (failedConfigs.length > 0) {
 							alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
 						}
-						alert(`文件上传成功。请凭【${extractCode}】提取文件。`);
+						alert(`文件上传成功。请凭【${extractCode.toUpperCase()}】提取文件。`);
 					}, 1000);
 				})
 				.catch(({message}) => alert(message))
@@ -1978,7 +2028,7 @@
 				e.preventDefault();
 
 				const extractionCode = extractPartFileCode.value;
-				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
+				if (!extractionCode.length) {
 					return;
 				}
 
@@ -2008,7 +2058,7 @@
 				e.preventDefault();
 
 				const extractionCode = playPartFileCode.value;
-				if (extractCodeLength && extractionCode.length !== extractCodeLength) {
+				if (!extractionCode.length) {
 					return;
 				}
 

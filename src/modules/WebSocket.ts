@@ -1,6 +1,6 @@
 import {WebSocket} from 'ws';
 import EventEmitter from "events";
-import {File, FileStatus} from "./File.js";
+import {File, FileStatus} from "./File";
 
 /**
  * WebSocket 客户端

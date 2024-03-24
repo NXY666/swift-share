@@ -9,11 +9,11 @@ import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
 import http from "http";
 import {WebSocketServer} from 'ws';
-import DefaultConfig from "./resources/default_config.js";
-import {CodeStore, FileCodeInfo, TextCodeInfo} from "./modules/Code.js";
-import {File, FileStatus, MultipartFile, SimpleFile} from "./modules/File.js";
-import {DownloadWebSocketPool} from "./modules/WebSocket.js";
-import {Api, Url} from "./modules/Url.js";
+import DefaultConfig from "@/default_config.js";
+import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
+import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
+import {DownloadWebSocketPool} from "@/modules/WebSocket";
+import {Api, Url} from "@/modules/Url";
 
 function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
@@ -48,7 +48,7 @@ const DataDirPath = path.join(process.platform === "win32" ? process.env.APPDATA
 
 const DefaultConfigPath = './default_config.js';
 const ConfigPath = './config.js';
-const ResourcePath = './resources';
+const ResourcePath = './assets';
 const FilePath = './files';
 
 const DefaultConfigAbsolutePath = getAbsPath(DefaultConfigPath);

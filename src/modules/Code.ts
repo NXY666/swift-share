@@ -1,7 +1,7 @@
 import crypto from "crypto";
-import DefaultConfig from "../resources/default_config.js";
-import {File, FileStatus} from "./File.js";
-import {Api, Url} from "./Url.js";
+import DefaultConfig from "@/default_config.js";
+import {File, FileStatus} from "./File";
+import {Api, Url} from "./Url";
 
 export class CodeStore {
 	static #store: { [key: string]: CodeInfo } = {};
@@ -43,10 +43,14 @@ export class CodeStore {
 	}
 
 	static #getUniqueCode() {
+		let failedCount = 0;
 		while (true) {
 			const code = CodeStore.#generateCode(DefaultConfig.EXTRACT_CODE_LENGTH);
 			if (!this.#store[code]) {
 				return code;
+			}
+			if (++failedCount > 64) {
+				DefaultConfig.EXTRACT_CODE_LENGTH++;
 			}
 		}
 	}
