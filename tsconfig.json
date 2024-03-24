@@ -1,0 +1,14 @@
+// tsconfig.json
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"outDir": "dist",
+		"sourceMap": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	}
+}
