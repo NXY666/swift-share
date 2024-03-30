@@ -3,7 +3,7 @@ export default {
 	 * 端口号
 	 * @type {number}
 	 */
-	PORT: 3000,
+	PORT: 80,
 	/**
 	 * Biu~ 命令
 	 */

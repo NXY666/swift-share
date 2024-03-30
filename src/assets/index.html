@@ -394,6 +394,18 @@
 			display: flex;
 			margin-left: 15px;
 		}
+
+		.water-mark {
+			color: var(--text-color-1);
+			position: fixed;
+			left: 0;
+			bottom: 0;
+			font-size: 12px;
+			opacity: .4;
+			padding: 5px;
+			user-select: none;
+			text-decoration: none;
+		}
 	</style>
 </head>
 <body>
@@ -467,8 +479,7 @@
 		</div>
 	</div>
 
-	<a href="https://github.com/NXY666/SwiftShare"
-	   style="position: fixed; left: 0; bottom: 0; font-size: 12px; opacity: .4; padding: 5px; user-select: none; text-decoration: none;">快传 - SwiftShare</a>
+	<a href="https://github.com/NXY666/SwiftShare" class="water-mark">快传 - SwiftShare</a>
 
 	<!-- 右下角fixed 高级模式开关 -->
 	<div id="premiumModeSwitch">
