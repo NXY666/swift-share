@@ -482,7 +482,7 @@
 	<a href="https://github.com/NXY666/SwiftShare" class="water-mark">快传 - SwiftShare</a>
 
 	<!-- 右下角fixed 高级模式开关 -->
-	<div id="premiumModeSwitch">
+	<div id="premiumModeSwitch" style="display: none;">
 		高级模式
 		<div class="switch premium-mode-switch">
 			<input id="premiumMode" name="premiumMode" type="checkbox">
@@ -515,122 +515,24 @@
 		}
 
 		async function downloadConfigs(configs) {
-			// 判断能不能用blob合成文件
-			const allowMultipart = isPremiumMode();
-
 			const downloadDialog = new DownloadDialog(configs);
 			downloadDialog.open();
-
-			const failedConfigs = [];
 
 			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
 				const activeConfig = configs[activeConfigIndex];
 				downloadDialog.activeConfigIndex = activeConfigIndex;
 
-				await new Promise((resolve, reject) => {
-					// 连接 WebSocket
-					const downloadClient = new WebsocketClient(activeConfig.wsUrl);
+				// 说明下载完成，下载整个文件
+				const a = document.createElement('a');
+				a.href = activeConfig.downUrl;
+				a.download = activeConfig.name;
+				a.click();
 
-					if (allowMultipart) {
-						// 终止控制器
-						const abortController = new AbortController();
-
-						// 用于存储已下载的分片blob
-						const multipartBlobs = [];
-
-						// 用于存储下载的promise
-						const downloadPromises = [];
-						// 监听 WebSocket
-						downloadClient.onMessage = (message) => {
-							const downloadIndexArr = JSON.parse(message);
-							for (const downloadIndex of downloadIndexArr) {
-								if (multipartBlobs[downloadIndex]) {
-									continue;
-								}
-								multipartBlobs[downloadIndex] = true;
-
-								downloadPromises.push(api.get(activeConfig.parts[downloadIndex].url, {signal: abortController.signal}, {
-									slowRequest: true, bodyType: 'blob'
-								}).then(({data}) => {
-									// 下载完成
-									multipartBlobs[downloadIndex] = data;
-								}).finally(() => {
-									downloadDialog.addFileProgress();
-									downloadDialog.addTotalProgress();
-								}));
-							}
-						};
-						downloadClient.onClose = (code, reason) => {
-							console.log('WebSocket closed.', code, reason);
-							if (code === 4000) {
-								// 说明已经上传完成，将所有未下载的片段下载下来
-								for (let partIndex = 0; partIndex < activeConfig.parts.length; partIndex++) {
-									if (!multipartBlobs[partIndex]) {
-										downloadPromises.push(api.get(activeConfig.parts[partIndex].url, {signal: abortController.signal}, {
-											slowRequest: true, bodyType: 'blob'
-										}).then(({data}) => {
-											// 下载完成
-											multipartBlobs[partIndex] = data;
-										}).finally(() => {
-											downloadDialog.addFileProgress();
-											downloadDialog.addTotalProgress();
-										}));
-									}
-								}
-
-								// 等待所有分片下载完成
-								Promise.all(downloadPromises)
-								.then(() => {
-									const blob = new Blob(multipartBlobs);
-									const a = document.createElement('a');
-									a.href = URL.createObjectURL(blob);
-									a.download = activeConfig.name;
-									a.click();
-
-									resolve();
-								})
-								.catch(() => {
-									// 终止未完成的下载
-									try {
-										abortController.abort("文件下载失败");
-									} catch {}
-									reject();
-								});
-							} else {
-								reject();
-							}
-						};
-					} else {
-						// 监听 WebSocket
-						downloadClient.onClose = (code, reason) => {
-							console.log('WebSocket closed.', code, reason);
-							if (code === 4000) {
-								// 说明下载完成，下载整个文件
-								const a = document.createElement('a');
-								a.href = activeConfig.parts[0].url;
-								a.download = activeConfig.name;
-								a.click();
-
-								resolve();
-							} else {
-								reject();
-							}
-							downloadDialog.addFileProgress();
-							downloadDialog.addTotalProgress();
-						};
-					}
-
-					// 打开 WebSocket
-					downloadClient.open();
-				}).catch(() => {
-					failedConfigs.push(activeConfig);
-				});
+				downloadDialog.addTotalProgress();
 			}
+
 			setTimeout(() => {
 				downloadDialog.close();
-				if (failedConfigs.length > 0) {
-					alert(`以下文件未能下载：\n${failedConfigs.map(config => config.name).join('\n')}`);
-				}
 			}, 1000);
 		}
 
@@ -1529,15 +1431,8 @@
 			set activeConfigIndex(value) {
 				this.#activeConfigIndex = value;
 
-				const activeConfig = this.#configs[value];
-
-				if (activeConfig.parts.length > 1) {
-					this.#fileProgress.max = activeConfig.parts.length;
-					this.#fileProgress.value = 0;
-				} else {
-					this.#fileProgress.max = 1;
-					this.#fileProgress.removeAttribute('value');
-				}
+				this.#fileProgress.removeAttribute('max');
+				this.#fileProgress.removeAttribute('value');
 
 				this.update();
 			}
@@ -1553,7 +1448,7 @@
 			}
 
 			initTotalProgress() {
-				this.#totalProgress.max = this.#configs.reduce((total, item) => total + item.parts.length, 0);
+				this.#totalProgress.max = this.#configs.length;
 				if (this.#totalProgress.max > 1) {
 					this.#totalProgress.value = 0;
 				}
@@ -1561,6 +1456,9 @@
 
 			addTotalProgress() {
 				this.#totalProgress.value++;
+				if (this.#totalProgress.value === this.#totalProgress.max) {
+					this.#fileProgress.value = this.#fileProgress.max;
+				}
 				this.update();
 			}
 
@@ -1585,7 +1483,7 @@
 						}
 
 						// 总进度
-						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
+						if (this.#totalProgress.value === this.#totalProgress.max) {
 							this.#totalProgressLabel.innerText = `总进度 (${this.#configs.length}/${this.#configs.length})`;
 						} else {
 							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#configs.length})`;

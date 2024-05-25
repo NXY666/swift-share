@@ -63,7 +63,7 @@ export default {
 	 * 文件上传最大时长（单位：毫秒）
 	 * @type {number}
 	 */
-	FILE_UPLOAD_INTERVAL: 30 * 60 * 1000,
+	FILE_UPLOAD_INTERVAL: 60 * 60 * 1000,
 	/**
 	 * 文件上传最大检查点间隔
 	 * @type {number}

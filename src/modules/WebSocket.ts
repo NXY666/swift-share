@@ -268,7 +268,7 @@ export class DownloadWebSocketPool extends WebSocketPool {
 		const file = File.findFileById(id);
 
 		// 发送已上传的文件片段
-		const downloadConfig = file.getDownloadConfig(undefined, true);
+		const downloadConfig = file.getDownloadConfig(undefined);
 		downloadConfig.parts.forEach((part, partIndex) => {
 			if (part.uploaded) {
 				this.send(conn, partIndex);

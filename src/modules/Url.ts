@@ -88,6 +88,8 @@ export class Url {
 }
 
 export const Api = {
+	API: "/api",
+
 	BIU: "/biu",
 
 	EXTRACT_CODE_LENGTH: "/extract/code/length",
@@ -105,9 +107,22 @@ export const Api = {
 
 	EXTRACT_FILES_NEW: "/extract/files/new/:code",
 
+	/**
+	 * @deprecated
+	 */
 	DOWN_NEW: "/down",
+	/**
+	 * @deprecated
+	 */
 	PLAY_NEW: "/play",
+	FETCH: "/fetch",
 
+	/**
+	 * @deprecated
+	 */
 	WS_UPLOAD: "/upload",
-	WS_DOWN: "/down"
+	/**
+	 * @deprecated
+	 */
+	WS_DOWN: "/down",
 };

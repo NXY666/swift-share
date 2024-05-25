@@ -14,6 +14,7 @@ import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
 import {DownloadWebSocketPool} from "@/modules/WebSocket";
 import {Api, Url} from "@/modules/Url";
+import mime from 'mime/lite';
 
 function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
@@ -224,6 +225,11 @@ app.post(Api.BIU, (req, res) => {
 	});
 });
 
+// 所有 API
+app.get(Api.API, (_req, res) => {
+	res.json(Api);
+});
+
 // 提取码长度
 app.get(Api.EXTRACT_CODE_LENGTH, (_req, res) => {
 	res.json({length: config.EXTRACT_CODE_LENGTH});
@@ -290,7 +296,7 @@ app.get(Api.EXTRACT_TEXT_NEW, (req, res) => {
 
 // 申请文件上传
 app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
-	const {files, allowMultipart} = req.body;
+	const {files} = req.body;
 
 	let storeUsedSize = CodeStore.getUsedSpace("files");
 
@@ -304,7 +310,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 	const fileUploadConfigs = [], localFiles = [];
 	for (const file of files) {
-		if (allowMultipart && file.size > DefaultConfig.FILE_PART_SIZE) {
+		if (file.size > DefaultConfig.FILE_PART_SIZE) {
 			const newFile = new MultipartFile({name: file.name, size: file.size});
 			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
 			localFiles.push(newFile);
@@ -368,7 +374,7 @@ app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 	}
 
 	if (file.upload(index, req.file)) {
-		console.log(`File part uploaded: ${id}`);
+		console.log(`File ${id} part ${index} uploaded.`);
 
 		// 如果上传完成，则关闭所有连接；否则广播文件片段
 		if (file.status === FileStatus.UPLOADED) {
@@ -401,57 +407,23 @@ app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
 		return;
 	}
 
-	const {allowMultipart} = req.body;
-	switch (codeInfo.type) {
-		case "files": {
-			console.log(`File extracted: ${extractionCode}`);
-			// 生成下载配置
-			const fileDownloadConfigs = [];
-			for (const file of (codeInfo as FileCodeInfo).files) {
-				const downloadConfig = file.getDownloadConfig({host: req.headers.host}, allowMultipart);
-				fileDownloadConfigs.push(downloadConfig);
-			}
-			res.json({configs: fileDownloadConfigs});
-			break;
+	if (codeInfo instanceof FileCodeInfo) {
+		console.log(`File extracted: ${extractionCode}`);
+		// 生成下载配置
+		const fileDownloadConfigs = [];
+		for (const file of codeInfo.files) {
+			const downloadConfig = file.getDownloadConfig({host: req.headers.host});
+			fileDownloadConfigs.push(downloadConfig);
 		}
-		default: {
-			console.log(`Specified code is not a file: ${extractionCode}`);
-			res.status(400).json({message: '指定的提取码类型不是文件。'});
-			break;
-
-		}
+		res.json({configs: fileDownloadConfigs});
+	} else {
+		console.log(`Specified code is not a file: ${extractionCode}`);
+		res.status(400).json({message: '指定的提取码类型不是文件。'});
 	}
 });
 
-// 文件下载（新）
-app.get(Api.DOWN_NEW, (req, res) => {
-	const url = Url.completeUrl(req.url);
-
-	const {id, index} = req.query;
-
-	const file = File.findFileById(id as string);
-
-	if (!file) {
-		console.log(`File not found: ${id}`);
-		res.status(404).send("文件不存在或已过期。");
-		return;
-	} else if (!file.isValidUrl(url)) {
-		console.log(`Invalid signature: ${url}`);
-		res.status(404).send("文件不存在或已过期。");
-		return;
-	}
-	console.log(`File downloaded: ${req.query.id}`);
-
-	// 读取整个流的内容
-	const downloadStream = file.indexDownloadStream(parseInt(index as string));
-	res.on('close', () => {
-		downloadStream.destroy();
-	});
-	downloadStream.pipe(res);
-});
-
-// 文件播放（新）
-app.get(Api.PLAY_NEW, (req, res) => {
+// 文件获取
+app.get(Api.FETCH, (req, res) => {
 	const url = Url.completeUrl(req.url);
 
 	const id = url.searchParams.get('id');
@@ -466,10 +438,14 @@ app.get(Api.PLAY_NEW, (req, res) => {
 		console.log(`Invalid signature: ${url}`);
 		res.status(404).send("文件不存在或已过期。");
 		return;
+	} else if (file.status === FileStatus.REMOVED) {
+		console.log(`File removed: ${id}`);
+		res.status(404).send("文件已被删除。");
+		return;
 	}
-	console.log(`File played: ${req.query.id}`);
+	console.info(`File fetched: ${req.query.id}`);
 
-	// 获取range
+	// range支持
 	let [rangeStartStr, rangeEndStr]: string[] = req.headers.range?.replace("bytes=", "").split("-") ?? ["", ""];
 	if (rangeStartStr || rangeEndStr) {
 		let rangeStart = parseInt(rangeStartStr) || 0;
@@ -478,15 +454,32 @@ app.get(Api.PLAY_NEW, (req, res) => {
 		res.setHeader('Content-Length', rangeEnd - rangeStart + 1);
 		res.setHeader('Accept-Ranges', 'bytes');
 		res.setHeader('Content-Range', `bytes ${rangeStart}-${rangeEnd}/${file.size}`);
+	} else {
+		res.setHeader('Content-Length', file.size);
 	}
 
-	res.type("video/*");
-	res.setHeader('Content-Disposition', `inline; filename=${path.basename(file.originalname)}`);
+	res.type(mime.getType(file.originalname) || "application/octet-stream");
+
+	const type = url.searchParams.get('type');
+	switch (type) {
+		case "download": {
+			res.setHeader('Content-Disposition', `attachment; filename=${path.basename(file.originalname)}`);
+			break;
+		}
+		case "play": {
+			res.setHeader('Content-Disposition', `inline; filename=${path.basename(file.originalname)}`);
+			break;
+		}
+	}
 
 	// 读取整个流的内容
 	let downloadStream = file.rangeDownloadStream(req.headers.range);
 	res.on('close', () => {
-		downloadStream.destroy();
+		downloadStream.destroy(new Error("Connection closed."));
+	});
+	downloadStream.on('error', () => {
+		console.error(`Failed to download file: ${id}`);
+		res.end();
 	});
 	downloadStream.pipe(res);
 });

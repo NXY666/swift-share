@@ -38,5 +38,10 @@ export default defineConfig({
 			assets: ['src/assets/**', 'src/package.json']
 		})
 	],
-	external: ['url', 'express', 'body-parser', 'multer', 'path', 'child_process', 'http', 'ws', 'crypto', 'events', 'stream', 'fs'] // 外部依赖，不会被打包
+	external: [
+		// nodejs内建模块
+		'url', 'path', 'child_process', 'http', 'crypto', 'events', 'stream', 'fs',
+		// 第三方模块
+		'express', 'body-parser', 'multer', 'ws', 'range-parser', 'mime/lite'
+	] // 外部依赖，不会被打包
 });
