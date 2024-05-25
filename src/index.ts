@@ -7,12 +7,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
-import http from "http";
-import {WebSocketServer} from 'ws';
 import DefaultConfig from "@/default_config.js";
 import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
-import {DownloadWebSocketPool} from "@/modules/WebSocket";
 import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
 
@@ -307,11 +304,11 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	for (const file of files) {
 		if (file.size > DefaultConfig.FILE_PART_SIZE) {
 			const newFile = new MultipartFile({name: file.name, size: file.size});
-			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
+			fileUploadConfigs.push(newFile.getUploadConfig());
 			localFiles.push(newFile);
 		} else {
 			const newFile = new SimpleFile({name: file.name, size: file.size});
-			fileUploadConfigs.push(newFile.getUploadConfig({host: req.headers.host}));
+			fileUploadConfigs.push(newFile.getUploadConfig());
 			localFiles.push(newFile);
 		}
 	}
@@ -371,14 +368,6 @@ app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 
 	if (file.upload(index, req.file)) {
 		console.log(`File ${id} part ${index} uploaded.`);
-
-		// 如果上传完成，则关闭所有连接；否则广播文件片段
-		if (file.status === FileStatus.UPLOADED) {
-			downloadWebSocketPool.closeAll(id, 4000, "文件上传完成。");
-		} else {
-			downloadWebSocketPool.broadcast(id, index);
-		}
-
 		res.json({});
 	} else {
 		console.log(`File part upload has been rejected: ${id}`);
@@ -480,52 +469,7 @@ app.get(Api.FETCH, (req, res) => {
 	downloadStream.pipe(res);
 });
 
-const server = http.createServer(app);
-
-const wss = new WebSocketServer({server});
-
-const downloadWebSocketPool = new DownloadWebSocketPool();
-
-// 监听WebSocket连接事件
-wss.on('connection', (ws, req) => {
-	const url = new URL(req.url, "ws://websocket.client/");
-	const {searchParams} = url;
-	switch (url.pathname) {
-		case Api.WS_DOWN: {
-			const id = searchParams.get('id');
-
-			const file = File.findFileById(id);
-
-			if (!file) {
-				console.log(`File not found: ${id}`);
-				ws.close(4001, "文件不存在或已过期。");
-				return;
-			} else if (!file.isValidUrl(url)) {
-				console.log(`Invalid signature: ${url}`);
-				ws.close(4001, "文件不存在或已过期。");
-				return;
-			} else if (file.status === FileStatus.UPLOADED) {
-				console.log(`File uploaded: ${id}`);
-				ws.close(4000, "文件已上传完成。");
-				return;
-			} else if (file.status === FileStatus.REMOVED) {
-				console.log(`File removed: ${id}`);
-				ws.close(4001, "文件已被删除。");
-				return;
-			}
-
-			// 添加到连接池
-			downloadWebSocketPool.addConnection(id, ws);
-			break;
-		}
-		default: {
-			ws.close();
-			break;
-		}
-	}
-});
-
-server.listen(port, () => {
+app.listen(port, () => {
 	console.log(`Server is running on http://localhost:${port}/ .`);
 
 	// 每分钟清理过期的文本信息

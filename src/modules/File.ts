@@ -2,7 +2,7 @@ import DefaultConfig from "@/default_config.js";
 import crypto from "crypto";
 import fs from "fs";
 import {Api, Url} from "./Url";
-import {MergeablePassThrough, Stream} from "./Stream";
+import {MergeablePassThrough} from "./Stream";
 import EventEmitter from "events";
 import {PassThrough} from "stream";
 import RangeParser from "range-parser";
@@ -14,27 +14,12 @@ export class FileStatus {
 	static REMOVED = 3;
 }
 
-type DownloadPart = {
-	index: number;
-	url: string;
-	range: number[];
-	uploaded: boolean;
-}
-
 type DownloadConfig = {
 	id: ObjectKey;
 	name: string;
 	size: number;
-	/**
-	 * @deprecated
-	 */
-	parts: DownloadPart[];
 	downUrl: string;
 	playUrl: string;
-	/**
-	 * @deprecated
-	 */
-	wsUrl: string;
 	removed: boolean;
 }
 
@@ -48,7 +33,6 @@ type UploadConfig = {
 	key: crypto.UUID;
 	name: string;
 	parts: UploadPart[];
-	wsUrl: string;
 }
 
 export abstract class File extends EventEmitter {
@@ -59,11 +43,11 @@ export abstract class File extends EventEmitter {
 	/**
 	 * 文件ID
 	 */
-	#id: number = File.#nextId++;
+	readonly #id: number = File.#nextId++;
 	/**
 	 * 访问 UUID
 	 */
-	#key: crypto.UUID = crypto.randomUUID();
+	readonly #key: crypto.UUID = crypto.randomUUID();
 	/**
 	 * 文件状态
 	 */
@@ -71,20 +55,20 @@ export abstract class File extends EventEmitter {
 	/**
 	 * 文件名
 	 */
-	#name: string;
+	readonly #name: string;
 	/**
 	 * 文件大小
 	 */
-	#size: number;
+	readonly #size: number;
 	/**
 	 * 分片大小
 	 */
-	#partSize: number = DefaultConfig.FILE_PART_SIZE;
+	readonly #partSize: number = DefaultConfig.FILE_PART_SIZE;
 
 	/**
 	 * 上传最后期限
 	 */
-	#uploadDeadline: number = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
+	readonly #uploadDeadline: number = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
 
 	/**
 	 * 上传检查点
@@ -172,13 +156,12 @@ export abstract class File extends EventEmitter {
 	 * 获取上传配置
 	 * @returns {{id: number, key: UUID, name: string, parts: {index: number, range?: [number, number]}[], wsUrl: string}}
 	 */
-	getUploadConfig({host}): UploadConfig {
+	getUploadConfig(): UploadConfig {
 		return {
 			id: this.id,
 			key: this.key,
 			name: this.name,
 			parts: [],
-			wsUrl: this.getSignedUploadWsUrl({host})
 		};
 	}
 
@@ -210,18 +193,11 @@ export abstract class File extends EventEmitter {
 			id: this.id,
 			name: this.name,
 			size: this.size,
-			parts: [],
 			downUrl: this.getSignedDownloadUrl({protocol, host}),
 			playUrl: this.getSignedPlayUrl({protocol, host}),
-			wsUrl: this.getSignedDownloadWsUrl({host}),
 			removed: this.status === FileStatus.REMOVED
 		};
 	}
-
-	/**
-	 * @deprecated
-	 */
-	abstract indexDownloadStream(index: number): fs.ReadStream | PassThrough;
 
 	abstract rangeDownloadStream(range: string): fs.ReadStream | PassThrough;
 
@@ -240,16 +216,6 @@ export abstract class File extends EventEmitter {
 
 	abstract remove(): void;
 
-	/**
-	 * @deprecated
-	 */
-	getSignedPartUrl({host}, index = -1) {
-		const urlObj = Url.mergeUrl({protocol: "http", host, pathname: Api.DOWN_NEW});
-		urlObj.searchParams.set("id", this.id.toString());
-		urlObj.searchParams.set("index", index.toString());
-		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
-	}
-
 	getSignedDownloadUrl({protocol, host}) {
 		const urlObj = Url.mergeUrl({protocol, host, pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
@@ -262,22 +228,6 @@ export abstract class File extends EventEmitter {
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("type", "play");
 		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
-	}
-
-	getSignedDownloadWsUrl({host}) {
-		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_DOWN});
-		wsUrlObj.searchParams.set("id", this.id.toString());
-		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
-	}
-
-	/**
-	 * @deprecated
-	 */
-	getSignedUploadWsUrl({host}) {
-		const wsUrlObj = Url.mergeUrl({protocol: "ws", host, pathname: Api.WS_UPLOAD});
-		wsUrlObj.searchParams.set("id", this.id.toString());
-		wsUrlObj.searchParams.set("key", this.key.toString());
-		return Url.sign(wsUrlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
 	}
 
 	/**
@@ -304,8 +254,8 @@ export class SimpleFile extends File {
 	/**
 	 * @inheritDoc
 	 */
-	getUploadConfig({host}) {
-		const uploadConfig = super.getUploadConfig({host});
+	getUploadConfig(): UploadConfig {
+		const uploadConfig = super.getUploadConfig();
 		uploadConfig.parts.push({
 			index: -1
 		});
@@ -343,56 +293,6 @@ export class SimpleFile extends File {
 		return true;
 	};
 
-	/**
-	 * @inheritDoc
-	 */
-	getDownloadConfig({protocol, host}: { protocol?: string; host?: string } = {}): DownloadConfig {
-		const downloadConfig = super.getDownloadConfig({protocol, host});
-		if (this.partCount > 1) {
-			for (let i = 0; i < this.partCount; i++) {
-				// 最后一片可能不完整
-				downloadConfig.parts.push({
-					index: i,
-					range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-					url: this.getSignedPartUrl({host}, i),
-					uploaded: this.status === FileStatus.UPLOADED
-				});
-			}
-		} else {
-			downloadConfig.parts.push({
-				index: -1,
-				range: [0, this.size],
-				url: this.getSignedPartUrl({host}),
-				uploaded: this.status === FileStatus.UPLOADED
-			});
-		}
-		return downloadConfig;
-	}
-
-	indexDownloadStream(index: number) {
-		if (index === -1) {
-			const downloadConfig = this.getDownloadConfig(undefined);
-			const activePart = downloadConfig.parts[0];
-			if (activePart.uploaded) {
-				// 返回整个文件流
-				return fs.createReadStream(this.#path);
-			} else {
-				return null;
-			}
-		} else {
-			const downloadConfig = this.getDownloadConfig(undefined);
-			const activePart = downloadConfig.parts[index];
-			if (activePart.uploaded) {
-				// 返回分片文件流
-				return fs.createReadStream(this.#path, {
-					start: activePart.range[0], end: activePart.range[1] - 1
-				});
-			} else {
-				return null;
-			}
-		}
-	}
-
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
 		let ranges = RangeParser(this.size, range, {combine: true});
@@ -422,8 +322,8 @@ export class MultipartFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig({host}: { host?: string } = {}) {
-		const uploadConfig = super.getUploadConfig({host});
+	getUploadConfig(): UploadConfig {
+		const uploadConfig = super.getUploadConfig();
 		for (let i = 0; i < this.partCount; i++) {
 			// 最后一片可能不完整
 			uploadConfig.parts.push({
@@ -461,57 +361,6 @@ export class MultipartFile extends File {
 		this.emit("upload", index, file);
 
 		return true;
-	}
-
-	getDownloadConfig({protocol, host}: { protocol?: string; host?: string } = {}): DownloadConfig {
-		const downloadConfig = super.getDownloadConfig({host});
-		if (!downloadConfig.removed) {
-			if (this.partCount > 1) {
-				for (let i = 0; i < this.partCount; i++) {
-					// 最后一片可能不完整
-					downloadConfig.parts.push({
-						index: i,
-						range: [i * this.partSize, Math.min((i + 1) * this.partSize, this.size)],
-						url: this.getSignedPartUrl({host}, i),
-						uploaded: this.#paths[i] !== undefined
-					});
-				}
-			} else {
-				downloadConfig.parts.push({
-					index: -1,
-					range: [0, this.size],
-					url: this.getSignedPartUrl({host}),
-					uploaded: this.status === FileStatus.UPLOADED
-				});
-			}
-		}
-		return downloadConfig;
-	}
-
-	indexDownloadStream(index: number) {
-		if (index === -1) {
-			const downloadConfig = this.getDownloadConfig(undefined);
-			const activePart = downloadConfig.parts[0];
-			if (activePart.uploaded) {
-				// 返回整个文件流
-				return Stream.mergeStreams(this.#paths.map(function (path) {
-					return fs.createReadStream(path);
-				}));
-			} else {
-				// 返回空流
-				return Stream.mergeStreams([]);
-			}
-		} else {
-			const downloadConfig = this.getDownloadConfig({host: undefined});
-			const activePart = downloadConfig.parts[index];
-			if (activePart.uploaded) {
-				// 返回分片文件流
-				return fs.createReadStream(this.#paths[index]);
-			} else {
-				// 返回空流
-				return Stream.mergeStreams([]);
-			}
-		}
 	}
 
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
