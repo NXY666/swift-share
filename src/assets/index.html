@@ -1593,7 +1593,7 @@
 						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
 					});
 
-					checkboxLabel.title = downloadConfig.removed ? '该文件未成功上传或已被移除' : downloadConfig.name;
+					checkboxLabel.title = downloadConfig.removed ? '这个文件未上传成功或已被移除' : downloadConfig.name;
 					checkboxLabel.appendChild(checkbox);
 					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
 
@@ -1687,6 +1687,11 @@
 					}
 					.dialog-radio-list li label:hover {
 						background-color: var(--dialog-background-color);
+					}
+					.dialog-radio-list li label.disabled {
+						opacity: 0.5;
+						cursor: not-allowed;
+						background-color: transparent;
 					}`;
 
 				this.#radioList.classList.add('dialog-radio-list');
@@ -1694,9 +1699,16 @@
 					const radioListItem = document.createElement('li');
 					const radioLabel = document.createElement('label');
 					const radio = document.createElement('input');
+					if (playConfig.removed) {
+						radioLabel.classList.add('disabled');
+					}
+
 					radio.type = 'radio';
 					radio.name = 'play';
 					radio.value = index;
+					radio.disabled = playConfig.removed;
+
+					radioLabel.title = playConfig.removed ? '这个文件未上传成功或已被移除' : playConfig.name;
 					radioLabel.appendChild(radio);
 					radioLabel.appendChild(document.createTextNode(` ${playConfig.name}`));
 
