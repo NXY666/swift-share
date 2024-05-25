@@ -1581,6 +1581,7 @@
 					if (downloadConfig.removed) {
 						checkboxLabel.classList.add('disabled');
 					}
+
 					checkbox.type = 'checkbox';
 					checkbox.value = index;
 					checkbox.disabled = downloadConfig.removed;
@@ -1591,6 +1592,8 @@
 						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
 						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
 					});
+
+					checkboxLabel.title = downloadConfig.removed ? '该文件未成功上传或已被移除' : downloadConfig.name;
 					checkboxLabel.appendChild(checkbox);
 					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
 

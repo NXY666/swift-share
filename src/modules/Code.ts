@@ -8,8 +8,8 @@ export class CodeStore {
 
 	/**
 	 * 获取提取码信息
-	 * @param {string} code 提取码
-	 * @return {FileCodeInfo|TextCodeInfo|ShareCodeInfo} 提取码信息
+	 * @param code 提取码
+	 * @return 提取码信息
 	 */
 	static getCodeInfo(code: string): CodeInfo {
 		return this.#store[code.toLowerCase()];
@@ -17,7 +17,7 @@ export class CodeStore {
 
 	/**
 	 * 移除提取码信息
-	 * @param {string} code 提取码
+	 * @param code 提取码
 	 */
 	static removeCodeInfo(code: string): void {
 		delete this.#store[code.toLowerCase()];
@@ -59,10 +59,10 @@ export class CodeStore {
 		return crypto.randomBytes(length).toString('hex');
 	}
 
-	static getUsedSpace(type: string) {
+	static getUsedSpace(type: CodeInfoTypes): number {
 		let size = 0;
 		for (const codeInfo of Object.values(this.#store)) {
-			if (codeInfo.type === type) {
+			if (codeInfo instanceof type) {
 				size += codeInfo.size;
 			}
 		}
@@ -70,23 +70,15 @@ export class CodeStore {
 	}
 }
 
-class CodeInfo {
+abstract class CodeInfo {
 	#code: string = null;
-	#type: string;
-	#size: number;
 
-	constructor(type: string, size = 0) {
-		this.#type = type;
-		this.#size = size;
-	}
+	abstract readonly expireInterval: number;
 
-	_expireTime = Infinity;
+	#createTime: number = Date.now();
 
-	/**
-	 * @return {number}
-	 */
-	get expireTime() {
-		return this._expireTime;
+	get expireTime(): number {
+		return this.#createTime + this.expireInterval;
 	}
 
 	get code() {
@@ -99,21 +91,16 @@ class CodeInfo {
 		}
 	}
 
-	get type() {
-		return this.#type;
-	}
-
-	get size() {
-		return this.#size;
-	}
+	abstract get size(): number;
 
 	/**
 	 * 获取用于刷新上传文件检查点的URL
+	 * @param protocol
 	 * @param host
 	 * @return {string}
 	 */
-	getSignedCheckpointUrl({host}): string {
-		const url = Url.mergeUrl({protocol: "http", host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
+	getSignedCheckpointUrl({protocol, host}): string {
+		const url = Url.mergeUrl({protocol, host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
 		return Url.sign(url.toString(), DefaultConfig.FILE_EXPIRE_INTERVAL);
 	}
@@ -135,7 +122,7 @@ class CodeInfo {
 	}
 
 	hasExpired() {
-		return Date.now() > this._expireTime;
+		return Date.now() > this.expireTime;
 	}
 
 	remove() {
@@ -143,34 +130,37 @@ class CodeInfo {
 	}
 }
 
+type CodeInfoTypes = typeof FileCodeInfo | typeof TextCodeInfo | typeof ShareCodeInfo;
+
 export class TextCodeInfo extends CodeInfo {
 	readonly #text: string;
 
+	expireInterval = DefaultConfig.TEXT_EXPIRE_INTERVAL;
+
 	constructor(text: string) {
-		super('text', text.length);
+		super();
 		this.#text = text;
-		this._expireTime = Date.now() + DefaultConfig.TEXT_EXPIRE_INTERVAL;
 	}
 
 	get text() {
 		return this.#text;
 	}
+
+	get size(): number {
+		return this.#text.length;
+	}
 }
 
 export class FileCodeInfo extends CodeInfo {
+	expireInterval = DefaultConfig.FILE_EXPIRE_INTERVAL;
 	/**
 	 * 文件列表
 	 * @type {File[]}
 	 */
-	#files: File[];
-
-	/**
-	 * @param {File[]} files
-	 */
+	readonly #files: File[];
 	constructor(files: File[]) {
-		super('files', files.reduce((size, file) => size + file.size, 0));
+		super();
 		this.#files = files;
-		this._expireTime = Date.now() + DefaultConfig.FILE_EXPIRE_INTERVAL + DefaultConfig.LINK_EXPIRE_INTERVAL;
 	}
 
 	/**
@@ -205,17 +195,27 @@ export class FileCodeInfo extends CodeInfo {
 		super.remove();
 		this.#files.forEach(file => file.remove());
 	}
+
+	get size(): number {
+		return this.#files.reduce((size, file) => file.status !== FileStatus.REMOVED ? size + file.size : size, 0);
+	}
 }
 
 export class ShareCodeInfo extends CodeInfo {
 	readonly #path: string;
 
+	expireInterval = DefaultConfig.LINK_EXPIRE_INTERVAL;
+
 	constructor(path: string) {
-		super('share', 0);
+		super();
 		this.#path = path;
 	}
 
 	get path() {
 		return this.#path;
+	}
+
+	get size(): number {
+		return 0;
 	}
 }

@@ -249,7 +249,7 @@ app.get(Api.UPLOAD_FILES_CAPACITY, (_req, res) => {
 app.post(Api.UPLOAD_TEXT_NEW, (req, res) => {
 	const text = req.body.toString();
 
-	let storeUsedSize = CodeStore.getUsedSpace("text");
+	let storeUsedSize = CodeStore.getUsedSpace(TextCodeInfo);
 
 	if (storeUsedSize + text.length > config.TEXT_STORE_CAPACITY) {
 		console.log(`Text store is full: ${storeUsedSize} + ${text.length} > ${config.TEXT_STORE_CAPACITY}`);
@@ -280,17 +280,12 @@ app.get(Api.EXTRACT_TEXT_NEW, (req, res) => {
 		return;
 	}
 
-	switch (codeInfo.type) {
-		case "text": {
-			console.log(`Text extracted: ${extractionCode}`);
-			res.json({text: (codeInfo as TextCodeInfo).text});
-			break;
-		}
-		default: {
-			console.log(`Specified code is not a text: ${extractionCode}`);
-			res.status(400).json({message: '指定的提取码类型不是文本。'});
-			break;
-		}
+	if (codeInfo instanceof TextCodeInfo) {
+		console.log(`Text extracted: ${extractionCode}`);
+		res.json({text: (codeInfo).text});
+	} else {
+		console.log(`Specified code is not a text: ${extractionCode}`);
+		res.status(400).json({message: '指定的提取码类型不是文本。'});
 	}
 });
 
@@ -298,9 +293,9 @@ app.get(Api.EXTRACT_TEXT_NEW, (req, res) => {
 app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	const {files} = req.body;
 
-	let storeUsedSize = CodeStore.getUsedSpace("files");
+	let storeUsedSize = CodeStore.getUsedSpace(FileCodeInfo);
 
-	let filesSize = files.reduce((size, file) => size + file.size, 0);
+	let filesSize = files.reduce((size: number, file: File) => size + file.size, 0);
 
 	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
 		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
@@ -325,7 +320,8 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	CodeStore.saveCodeInfo(codeInfo);
 
 	res.json({
-		code: codeInfo.code, checkpointUrl: codeInfo.getSignedCheckpointUrl({host: req.headers.host}),
+		code: codeInfo.code,
+		checkpointUrl: codeInfo.getSignedCheckpointUrl({protocol: req.protocol, host: req.headers.host}),
 		configs: fileUploadConfigs
 	});
 });
