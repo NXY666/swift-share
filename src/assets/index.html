@@ -1511,7 +1511,7 @@
 						// 更新全选框状态
 						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
 						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
-						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked || checkbox.disabled);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
 					});
 
 					checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;

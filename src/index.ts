@@ -349,7 +349,7 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 
 	codeInfo.checkpoint();
 
-	res.json({});
+	res.status(204).end();
 });
 
 // 文件上传（新）
@@ -368,7 +368,7 @@ app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 
 	if (file.upload(index, req.file)) {
 		console.log(`File ${id} part ${index} uploaded.`);
-		res.json({});
+		res.status(204).end();
 	} else {
 		console.log(`File part upload has been rejected: ${id}`);
 		res.status(403).json({message: '上传被拒绝。'});
