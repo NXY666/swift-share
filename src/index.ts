@@ -302,7 +302,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 	const fileUploadConfigs = [], localFiles = [];
 	for (const file of files) {
-		if (file.size > DefaultConfig.FILE_PART_SIZE) {
+		if (file.size > DefaultConfig.STORE.FILE.PART_SIZE) {
 			const newFile = new MultipartFile({name: file.name, size: file.size});
 			fileUploadConfigs.push(newFile.getUploadConfig());
 			localFiles.push(newFile);
@@ -448,11 +448,11 @@ app.get(Api.FETCH, (req, res) => {
 	const type = url.searchParams.get('type');
 	switch (type) {
 		case "download": {
-			res.setHeader('Content-Disposition', `attachment; filename=${path.basename(file.originalname)}`);
+			res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(file.name)}`);
 			break;
 		}
 		case "play": {
-			res.setHeader('Content-Disposition', `inline; filename=${path.basename(file.originalname)}`);
+			res.setHeader('Content-Disposition', `inline; filename=${encodeURIComponent(file.name)}`);
 			break;
 		}
 	}

@@ -63,12 +63,12 @@ export abstract class File extends EventEmitter {
 	/**
 	 * 分片大小
 	 */
-	readonly #partSize: number = DefaultConfig.FILE_PART_SIZE;
+	readonly #partSize: number = DefaultConfig.STORE.FILE.PART_SIZE;
 
 	/**
 	 * 上传最后期限
 	 */
-	readonly #uploadDeadline: number = Date.now() + DefaultConfig.FILE_UPLOAD_INTERVAL;
+	readonly #uploadDeadline: number = Date.now() + DefaultConfig.STORE.FILE.UPLOAD_INTERVAL;
 
 	/**
 	 * 上传检查点
@@ -89,7 +89,7 @@ export abstract class File extends EventEmitter {
 				this.remove();
 				console.log(`File ${this.id} reached upload deadline but not uploaded.`);
 			}
-		}, DefaultConfig.FILE_UPLOAD_INTERVAL);
+		}, DefaultConfig.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
 	get id() {
@@ -143,7 +143,7 @@ export abstract class File extends EventEmitter {
 	hasUploadTimeout() {
 		// 检查点时间间隔超过5分钟，或者时间超过最后期限
 		const now = Date.now();
-		return now - this.#checkpoint > DefaultConfig.FILE_UPLOAD_CHECKPOINT_INTERVAL || now > this.#uploadDeadline;
+		return now - this.#checkpoint > DefaultConfig.STORE.FILE.UPLOAD_CHECKPOINT_INTERVAL || now > this.#uploadDeadline;
 	}
 
 	// 因为子类要用，所以不能用 private
@@ -220,14 +220,14 @@ export abstract class File extends EventEmitter {
 		const urlObj = Url.mergeUrl({protocol, host, pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("type", "download");
-		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
+		return Url.sign(urlObj.toString(), DefaultConfig.STORE.LINK.EXPIRE_INTERVAL);
 	}
 
 	getSignedPlayUrl({protocol, host}) {
 		const urlObj = Url.mergeUrl({protocol, host, pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("type", "play");
-		return Url.sign(urlObj.toString(), DefaultConfig.LINK_EXPIRE_INTERVAL);
+		return Url.sign(urlObj.toString(), DefaultConfig.STORE.LINK.EXPIRE_INTERVAL);
 	}
 
 	/**

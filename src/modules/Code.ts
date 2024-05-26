@@ -45,12 +45,12 @@ export class CodeStore {
 	static #getUniqueCode() {
 		let failedCount = 0;
 		while (true) {
-			const code = CodeStore.#generateCode(DefaultConfig.EXTRACT_CODE_LENGTH);
+			const code = CodeStore.#generateCode(DefaultConfig.CODE.EXTRACT_LENGTH);
 			if (!this.#store[code]) {
 				return code;
 			}
 			if (++failedCount > 64) {
-				DefaultConfig.EXTRACT_CODE_LENGTH++;
+				DefaultConfig.CODE.EXTRACT_LENGTH++;
 			}
 		}
 	}
@@ -102,7 +102,7 @@ abstract class CodeInfo {
 	getSignedCheckpointUrl({protocol, host}): string {
 		const url = Url.mergeUrl({protocol, host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
-		return Url.sign(url.toString(), DefaultConfig.FILE_EXPIRE_INTERVAL);
+		return Url.sign(url.toString(), DefaultConfig.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
 	/**
@@ -135,7 +135,7 @@ type CodeInfoTypes = typeof FileCodeInfo | typeof TextCodeInfo | typeof ShareCod
 export class TextCodeInfo extends CodeInfo {
 	readonly #text: string;
 
-	expireInterval = DefaultConfig.TEXT_EXPIRE_INTERVAL;
+	expireInterval = DefaultConfig.STORE.TEXT.EXPIRE_INTERVAL;
 
 	constructor(text: string) {
 		super();
@@ -152,12 +152,13 @@ export class TextCodeInfo extends CodeInfo {
 }
 
 export class FileCodeInfo extends CodeInfo {
-	expireInterval = DefaultConfig.FILE_EXPIRE_INTERVAL;
 	/**
 	 * 文件列表
-	 * @type {File[]}
 	 */
 	readonly #files: File[];
+
+	expireInterval = DefaultConfig.STORE.FILE.EXPIRE_INTERVAL;
+
 	constructor(files: File[]) {
 		super();
 		this.#files = files;
@@ -204,7 +205,7 @@ export class FileCodeInfo extends CodeInfo {
 export class ShareCodeInfo extends CodeInfo {
 	readonly #path: string;
 
-	expireInterval = DefaultConfig.LINK_EXPIRE_INTERVAL;
+	expireInterval = DefaultConfig.STORE.LINK.EXPIRE_INTERVAL;
 
 	constructor(path: string) {
 		super();
