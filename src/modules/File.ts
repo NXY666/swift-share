@@ -286,9 +286,19 @@ export class SimpleFile extends File {
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
 		let ranges = RangeParser(this.size, range, {combine: true});
-		if (ranges === -2 || ranges === -1 || ranges.length !== 1) {
+		// 提供的值不合法，使用默认值+文件大小
+
+		if (!Array.isArray(ranges) || ranges.length !== 1) {
 			ranges = RangeParser(this.size, `bytes=0-${this.size - 1}`, {combine: true});
 		}
+
+		// 无法解析的范围，返回空流
+		if (!Array.isArray(ranges)) {
+			const pt = new PassThrough();
+			pt.end();
+			return pt;
+		}
+
 		const {start: startNum, end: endNum} = ranges[0];
 
 		if (this.status === FileStatus.UPLOADED) {

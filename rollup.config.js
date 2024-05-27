@@ -24,7 +24,7 @@ export default defineConfig({
 	output: {
 		dir: 'dist',
 		format: 'es',
-		sourcemap: isProd ? false : 'hidden'
+		sourcemap: isProd ? false : 'inline'
 	},
 	plugins: [
 		typescript({
