@@ -42,6 +42,6 @@ export default defineConfig({
 		// nodejs内建模块
 		'url', 'path', 'child_process', 'http', 'crypto', 'events', 'stream', 'fs',
 		// 第三方模块
-		'express', 'body-parser', 'multer', 'ws', 'range-parser', 'mime/lite'
+		'express', 'body-parser', 'multer', 'ws', 'range-parser', 'mime/lite', 'commander'
 	] // 外部依赖，不会被打包
 });

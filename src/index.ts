@@ -1,58 +1,23 @@
 #!/usr/bin/env node
 
-import {fileURLToPath, pathToFileURL} from "url";
 import express from "express";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
-import DefaultConfig from "@/default_config.js";
 import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
 import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
-
-function getAbsPath(Path = "", baseDir = fileURLToPath(import.meta.url)) {
-	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
-}
-function deepMergeObject(def: object, act: object): any {
-	if (typeof def == "undefined" || def == null) {
-		return act;
-	} else if (typeof act == "undefined" || act == null) {
-		return def;
-	}
-
-	if (typeof def !== "object" || typeof act !== "object") {
-		return typeof def !== typeof act ? def : act;
-	} else if (Array.isArray(def) !== Array.isArray(act)) {
-		return def;
-	} else if (Array.isArray(def) && Array.isArray(act)) {
-		return def.concat(act);
-	}
-
-	let res = {};
-	for (let k in def) {
-		res[k] = deepMergeObject(def[k], act[k]);
-	}
-	for (let k in act) {
-		res[k] = deepMergeObject(def[k], act[k]);
-	}
-	return res;
-}
-
-// 定义路径
-const DataDirPath = path.join(process.platform === "win32" ? process.env.APPDATA : process.env.HOME, './.swift-share');
-
-const DefaultConfigPath = './default_config.js';
-const ConfigPath = './config.js';
-const ResourcePath = './assets';
-const FilePath = './files';
-
-const DefaultConfigAbsolutePath = getAbsPath(DefaultConfigPath);
-const ConfigAbsolutePath = getAbsPath(ConfigPath, DataDirPath);
-const ResourceAbsolutePath = getAbsPath(ResourcePath);
-const FileAbsolutePath = getAbsPath(FilePath, DataDirPath);
+import {
+	ConfigAbsolutePath,
+	DefaultConfigAbsolutePath,
+	FileAbsolutePath,
+	getConfig,
+	ResourcePath
+} from "@/configs/Config";
+import {Command} from "commander";
 
 // 路径检查和初始化
 if (!fs.existsSync(ConfigAbsolutePath)) {
@@ -66,6 +31,16 @@ if (fs.existsSync(FileAbsolutePath)) {
 	}
 }
 fs.mkdirSync(FileAbsolutePath, {recursive: true});
+
+const program = new Command();
+
+program
+	.option('--edit-config', '编辑配置文件')
+	.option('--reset-config', '重置配置文件');
+
+program.parse(process.argv);
+
+const options = program.opts();
 
 // 配置
 function runCommand(command: string, stdio: StdioOptions = 'ignore') {
@@ -122,7 +97,8 @@ function openEditor(path: string) {
 					'"D:\\Program Files (x86)\\Notepad++\\notepad++.exe" -noPlugin -notabbar {{path}}'
 				]
 			},
-			{name: 'notepad', command: 'notepad {{path}}'}
+			{name: 'notepad', command: 'notepad {{path}}'},
+			{name: 'explorer', command: 'start "" "{{path}}"'},
 		]
 	};
 	const platform = process.platform;
@@ -146,16 +122,18 @@ function openEditor(path: string) {
 	}
 	throw new Error(`No editor found for platform: ${platform}`);
 }
-if (process.argv.includes('-config')) {
-	openEditor(ConfigAbsolutePath);
-	process.exit(0);
-} else if (process.argv.includes('-reset')) {
+if (options.resetConfig) {
 	fs.rmSync(ConfigAbsolutePath);
 	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
 	console.log('Config file has been reset.');
 	process.exit(0);
 }
-const config = deepMergeObject(DefaultConfig, await import(pathToFileURL(ConfigAbsolutePath).toString()));
+if (options.editConfig) {
+	openEditor(ConfigAbsolutePath);
+	process.exit(0);
+}
+
+const CONFIG = await getConfig();
 
 // noinspection JSUnusedGlobalSymbols
 const storage = multer.diskStorage({
@@ -179,7 +157,7 @@ const storage = multer.diskStorage({
 					if (err) {
 						console.error(`Failed to delete aborted file: ${fullFilePath}`);
 					} else {
-						console.log(`Aborted file deleted: ${fullFilePath}`);
+						console.info(`Aborted file deleted: ${fullFilePath}`);
 					}
 				});
 			});
@@ -190,7 +168,7 @@ const storage = multer.diskStorage({
 const upload = multer({storage});
 
 const app = express();
-const port = config.PORT;
+const port = CONFIG.PORT;
 
 // 解析文本和JSON
 app.use(bodyParser.text({limit: Infinity}));
@@ -199,16 +177,46 @@ app.use(bodyParser.json({limit: Infinity}));
 // 设置静态资源目录
 app.use(express.static(ResourcePath));
 
+// 为Request添加signed属性
+declare global {
+	namespace Express {
+		// noinspection JSUnusedGlobalSymbols
+		interface Request {
+			signed?: boolean;
+		}
+	}
+}
+
+app.use((req, _res, next) => {
+	// 获取协议
+	const protocol = req.protocol;
+
+	// 获取主机名
+	const host = req.get('host');
+
+	// 获取路径和查询参数
+	const originalUrl = req.originalUrl;
+
+	// 构建完整的URL
+	const fullUrl = `${protocol}://${host}${originalUrl}`;
+
+	// 验证URL
+	req.signed = Url.check(fullUrl);
+
+	// 调用下一个中间件或路由处理器
+	next();
+});
+
 // biu~
 app.post(Api.BIU, (req, res) => {
 	let matched = true, consoleText: string, scriptText: string;
-	if (req.body === config.BIU.GET_ALL_CODE_COMMAND) {
+	if (req.body === CONFIG.BIU.GET_ALL_CODE_COMMAND) {
 		console.log('biu~GET_ALL_CODE_COMMAND');
 		consoleText = "暂不支持。";
-	} else if (req.body === config.BIU.CLEAR_ALL_CODE_COMMAND) {
+	} else if (req.body === CONFIG.BIU.CLEAR_ALL_CODE_COMMAND) {
 		console.log('biu~CLEAR_ALL_CODE_COMMAND');
 		consoleText = "暂不支持。";
-	} else if (req.body === config.BIU.OPEN_CONSOLE_COMMAND) {
+	} else if (req.body === CONFIG.BIU.OPEN_CONSOLE_COMMAND) {
 		console.log('biu~OPEN_CONSOLE_COMMAND');
 		consoleText = "已启动虚拟控制台。";
 		scriptText = `(function () { var script = document.createElement('script'); script.src="https://cdn.jsdelivr.net/npm/eruda"; document.body.append(script); script.onload = function () { eruda.init(); } })();`;
@@ -229,17 +237,17 @@ app.get(Api.API, (_req, res) => {
 
 // 提取码长度
 app.get(Api.EXTRACT_CODE_LENGTH, (_req, res) => {
-	res.json({length: config.EXTRACT_CODE_LENGTH});
+	res.json({length: CONFIG.CODE.EXTRACT_LENGTH});
 });
 
 // 文本暂存空间
 app.get(Api.UPLOAD_TEXT_CAPACITY, (_req, res) => {
-	res.json({capacity: config.TEXT_STORE_CAPACITY});
+	res.json({capacity: CONFIG.STORE.TEXT.CAPACITY});
 });
 
 // 文件暂存空间
 app.get(Api.UPLOAD_FILES_CAPACITY, (_req, res) => {
-	res.json({capacity: config.FILE_STORE_CAPACITY});
+	res.json({capacity: CONFIG.STORE.FILE.CAPACITY});
 });
 
 // 文本上传（新）
@@ -248,8 +256,8 @@ app.post(Api.UPLOAD_TEXT_NEW, (req, res) => {
 
 	let storeUsedSize = CodeStore.getUsedSpace(TextCodeInfo);
 
-	if (storeUsedSize + text.length > config.TEXT_STORE_CAPACITY) {
-		console.log(`Text store is full: ${storeUsedSize} + ${text.length} > ${config.TEXT_STORE_CAPACITY}`);
+	if (storeUsedSize + text.length > CONFIG.STORE.TEXT.CAPACITY) {
+		console.log(`Text store is full: ${storeUsedSize} + ${text.length} > ${CONFIG.STORE.TEXT.CAPACITY}`);
 		res.status(403).json({message: '文本暂存空间已满，请稍后再试。'});
 		return;
 	}
@@ -294,15 +302,15 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 	let filesSize = files.reduce((size: number, file: File) => size + file.size, 0);
 
-	if (storeUsedSize + filesSize > config.FILE_STORE_CAPACITY) {
-		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${config.FILE_STORE_CAPACITY}`);
+	if (storeUsedSize + filesSize > CONFIG.STORE.FILE.CAPACITY) {
+		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${CONFIG.STORE.FILE.CAPACITY}`);
 		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
 		return;
 	}
 
 	const fileUploadConfigs = [], localFiles = [];
 	for (const file of files) {
-		if (file.size > DefaultConfig.STORE.FILE.PART_SIZE) {
+		if (file.size > CONFIG.STORE.FILE.PART_SIZE) {
 			const newFile = new MultipartFile({name: file.name, size: file.size});
 			fileUploadConfigs.push(newFile.getUploadConfig());
 			localFiles.push(newFile);
@@ -325,15 +333,13 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 // 文件上传检查点
 app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
-	const url = Url.completeUrl(req.url);
-
 	const {code} = req.query;
 
 	const codeInfo = CodeStore.getCodeInfo(code as string);
 
-	if (!Url.check(url)) {
-		console.log(`Invalid signature: ${url}`);
-		res.status(403).json({message: '无效的签名。'});
+	if (!req.signed) {
+		console.log(`Invalid signature.`);
+		res.status(403).json({message: '请求不够安全。'});
 		return;
 	} else if (!codeInfo) {
 		console.log(`Code not found or has expired: ${code}`);
@@ -361,16 +367,16 @@ app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 	const file = File.findFileById(id);
 
 	if (file?.key !== key) {
-		console.log(`Invalid file or key: ${key}`);
+		console.error(`Invalid file or key: ${key}`);
 		res.status(403).json({message: '无效的文件或密钥。'});
 		return;
 	}
 
 	if (file.upload(index, req.file)) {
-		console.log(`File ${id} part ${index} uploaded.`);
+		console.info(`File ${id} part ${index} uploaded.`);
 		res.status(204).end();
 	} else {
-		console.log(`File part upload has been rejected: ${id}`);
+		console.error(`File ${id} part ${index} upload has been rejected.`);
 		res.status(403).json({message: '上传被拒绝。'});
 	}
 });
@@ -393,7 +399,7 @@ app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
 	}
 
 	if (codeInfo instanceof FileCodeInfo) {
-		console.log(`File extracted: ${extractionCode}`);
+		console.info(`File extracted: ${extractionCode}`);
 		// 生成下载配置
 		const fileDownloadConfigs = [];
 		for (const file of codeInfo.files) {
@@ -402,36 +408,34 @@ app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
 		}
 		res.json({configs: fileDownloadConfigs});
 	} else {
-		console.log(`Specified code is not a file: ${extractionCode}`);
+		console.warn(`Specified code is not a file: ${extractionCode}`);
 		res.status(400).json({message: '指定的提取码类型不是文件。'});
 	}
 });
 
 // 文件获取
 app.get(Api.FETCH, (req, res) => {
-	const url = Url.completeUrl(req.url);
+	const {id, type} = req.query;
 
-	const id = url.searchParams.get('id');
+	const file = File.findFileById(id as string);
 
-	const file = File.findFileById(id);
-
-	if (!file) {
-		console.log(`File not found: ${id}`);
-		res.status(404).send("文件不存在或已过期。");
+	if (!req.signed) {
+		console.error(`Invalid signature.`);
+		res.status(403).send("请求不够安全。");
 		return;
-	} else if (!file.isValidUrl(url)) {
-		console.log(`Invalid signature: ${url}`);
+	} else if (!file) {
+		console.error(`File not found: ${id}`);
 		res.status(404).send("文件不存在或已过期。");
 		return;
 	} else if (file.status === FileStatus.REMOVED) {
-		console.log(`File removed: ${id}`);
+		console.error(`File removed: ${id}`);
 		res.status(404).send("文件已被删除。");
 		return;
 	}
 	console.info(`File fetched: ${req.query.id}`);
 
 	// range支持
-	let [rangeStartStr, rangeEndStr]: string[] = req.headers.range?.replace("bytes=", "").split("-") ?? ["", ""];
+	const [rangeStartStr, rangeEndStr]: string[] = req.headers.range?.replace("bytes=", "").split("-") ?? ["", ""];
 	if (rangeStartStr || rangeEndStr) {
 		let rangeStart = parseInt(rangeStartStr) || 0;
 		let rangeEnd = parseInt(rangeEndStr) || file.size - 1;
@@ -445,8 +449,7 @@ app.get(Api.FETCH, (req, res) => {
 
 	res.type(mime.getType(file.originalname) || "application/octet-stream");
 
-	const type = url.searchParams.get('type');
-	switch (type) {
+	switch (type as string) {
 		case "download": {
 			res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(file.name)}`);
 			break;
@@ -458,7 +461,7 @@ app.get(Api.FETCH, (req, res) => {
 	}
 
 	// 读取整个流的内容
-	let downloadStream = file.rangeDownloadStream(req.headers.range);
+	const downloadStream = file.rangeDownloadStream(req.headers.range);
 	res.on('close', () => {
 		downloadStream.destroy(new Error("Connection closed."));
 	});

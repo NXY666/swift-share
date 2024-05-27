@@ -53,15 +53,6 @@ export class Url {
 		return this.#digest(toSign) === signature;
 	}
 
-	static unSign(url: CommonURL) {
-		const urlObj = new URL(url);
-		const params = new URLSearchParams(urlObj.searchParams);
-		params.delete('url-expr');
-		params.delete('url-sign');
-		urlObj.search = params.toString();
-		return urlObj.toString();
-	}
-
 	/**
 	 * 合并 URL
 	 * @param [protocol] 协议

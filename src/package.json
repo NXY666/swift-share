@@ -29,10 +29,10 @@
   ],
   "dependencies": {
     "body-parser": "^1.20.2",
+    "commander": "^12.1.0",
     "express": "^4.19.2",
     "mime": "^4.0.3",
     "multer": "^1.4.5-lts.1",
-    "range-parser": "^1.2.1",
-    "ws": "^8.17.0"
+    "range-parser": "^1.2.1"
   }
 }
