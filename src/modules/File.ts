@@ -211,7 +211,7 @@ export abstract class File extends EventEmitter {
 		delete File.#fileMap[this.id];
 		this.changeStatus(FileStatus.REMOVED);
 
-		console.log("[RemoveFile]", this.id, this.name, this.status);
+		console.debug("[RemoveFile]", 'id:', this.id, 'name:', this.name);
 		this.emit("remove");
 		return true;
 	}
@@ -277,6 +277,7 @@ export class SimpleFile extends File {
 		this.#path = file.path;
 
 		this.changeStatus(FileStatus.UPLOADED);
+
 		this.emit("upload", index, file);
 
 		return true;
@@ -290,7 +291,58 @@ export class SimpleFile extends File {
 		}
 		const {start: startNum, end: endNum} = ranges[0];
 
-		return fs.createReadStream(this.#path, {start: startNum, end: endNum});
+		if (this.status === FileStatus.UPLOADED) {
+			return fs.createReadStream(this.#path, {start: startNum, end: endNum});
+		}
+
+		const rpt = new MergeablePassThrough();
+
+		rpt.on('error', (e) => {
+			console.warn("[RangeDownloadStream]", e);
+		});
+
+		setTimeout(async () => {
+			try {
+				await new Promise<void>((resolve, reject) => {
+					let uploadHandler: (...args: any[]) => void,
+						removeHandler: (...args: any[]) => void,
+						errorHandler: (...args: any[]) => void;
+
+					const removeAllListeners = () => {
+						this.removeListener("upload", uploadHandler);
+						this.removeListener("remove", removeHandler);
+						rpt.removeListener("error", errorHandler);
+					};
+
+					this.on("upload", uploadHandler = () => {
+						removeAllListeners();
+						resolve();
+					});
+
+					this.once("remove", removeHandler = () => {
+						removeAllListeners();
+						reject(new Error("Source stream is removed."));
+					});
+
+					rpt.once('error', errorHandler = () => {
+						removeAllListeners();
+						reject(new Error("Source stream is destroyed."));
+					});
+				});
+
+				const partStream = fs.createReadStream(this.#path, {
+					start: startNum,
+					end: endNum
+				});
+				await rpt.merge(partStream);
+				rpt.end();
+			} catch (e) {
+				console.warn("[RangeDownloadStream]", e);
+				rpt.destroy(new Error("Merge stream failed."));
+			}
+		});
+
+		return rpt;
 	}
 
 	remove() {
@@ -363,7 +415,7 @@ export class MultipartFile extends File {
 		const rpt = new MergeablePassThrough();
 
 		rpt.on('error', (e) => {
-			console.warn("[RangeDownloadStream]", e);
+			console.debug("[RangeDownloadStream]", e);
 		});
 
 		setTimeout(async () => {
