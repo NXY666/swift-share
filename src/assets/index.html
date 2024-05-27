@@ -367,9 +367,9 @@
 	<div class="width-full box">
 		<div class="box-inner">
 			<h2 style="margin-top: 0;">上传文件</h2>
-			<form id="uploadPartFileForm" style="display: flex; gap: 15px;">
-				<label for="uploadPartFileInput" style="display: none;"></label>
-				<input id="uploadPartFileInput" multiple style="flex: 6; width: 0;" type="file">
+			<form id="uploadFileForm" style="display: flex; gap: 15px;">
+				<label for="uploadFileInput" style="display: none;"></label>
+				<input id="uploadFileInput" multiple style="flex: 6; width: 0;" type="file">
 				<button style="flex: 1;">上传</button>
 			</form>
 		</div>
@@ -377,9 +377,9 @@
 	<div class="width-full box">
 		<div class="box-inner">
 			<h2 style="margin-top: 0;">下载文件</h2>
-			<form id="extractPartFileForm" style="display: flex; gap: 15px;">
-				<label for="extractPartFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
+			<form id="extractFileForm" style="display: flex; gap: 15px;">
+				<label for="extractFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractFileCode" placeholder="提取码" style="flex: 6;" type="text">
 				<button style="flex: 1;">下载</button>
 			</form>
 		</div>
@@ -387,14 +387,14 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">播放视频</h2>
-			<form id="playPartFileForm" style="display: flex; gap: 15px;">
-				<label for="playPartFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="playPartFileCode" placeholder="提取码" style="flex: 6;" type="text">
+			<h2 style="margin-top: 0;">播放媒体</h2>
+			<form id="playFileForm" style="display: flex; gap: 15px;">
+				<label for="playFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="playFileCode" placeholder="提取码" style="flex: 6;" type="text">
 				<button style="flex: 1;">播放</button>
 			</form>
-			<div id="playPartFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
-				<video controls="controls" id="playPartFileVideo" style="width: 100%; border-radius: 5px;">
+			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
+				<video controls="controls" id="playFileVideo" style="width: 100%; border-radius: 5px;">
 				</video>
 			</div>
 		</div>
@@ -1686,13 +1686,13 @@
 				}
 			});
 
-			let uploadPartFileInput = document.getElementById('uploadPartFileInput');
-			let uploadPartFileForm = document.getElementById('uploadPartFileForm');
+			let uploadFileInput = document.getElementById('uploadFileInput');
+			let uploadFileForm = document.getElementById('uploadFileForm');
 
-			uploadPartFileForm.addEventListener('submit', (e) => {
+			uploadFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const blobFiles = uploadPartFileInput.files;
+				const blobFiles = uploadFileInput.files;
 				if (!blobFiles.length) {
 					return;
 				} else if (Array.from(blobFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
@@ -1700,7 +1700,7 @@
 					return;
 				}
 
-				disableForm(uploadPartFileForm);
+				disableForm(uploadFileForm);
 
 				let checkpointTimeout = null;
 				api.post('/upload/files/apply', {
@@ -1734,13 +1734,13 @@
 						await new Promise((resolve, reject) => {
 							const abortController = new AbortController();
 							const uploadFilePromises = [];
-							for (const uploadPartConfig of activeConfig.parts) {
+							for (const uploadConfig of activeConfig.parts) {
 								const formData = new FormData();
 								formData.append('id', activeConfig.id);
 								formData.append('key', activeConfig.key);
-								formData.append('index', uploadPartConfig.index);
+								formData.append('index', uploadConfig.index);
 								// -1 表示整个文件
-								formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
+								formData.append('part', uploadConfig.index === -1 ? blobFile : blobFile.slice(...uploadConfig.range));
 								uploadFilePromises.push(api.post("/upload/files", formData, {signal: abortController.signal}, {slowRequest: true}).finally(() => {
 									uploadDialog.addFileProgress();
 									uploadDialog.addTotalProgress();
@@ -1770,23 +1770,23 @@
 				})
 				.catch(({message}) => alert(message))
 				.finally(() => {
-					enableForm(uploadPartFileForm);
+					enableForm(uploadFileForm);
 					clearTimeout(checkpointTimeout);
 				});
 			});
 
-			let extractPartFileCode = document.getElementById('extractPartFileCode');
-			let extractPartFileForm = document.getElementById('extractPartFileForm');
+			let extractFileCode = document.getElementById('extractFileCode');
+			let extractFileForm = document.getElementById('extractFileForm');
 
-			extractPartFileForm.addEventListener('submit', (e) => {
+			extractFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const extractionCode = extractPartFileCode.value;
+				const extractionCode = extractFileCode.value;
 				if (!extractionCode.length) {
 					return;
 				}
 
-				disableForm(extractPartFileForm);
+				disableForm(extractFileForm);
 
 				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
@@ -1798,36 +1798,36 @@
 					}
 				})
 				.catch(({message}) => alert(`文件提取失败：${message}`))
-				.finally(() => enableForm(extractPartFileForm));
+				.finally(() => enableForm(extractFileForm));
 			});
 
-			let playPartFileCode = document.getElementById('playPartFileCode');
-			let playPartFileForm = document.getElementById('playPartFileForm');
-			let playPartFileVideo = document.getElementById('playPartFileVideo');
+			let playFileCode = document.getElementById('playFileCode');
+			let playFileForm = document.getElementById('playFileForm');
+			let playFileVideo = document.getElementById('playFileVideo');
 
-			playPartFileForm.addEventListener('submit', (e) => {
+			playFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const extractionCode = playPartFileCode.value;
+				const extractionCode = playFileCode.value;
 				if (!extractionCode.length) {
 					return;
 				}
 
-				disableForm(playPartFileForm);
+				disableForm(playFileForm);
 
 				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1) {
-						playPartFileVideo.src = configs[0].playUrl;
+						playFileVideo.src = configs[0].playUrl;
 					} else {
 						new SelectPlayDialog(configs, (config) => {
-							playPartFileVideo.src = config.playUrl;
+							playFileVideo.src = config.playUrl;
 						}).open();
 					}
 				})
 				.catch(({message}) => alert(`文件提取失败：${message}`))
-				.finally(() => enableForm(playPartFileForm));
+				.finally(() => enableForm(playFileForm));
 			});
 		});
 	</script>
