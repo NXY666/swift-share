@@ -89,31 +89,14 @@ export const Api = {
 
 	UPLOAD_FILES_CAPACITY: "/upload/files/capacity",
 
-	UPLOAD_TEXT_NEW: "/upload/text/new",
-	EXTRACT_TEXT_NEW: "/extract/text/new/:code",
+	UPLOAD_TEXT: "/upload/text",
+	EXTRACT_TEXT: "/extract/text/:code",
 
 	UPLOAD_FILES_APPLY: "/upload/files/apply",
-	UPLOAD_FILES_NEW: "/upload/files/new",
+	UPLOAD_FILES: "/upload/files",
 	UPLOAD_FILES_CHECKPOINT: "/upload/files/checkpoint",
 
-	EXTRACT_FILES_NEW: "/extract/files/new/:code",
+	EXTRACT_FILES: "/extract/files/:code",
 
-	/**
-	 * @deprecated
-	 */
-	DOWN_NEW: "/down",
-	/**
-	 * @deprecated
-	 */
-	PLAY_NEW: "/play",
-	FETCH: "/fetch",
-
-	/**
-	 * @deprecated
-	 */
-	WS_UPLOAD: "/upload",
-	/**
-	 * @deprecated
-	 */
-	WS_DOWN: "/down",
+	FETCH: "/fetch"
 };

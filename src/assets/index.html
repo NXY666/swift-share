@@ -282,61 +282,6 @@
 			}
 		}
 
-		.switch, .switch label {
-			display: inline-block;
-			box-sizing: border-box;
-		}
-
-		.switch label {
-			position: relative;
-			display: inline-block;
-			box-sizing: border-box;
-			width: 3.5em;
-			height: 1.5em;
-			cursor: pointer;
-			transition: all 0.1s ease-out;
-			border-radius: 0.875em;
-			background-image: linear-gradient(90deg, #D6D7DC 0, #D6D7DC 51%, #8CB9F3 0, #8CB9F3);
-			background-size: 7em 1.5em;
-		}
-
-		.switch label:before {
-			position: absolute;
-			top: -0.25em;
-			left: -0.5em;
-			display: block;
-			width: 2em;
-			height: 2em;
-			content: '';
-			transition: all 0.1s ease-out;
-			border-radius: 2em;
-			background-color: white;
-			box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .4);
-		}
-
-		.switch input {
-			display: none;
-		}
-
-		.switch input:checked + label {
-			background-position: 3.4em;
-		}
-
-		.switch input:checked + label:before {
-			transform: translateX(2.5em);
-			background-color: #1A73E8;
-		}
-
-		.switch input:disabled + label {
-			cursor: not-allowed !important;
-			background: #CCC !important;
-		}
-
-		.switch input:disabled + label:before {
-			background: #CCC !important;
-			box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.5) !important;
-		}
-
 		.title {
 			display: flex;
 			align-items: center;
@@ -371,30 +316,6 @@
 			box-shadow: 0 2px 1px var(--primary-color-3);
 		}
 
-		#premiumModeSwitch {
-			font-size: 12px;
-			position: fixed;
-			right: 10px;
-			bottom: 10px;
-			display: flex;
-			align-items: center;
-			padding: 10px 15px;
-			user-select: none;
-			transition: box-shadow var(--short-transition-duration);
-			border-radius: 500px;
-			background-color: var(--background-color-1);
-		}
-
-		#premiumModeSwitch:hover {
-			box-shadow: 0 1px 6px rgba(32, 33, 36, .28);
-		}
-
-		.premium-mode-switch {
-			font-size: 9px;
-			display: flex;
-			margin-left: 15px;
-		}
-
 		.water-mark {
 			color: var(--text-color-1);
 			position: fixed;
@@ -421,9 +342,9 @@
 	<div class="width-full box">
 		<div class="box-inner">
 			<h2 style="margin-top: 0;">上传文本</h2>
-			<form id="uploadTextNewForm" style="display: flex; flex-direction: column;">
-				<label for="uploadTextNewInput" style="display: none;"></label>
-				<textarea cols="50" id="uploadTextNewInput" maxlength="67108864" placeholder="文本" rows="8"
+			<form id="uploadTextForm" style="display: flex; flex-direction: column;">
+				<label for="uploadTextInput" style="display: none;"></label>
+				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"
 						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
 				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
 			</form>
@@ -432,14 +353,14 @@
 	<div class="width-full box">
 		<div class="box-inner">
 			<h2 style="margin-top: 0;">提取文本</h2>
-			<form id="extractTextNewForm" style="display: flex; gap: 15px;">
-				<label for="extractTextNewCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractTextNewCode" placeholder="提取码" style="flex: 6;" type="text">
+			<form id="extractTextForm" style="display: flex; gap: 15px;">
+				<label for="extractTextCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractTextCode" placeholder="提取码" style="flex: 6;" type="text">
 				<button style="flex: 1;">提取</button>
 			</form>
-			<pre id="extractedNewText"
+			<pre id="extractedText"
 				 style="border: solid var(--form-border-color); border-width: 1px 1px 0 1px; text-align: left; margin-bottom: 0; margin-top: 15px; overflow: auto; min-height: 150px; max-height: 300px; background-color: var(--background-color-2); border-radius: 5px 5px 0 0; padding: 10px; color: var(--form-color);">:)</pre>
-			<button id="copyExtractedTextNewButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
+			<button id="copyExtractedTextButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
 		</div>
 	</div>
 
@@ -481,15 +402,6 @@
 
 	<a href="https://github.com/NXY666/SwiftShare" class="water-mark">快传 - SwiftShare</a>
 
-	<!-- 右下角fixed 高级模式开关 -->
-	<div id="premiumModeSwitch" style="display: none;">
-		高级模式
-		<div class="switch premium-mode-switch">
-			<input id="premiumMode" name="premiumMode" type="checkbox">
-			<label for="premiumMode"></label>
-		</div>
-	</div>
-
 	<script>
 		function disableForm(form) {
 			const formId = form.id;
@@ -508,10 +420,6 @@
 					delete element.dataset.disabledBy;
 				}
 			});
-		}
-
-		function isPremiumMode() {
-			return document.getElementById("premiumMode").checked;
 		}
 
 		async function downloadConfigs(configs) {
@@ -1690,18 +1598,18 @@
 				sendBiu();
 			});
 
-			let uploadTextNewInput = document.getElementById('uploadTextNewInput');
-			let uploadTextNewForm = document.getElementById('uploadTextNewForm');
+			let uploadTextInput = document.getElementById('uploadTextInput');
+			let uploadTextForm = document.getElementById('uploadTextForm');
 
-			uploadTextNewInput.addEventListener('keydown', (e) => {
+			uploadTextInput.addEventListener('keydown', (e) => {
 				if (e.ctrlKey && e.key === 'Enter') {
-					uploadTextNewForm.dispatchEvent(new SubmitEvent('submit'));
+					uploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 				}
 			});
-			uploadTextNewForm.addEventListener('submit', (e) => {
+			uploadTextForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const text = uploadTextNewInput.value;
+				const text = uploadTextInput.value;
 				if (text.trim() === '') {
 					return;
 				} else if (text.length > uploadTextCapacity) {
@@ -1709,44 +1617,44 @@
 					return;
 				}
 
-				disableForm(uploadTextNewForm);
+				disableForm(uploadTextForm);
 
-				api.post("/upload/text/new", text)
+				api.post("/upload/text", text)
 				.then(({data}) => alert(`文本上传成功。请凭【${data.code.toUpperCase()}】提取文本。`))
 				.catch(({message}) => alert(message))
-				.finally(() => enableForm(uploadTextNewForm));
+				.finally(() => enableForm(uploadTextForm));
 			});
 
-			const extractTextNewForm = document.getElementById('extractTextNewForm');
-			const extractTextNewCode = document.getElementById('extractTextNewCode');
-			const extractedNewText = document.getElementById('extractedNewText');
-			const copyExtractedTextNewButton = document.getElementById('copyExtractedTextNewButton');
+			const extractTextForm = document.getElementById('extractTextForm');
+			const extractTextCode = document.getElementById('extractTextCode');
+			const extractedText = document.getElementById('extractedText');
+			const copyExtractedTextButton = document.getElementById('copyExtractedTextButton');
 
-			extractTextNewForm.addEventListener("submit", (e) => {
+			extractTextForm.addEventListener("submit", (e) => {
 				e.preventDefault();
 
-				const extractionCode = extractTextNewCode.value;
+				const extractionCode = extractTextCode.value;
 				if (!extractionCode.length) {
 					return;
 				}
 
-				disableForm(extractTextNewForm);
+				disableForm(extractTextForm);
 
-				api.get(`/extract/text/new/${extractionCode}`)
+				api.get(`/extract/text/${extractionCode}`)
 				.then(({data}) => {
-					extractedNewText.style.backgroundColor = 'var(--background-color-2)';
-					extractedNewText.style.color = 'var(--form-color)';
-					extractedNewText.textContent = `${data.text}`;
+					extractedText.style.backgroundColor = 'var(--background-color-2)';
+					extractedText.style.color = 'var(--form-color)';
+					extractedText.textContent = `${data.text}`;
 				})
 				.catch(({message}) => {
-					extractedNewText.style.backgroundColor = 'var(--form-background-error-color)';
-					extractedNewText.style.color = 'var(--form-error-color)';
-					extractedNewText.textContent = message;
+					extractedText.style.backgroundColor = 'var(--form-background-error-color)';
+					extractedText.style.color = 'var(--form-error-color)';
+					extractedText.textContent = message;
 				})
-				.finally(() => enableForm(extractTextNewForm));
+				.finally(() => enableForm(extractTextForm));
 			});
-			copyExtractedTextNewButton.addEventListener('click', async () => {
-				const text = extractedNewText.textContent;
+			copyExtractedTextButton.addEventListener('click', async () => {
+				const text = extractedText.textContent;
 				if (text.trim() === '') {
 					return;
 				}
@@ -1799,8 +1707,7 @@
 					files: (Array.from(blobFiles).map(file => ({
 						name: file.name,
 						size: file.size
-					}))),
-					allowMultipart: isPremiumMode()
+					})))
 				})
 				.then(async ({data}) => {
 					const {configs, checkpointUrl} = data;
@@ -1834,7 +1741,7 @@
 								formData.append('index', uploadPartConfig.index);
 								// -1 表示整个文件
 								formData.append('part', uploadPartConfig.index === -1 ? blobFile : blobFile.slice(...uploadPartConfig.range));
-								uploadFilePromises.push(api.post("/upload/files/new", formData, {signal: abortController.signal}, {slowRequest: true}).finally(() => {
+								uploadFilePromises.push(api.post("/upload/files", formData, {signal: abortController.signal}, {slowRequest: true}).finally(() => {
 									uploadDialog.addFileProgress();
 									uploadDialog.addTotalProgress();
 								}));
@@ -1881,10 +1788,7 @@
 
 				disableForm(extractPartFileForm);
 
-				// 判断能不能用blob
-				const allowMultipart = isPremiumMode();
-
-				api.post(`/extract/files/new/${extractionCode}`, {allowMultipart})
+				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1) {
@@ -1911,10 +1815,7 @@
 
 				disableForm(playPartFileForm);
 
-				// 判断能不能用blob
-				const allowMultipart = isPremiumMode();
-
-				api.post(`/extract/files/new/${extractionCode}`, {allowMultipart})
+				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1) {

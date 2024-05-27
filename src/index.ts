@@ -250,8 +250,8 @@ app.get(Api.UPLOAD_FILES_CAPACITY, (_req, res) => {
 	res.json({capacity: CONFIG.STORE.FILE.CAPACITY});
 });
 
-// 文本上传（新）
-app.post(Api.UPLOAD_TEXT_NEW, (req, res) => {
+// 文本上传
+app.post(Api.UPLOAD_TEXT, (req, res) => {
 	const text = req.body.toString();
 
 	let storeUsedSize = CodeStore.getUsedSpace(TextCodeInfo);
@@ -268,8 +268,8 @@ app.post(Api.UPLOAD_TEXT_NEW, (req, res) => {
 	res.json({code: codeInfo.code});
 });
 
-// 文本提取（新）
-app.get(Api.EXTRACT_TEXT_NEW, (req, res) => {
+// 文本提取
+app.get(Api.EXTRACT_TEXT, (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
@@ -358,8 +358,8 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 	res.status(204).end();
 });
 
-// 文件上传（新）
-app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
+// 文件上传
+app.post(Api.UPLOAD_FILES, upload.single('part'), (req, res) => {
 	let {id, key, index} = req.body;
 
 	index = parseInt(index);
@@ -381,8 +381,8 @@ app.post(Api.UPLOAD_FILES_NEW, upload.single('part'), (req, res) => {
 	}
 });
 
-// 文件提取（新）
-app.post(Api.EXTRACT_FILES_NEW, (req, res) => {
+// 文件提取
+app.get(Api.EXTRACT_FILES, (req, res) => {
 	const extractionCode = req.params.code.toLowerCase();
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
