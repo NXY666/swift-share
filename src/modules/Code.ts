@@ -1,7 +1,9 @@
 import crypto from "crypto";
-import DefaultConfig from "@/default_config.js";
 import {File, FileStatus} from "./File";
 import {Api, Url} from "./Url";
+import {getConfig} from "@/modules/Config";
+
+const CONFIG = getConfig();
 
 export class CodeStore {
 	static #store: { [key: string]: CodeInfo } = {};
@@ -45,12 +47,12 @@ export class CodeStore {
 	static #getUniqueCode() {
 		let failedCount = 0;
 		while (true) {
-			const code = CodeStore.#generateCode(DefaultConfig.CODE.EXTRACT_LENGTH);
+			const code = CodeStore.#generateCode(CONFIG.CODE.EXTRACT_LENGTH);
 			if (!this.#store[code]) {
 				return code;
 			}
 			if (++failedCount > 64) {
-				DefaultConfig.CODE.EXTRACT_LENGTH++;
+				CONFIG.CODE.EXTRACT_LENGTH++;
 			}
 		}
 	}
@@ -102,7 +104,7 @@ abstract class CodeInfo {
 	getSignedCheckpointUrl({protocol, host}): string {
 		const url = Url.mergeUrl({protocol, host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
-		return Url.sign(url.toString(), DefaultConfig.STORE.FILE.UPLOAD_INTERVAL);
+		return Url.sign(url.toString(), CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
 	/**
@@ -135,7 +137,7 @@ type CodeInfoTypes = typeof FileCodeInfo | typeof TextCodeInfo | typeof ShareCod
 export class TextCodeInfo extends CodeInfo {
 	readonly #text: string;
 
-	expireInterval = DefaultConfig.STORE.TEXT.EXPIRE_INTERVAL;
+	expireInterval = CONFIG.STORE.TEXT.EXPIRE_INTERVAL;
 
 	constructor(text: string) {
 		super();
@@ -157,7 +159,7 @@ export class FileCodeInfo extends CodeInfo {
 	 */
 	readonly #files: File[];
 
-	expireInterval = DefaultConfig.STORE.FILE.EXPIRE_INTERVAL;
+	expireInterval = CONFIG.STORE.FILE.EXPIRE_INTERVAL;
 
 	constructor(files: File[]) {
 		super();
@@ -205,7 +207,7 @@ export class FileCodeInfo extends CodeInfo {
 export class ShareCodeInfo extends CodeInfo {
 	readonly #path: string;
 
-	expireInterval = DefaultConfig.STORE.LINK.EXPIRE_INTERVAL;
+	expireInterval = CONFIG.STORE.LINK.EXPIRE_INTERVAL;
 
 	constructor(path: string) {
 		super();

@@ -6,23 +6,14 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
-import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
-import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
 import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
-import {
-	ConfigAbsolutePath,
-	DefaultConfigAbsolutePath,
-	FileAbsolutePath,
-	getConfig,
-	ResourcePath
-} from "@/configs/Config";
+import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourcePath} from "@/modules/Config";
 import {Command} from "commander";
+import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
+import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
 
 // 路径检查和初始化
-if (!fs.existsSync(ConfigAbsolutePath)) {
-	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
-}
 if (fs.existsSync(FileAbsolutePath)) {
 	try {
 		fs.rmSync(FileAbsolutePath, {recursive: true});
@@ -31,16 +22,6 @@ if (fs.existsSync(FileAbsolutePath)) {
 	}
 }
 fs.mkdirSync(FileAbsolutePath, {recursive: true});
-
-const program = new Command();
-
-program
-	.option('--edit-config', '编辑配置文件')
-	.option('--reset-config', '重置配置文件');
-
-program.parse(process.argv);
-
-const options = program.opts();
 
 // 配置
 function runCommand(command: string, stdio: StdioOptions = 'ignore') {
@@ -122,18 +103,26 @@ function openEditor(path: string) {
 	}
 	throw new Error(`No editor found for platform: ${platform}`);
 }
+
+const program = new Command();
+
+program
+	.option('--edit-config', 'Edit config file')
+	.option('--reset-config', 'Reset config file')
+	.parse(process.argv);
+
+const options = program.opts();
 if (options.resetConfig) {
-	fs.rmSync(ConfigAbsolutePath);
-	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
+	await resetConfig();
 	console.log('Config file has been reset.');
 	process.exit(0);
-}
-if (options.editConfig) {
+} else if (options.editConfig) {
+	console.log('Opening config file...');
 	openEditor(ConfigAbsolutePath);
 	process.exit(0);
 }
 
-const CONFIG = await getConfig();
+const CONFIG = getConfig();
 
 // noinspection JSUnusedGlobalSymbols
 const storage = multer.diskStorage({

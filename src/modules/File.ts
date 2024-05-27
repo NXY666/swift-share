@@ -5,9 +5,9 @@ import {MergeablePassThrough} from "./Stream";
 import EventEmitter from "events";
 import {PassThrough} from "stream";
 import RangeParser from "range-parser";
-import {getConfig} from "@/configs/Config";
+import {getConfig} from "@/modules/Config";
 
-const CONFIG = await getConfig();
+const CONFIG = getConfig();
 
 export class FileStatus {
 	static CREATED = 0;
