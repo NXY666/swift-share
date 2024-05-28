@@ -468,7 +468,7 @@
 						setTimeout(this.#processQueue);
 						return;
 					}
-					console.log("Request full.", `normal: (${this.#requestingCount}/${this.#maxRequestingCount})`, `slow: (${this.#slowRequestingCount}/${this.#maxSlowRequestingCount})`);
+					console.debug("Request full.", `normal: (${this.#requestingCount}/${this.#maxRequestingCount})`, `slow: (${this.#slowRequestingCount}/${this.#maxSlowRequestingCount})`);
 				}
 			};
 

@@ -1,7 +1,10 @@
 import crypto from "crypto";
-import {File, FileStatus} from "./File";
+import {File, FileStatus, ShareFile} from "./File";
 import {Api, Url} from "./Url";
 import {getConfig} from "@/modules/Config";
+import fs from "fs";
+import path from "path";
+import {setTimerTimeout} from "@/modules/Timer";
 
 const CONFIG = getConfig();
 
@@ -26,22 +29,17 @@ export class CodeStore {
 	}
 
 	/**
-	 * 全部提取码自检
-	 */
-	static checkAll() {
-		for (const codeInfo of Object.values(this.#store)) {
-			codeInfo.check();
-		}
-	}
-
-	/**
 	 * 保存提取码信息
-	 * @param {FileCodeInfo|TextCodeInfo|ShareCodeInfo} codeInfo 提取码信息
+	 * @param codeInfo 提取码信息
 	 */
 	static saveCodeInfo(codeInfo: CodeInfo) {
-		const code = this.#getUniqueCode();
-		codeInfo.code = code;
-		this.#store[code] = codeInfo;
+		if (codeInfo.code) {
+			this.#store[codeInfo.code] = codeInfo;
+		} else {
+			const code = this.#getUniqueCode();
+			codeInfo.code = code;
+			this.#store[code] = codeInfo;
+		}
 	}
 
 	static #getUniqueCode() {
@@ -79,8 +77,19 @@ abstract class CodeInfo {
 
 	#createTime: number = Date.now();
 
+	protected constructor() {
+		setTimeout(() => setTimerTimeout(() => {
+			console.debug('[CodeInfo][Constructor]', 'Code has auto removed:', this.code);
+			this.remove();
+		}, this.removeTime - Date.now()));
+	}
+
 	get expireTime(): number {
 		return this.#createTime + this.expireInterval;
+	}
+
+	get removeTime(): number {
+		return this.expireTime + CONFIG.STORE.LINK.EXPIRE_INTERVAL;
 	}
 
 	get code() {
@@ -111,16 +120,6 @@ abstract class CodeInfo {
 	 * 刷新上传文件检查点
 	 */
 	checkpoint() {
-	}
-
-	/**
-	 * 提取码状态自检
-	 */
-	check() {
-		// 本体已过期，则删除记录
-		if (this.hasExpired()) {
-			this.remove();
-		}
 	}
 
 	hasExpired() {
@@ -178,22 +177,6 @@ export class FileCodeInfo extends CodeInfo {
 		this.#files.forEach(file => file.checkpoint());
 	}
 
-	check() {
-		super.check();
-		this.#files.forEach(file => {
-			switch (file.status) {
-				case FileStatus.CREATED:
-				case FileStatus.UPLOADING: {
-					// 文件未及时上传，则删除文件
-					if (file.hasUploadTimeout()) {
-						file.remove();
-					}
-					break;
-				}
-			}
-		});
-	}
-
 	remove() {
 		super.remove();
 		this.#files.forEach(file => file.remove());
@@ -207,11 +190,36 @@ export class FileCodeInfo extends CodeInfo {
 export class ShareCodeInfo extends CodeInfo {
 	readonly #path: string;
 
-	expireInterval = CONFIG.STORE.LINK.EXPIRE_INTERVAL;
+	expireInterval = Infinity;
 
 	constructor(path: string) {
 		super();
 		this.#path = path;
+	}
+
+	// 从path中读取所有文件，包含子文件夹
+	get files(): File[] {
+		const files: ShareFile[] = [];
+
+		// 递归读取文件
+		const scanFiles = (filePath: string) => {
+			const stat = fs.statSync(filePath);
+			if (stat.isDirectory()) {
+				fs.readdirSync(filePath).forEach(file => scanFiles(filePath + '/' + file));
+			} else {
+
+				const newFile = new ShareFile({name: path.relative(this.#path, filePath), size: stat.size});
+				newFile.upload(-1, filePath);
+				files.push(newFile);
+			}
+		};
+		scanFiles(this.#path);
+
+		setTimerTimeout(() => {
+			files.forEach(file => file.remove());
+		}, CONFIG.STORE.LINK.EXPIRE_INTERVAL);
+
+		return files;
 	}
 
 	get path() {

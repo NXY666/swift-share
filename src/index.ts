@@ -10,7 +10,7 @@ import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
 import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourcePath} from "@/modules/Config";
 import {Command} from "commander";
-import {CodeStore, FileCodeInfo, TextCodeInfo} from "@/modules/Code";
+import {CodeStore, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
 
 // 路径检查和初始化
@@ -18,12 +18,12 @@ if (fs.existsSync(FileAbsolutePath)) {
 	try {
 		fs.rmSync(FileAbsolutePath, {recursive: true});
 	} catch (e) {
-		console.error(`Failed to delete directory: ${FileAbsolutePath}`);
+		console.error('Failed to remove directory:', FileAbsolutePath);
 	}
 }
 fs.mkdirSync(FileAbsolutePath, {recursive: true});
 
-// 配置
+// 解析命令行参数
 function runCommand(command: string, stdio: StdioOptions = 'ignore') {
 	try {
 		const result = spawnSync(command, undefined, {shell: true, stdio});
@@ -104,25 +104,29 @@ function openEditor(path: string) {
 	throw new Error(`No editor found for platform: ${platform}`);
 }
 
-const program = new Command();
-
-program
+const options = new Command()
 	.option('--edit-config', 'Edit config file')
 	.option('--reset-config', 'Reset config file')
-	.parse(process.argv);
-
-const options = program.opts();
+	.parse(process.argv)
+	.opts();
 if (options.resetConfig) {
 	await resetConfig();
-	console.log('Config file has been reset.');
+	console.info('Config file has been reset.');
 	process.exit(0);
 } else if (options.editConfig) {
-	console.log('Opening config file...');
+	console.info('Opening config file...');
 	openEditor(ConfigAbsolutePath);
 	process.exit(0);
 }
 
 const CONFIG = getConfig();
+
+// 初始化分享目录
+if (fs.existsSync(CONFIG.STORE.SHARE.PATH)) {
+	const shareCode = new ShareCodeInfo(CONFIG.STORE.SHARE.PATH);
+	shareCode.code = CONFIG.STORE.SHARE.CODE;
+	CodeStore.saveCodeInfo(shareCode);
+}
 
 // noinspection JSUnusedGlobalSymbols
 const storage = multer.diskStorage({
@@ -144,9 +148,9 @@ const storage = multer.diskStorage({
 			file.stream.on('end', () => {
 				fs.unlink(fullFilePath, (err) => {
 					if (err) {
-						console.error(`Failed to delete aborted file: ${fullFilePath}`);
+						console.error('Failed to delete aborted file:', fullFilePath, 'Error:', err.message);
 					} else {
-						console.info(`Aborted file deleted: ${fullFilePath}`);
+						console.info('Aborted file deleted:', fullFilePath);
 					}
 				});
 			});
@@ -246,7 +250,7 @@ app.post(Api.UPLOAD_TEXT, (req, res) => {
 	let storeUsedSize = CodeStore.getUsedSpace(TextCodeInfo);
 
 	if (storeUsedSize + text.length > CONFIG.STORE.TEXT.CAPACITY) {
-		console.log(`Text store is full: ${storeUsedSize} + ${text.length} > ${CONFIG.STORE.TEXT.CAPACITY}`);
+		console.error('Text store is full:', storeUsedSize, '+', text.length, '>', CONFIG.STORE.TEXT.CAPACITY);
 		res.status(403).json({message: '文本暂存空间已满，请稍后再试。'});
 		return;
 	}
@@ -263,22 +267,22 @@ app.get(Api.EXTRACT_TEXT, (req, res) => {
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
 	if (!codeInfo) {
-		console.log(`Text not found or has expired: ${extractionCode}`);
+		console.error('Text not found or has expired:', extractionCode);
 		res.status(404).json({message: '提取码不存在或已过期。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
 		const expDate = new Date(codeInfo.expireTime);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
-		console.log(`Text has expired: ${extractionCode}`);
+		console.error('Text has expired at', datetime, ':', extractionCode);
 		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
 		return;
 	}
 
 	if (codeInfo instanceof TextCodeInfo) {
-		console.log(`Text extracted: ${extractionCode}`);
+		console.info('Text extracted:', extractionCode);
 		res.json({text: (codeInfo).text});
 	} else {
-		console.log(`Specified code is not a text: ${extractionCode}`);
+		console.info('Specified code is not a text:', extractionCode);
 		res.status(400).json({message: '指定的提取码类型不是文本。'});
 	}
 });
@@ -292,7 +296,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	let filesSize = files.reduce((size: number, file: File) => size + file.size, 0);
 
 	if (storeUsedSize + filesSize > CONFIG.STORE.FILE.CAPACITY) {
-		console.log(`File store is full: ${storeUsedSize} + ${filesSize} > ${CONFIG.STORE.FILE.CAPACITY}`);
+		console.error('File store is full:', storeUsedSize, '+', filesSize, '>', CONFIG.STORE.FILE.CAPACITY);
 		res.status(403).json({message: '文件暂存空间已满，请稍后再试。'});
 		return;
 	}
@@ -327,17 +331,17 @@ app.get(Api.UPLOAD_FILES_CHECKPOINT, (req, res) => {
 	const codeInfo = CodeStore.getCodeInfo(code as string);
 
 	if (!req.signed) {
-		console.log(`Invalid signature.`);
+		console.error('Invalid signature.');
 		res.status(403).json({message: '请求不够安全。'});
 		return;
 	} else if (!codeInfo) {
-		console.log(`Code not found or has expired: ${code}`);
+		console.error('Code not found or has expired:', code);
 		res.status(404).json({message: '提取码不存在或已过期。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
 		const expDate = new Date(codeInfo.expireTime);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
-		console.log(`Code has expired: ${code}`);
+		console.error('Code has expired at', datetime, ':', code);
 		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
 		return;
 	}
@@ -356,16 +360,16 @@ app.post(Api.UPLOAD_FILES, upload.single('part'), (req, res) => {
 	const file = File.findFileById(id);
 
 	if (file?.key !== key) {
-		console.error(`Invalid file or key: ${key}`);
+		console.error('Invalid file or key:', key);
 		res.status(403).json({message: '无效的文件或密钥。'});
 		return;
 	}
 
 	if (file.upload(index, req.file)) {
-		console.info(`File ${id} part ${index} uploaded.`);
+		console.info('File', id, 'part', index, 'uploaded:', req.file.filename);
 		res.status(204).end();
 	} else {
-		console.error(`File ${id} part ${index} upload has been rejected.`);
+		console.error('Upload file', id, 'part', index, 'has been rejected.');
 		res.status(403).json({message: '上传被拒绝。'});
 	}
 });
@@ -376,18 +380,18 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
 	if (!codeInfo) {
-		console.log(`File not found or has expired: ${extractionCode}`);
+		console.error(`File not found or has expired: ${extractionCode}`);
 		res.status(404).json({message: '提取码不存在或已过期。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
-		console.log(`File has expired: ${extractionCode}`);
+		console.error(`File has expired: ${extractionCode}`);
 		const expDate = new Date(codeInfo.expireTime);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
 		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
 		return;
 	}
 
-	if (codeInfo instanceof FileCodeInfo) {
+	if (codeInfo instanceof FileCodeInfo || codeInfo instanceof ShareCodeInfo) {
 		console.info(`File extracted: ${extractionCode}`);
 		// 生成下载配置
 		const fileDownloadConfigs = [];
@@ -397,7 +401,7 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 		}
 		res.json({configs: fileDownloadConfigs});
 	} else {
-		console.warn(`Specified code is not a file: ${extractionCode}`);
+		console.error(`Specified code is not a file: ${extractionCode}`);
 		res.status(400).json({message: '指定的提取码类型不是文件。'});
 	}
 });
@@ -462,17 +466,11 @@ app.get(Api.FETCH, (req, res) => {
 });
 
 app.listen(port, () => {
-	console.log(`Server is running on http://localhost:${port}/ .`);
-
-	// 每分钟清理过期的文本信息
-	setInterval(() => {
-		// 全部提取码自检
-		CodeStore.checkAll();
-	}, 60 * 1000);
+	console.info(`Server is running on http://localhost:${port}/ .`);
 });
 
 process.on("SIGINT", () => {
-	console.log("Server is shutting down...");
+	console.info("Server is shutting down...");
 	try {
 		fs.rmSync(FileAbsolutePath, {recursive: true});
 	} catch (e) {

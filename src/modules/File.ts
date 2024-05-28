@@ -6,6 +6,7 @@ import EventEmitter from "events";
 import {PassThrough} from "stream";
 import RangeParser from "range-parser";
 import {getConfig} from "@/modules/Config";
+import {setTimerTimeout} from "@/modules/Timer";
 
 const CONFIG = getConfig();
 
@@ -85,11 +86,11 @@ export abstract class File extends EventEmitter {
 		this.#size = size;
 
 		// 上传超时
-		setTimeout(() => {
+		setTimerTimeout(() => {
 			// 上传超时，删除文件
 			if (this.status !== FileStatus.UPLOADED) {
 				this.remove();
-				console.log(`File ${this.id} reached upload deadline but not uploaded.`);
+				console.debug('[File][Constructor]', 'File reached upload deadline but not uploaded:', this.id);
 			}
 		}, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
@@ -170,13 +171,13 @@ export abstract class File extends EventEmitter {
 	canUpload(): boolean {
 		// 已上传或已删除的文件不可再上传
 		if (this.status === FileStatus.UPLOADED || this.status === FileStatus.REMOVED) {
-			console.warn("[CanUpload]", "Invalid status:", this.status);
+			console.debug('[File][CanUpload]', 'File', this.id, 'status invalid:', this.status);
 			return false;
 		}
 
 		// 上传超时的文件不可再上传
 		if (this.hasUploadTimeout()) {
-			console.warn("[CanUpload]", "Upload timeout.");
+			console.debug('[File][CanUpload]', 'File', this.id, 'upload timeout.');
 			return false;
 		}
 
@@ -184,7 +185,7 @@ export abstract class File extends EventEmitter {
 		return true;
 	}
 
-	abstract upload(index: number, file: Express.Multer.File): boolean;
+	abstract upload(index: number, file: Express.Multer.File | string): boolean;
 
 	/**
 	 * 获取下载配置
@@ -211,7 +212,7 @@ export abstract class File extends EventEmitter {
 		delete File.#fileMap[this.id];
 		this.changeStatus(FileStatus.REMOVED);
 
-		console.debug("[RemoveFile]", 'id:', this.id, 'name:', this.name);
+		console.debug('[File][Remove]', 'File removed:', this.id);
 		this.emit("remove");
 		return true;
 	}
@@ -257,20 +258,14 @@ export class SimpleFile extends File {
 	 * @param file
 	 * @return {boolean}
 	 */
-	upload(index: number, file: Express.Multer.File): boolean {
+	upload(index: -1, file: Express.Multer.File): boolean {
 		if (!super.canUpload()) {
-			return false;
-		}
-
-		// 检查索引
-		if (index !== -1) {
-			console.warn("[SimpleFile][Upload]", "Invalid index:", index);
 			return false;
 		}
 
 		// 检查文件大小
 		if (file.size !== this.size) {
-			console.warn("[SimpleFile][Upload]", "Invalid file size:", file.size, "≠", this.size);
+			console.debug('[SimpleFile][Upload]', 'Invalid file size:', file.size, '≠', this.size);
 			return false;
 		}
 
@@ -308,7 +303,7 @@ export class SimpleFile extends File {
 		const rpt = new MergeablePassThrough();
 
 		rpt.on('error', (e) => {
-			console.warn("[RangeDownloadStream]", e);
+			console.debug("[SimpleFile][RangeDownloadStream]", 'Error:', e);
 		});
 
 		setTimeout(async () => {
@@ -347,7 +342,7 @@ export class SimpleFile extends File {
 				await rpt.merge(partStream);
 				rpt.end();
 			} catch (e) {
-				console.warn("[RangeDownloadStream]", e);
+				console.debug('[SimpleFile][RangeDownloadStream]', 'Error:', e);
 				rpt.destroy(new Error("Merge stream failed."));
 			}
 		});
@@ -360,7 +355,7 @@ export class SimpleFile extends File {
 			try {
 				fs.unlinkSync(this.#path);
 			} catch (e) {
-				console.error("[RemoveSimpleFile]", e);
+				console.debug('[SimpleFile][Remove]', 'Error:', e);
 			}
 		}
 	}
@@ -392,7 +387,7 @@ export class MultipartFile extends File {
 
 		// 检查索引
 		if (index < 0 || index >= this.partCount) {
-			console.warn("[MultipartFile][Upload]", "Invalid index:", index);
+			console.debug('[MultipartFile][Upload]', 'Invalid index:', index);
 			return false;
 		}
 
@@ -400,7 +395,7 @@ export class MultipartFile extends File {
 		const uploadConfig = this.getUploadConfig();
 		const activePart = uploadConfig.parts[index];
 		if (file.size !== activePart.range[1] - activePart.range[0]) {
-			console.warn("[MultipartFile][Upload]", "Invalid file size:", file.size, "≠", activePart.range[1] - activePart.range[0]);
+			console.debug('[MultipartFile][Upload]', 'Invalid file size:', file.size, '≠', activePart.range[1] - activePart.range[0]);
 			return false;
 		}
 
@@ -425,7 +420,7 @@ export class MultipartFile extends File {
 		const rpt = new MergeablePassThrough();
 
 		rpt.on('error', (e) => {
-			console.debug("[RangeDownloadStream]", e);
+			console.debug('[MultipartFile][RangeDownloadStream]', 'Error:', e);
 		});
 
 		setTimeout(async () => {
@@ -474,7 +469,7 @@ export class MultipartFile extends File {
 				}
 				rpt.end();
 			} catch (e) {
-				console.warn("[RangeDownloadStream]", e);
+				console.debug('[MultipartFile][RangeDownloadStream]', 'Error:', e);
 				rpt.destroy(new Error("Merge stream failed."));
 			}
 		});
@@ -487,9 +482,115 @@ export class MultipartFile extends File {
 				try {
 					fs.unlinkSync(path);
 				} catch (e) {
-					console.error("[RemoveMultipartFile]", e);
+					console.debug('[MultipartFile][Remove]', 'Error:', e);
 				}
 			});
 		}
+	}
+}
+
+export class ShareFile extends File {
+	#path: string;
+
+	constructor({name, size}) {
+		super({name, size});
+	}
+
+	getUploadConfig(): UploadConfig {
+		const uploadConfig = super.getUploadConfig();
+		uploadConfig.parts.push({
+			index: -1
+		});
+		return uploadConfig;
+	}
+
+	upload(index: -1, file: string): boolean {
+		if (!super.canUpload()) {
+			return false;
+		}
+
+		this.#path = file;
+
+		this.changeStatus(FileStatus.UPLOADED);
+
+		this.emit("upload", index, file);
+
+		return true;
+	};
+
+	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
+		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
+		let ranges = RangeParser(this.size, range, {combine: true});
+		// 提供的值不合法，使用默认值+文件大小
+
+		if (!Array.isArray(ranges) || ranges.length !== 1) {
+			ranges = RangeParser(this.size, `bytes=0-${this.size - 1}`, {combine: true});
+		}
+
+		// 无法解析的范围，返回空流
+		if (!Array.isArray(ranges)) {
+			const pt = new PassThrough();
+			pt.end();
+			return pt;
+		}
+
+		const {start: startNum, end: endNum} = ranges[0];
+
+		if (this.status === FileStatus.UPLOADED) {
+			return fs.createReadStream(this.#path, {start: startNum, end: endNum});
+		}
+
+		const rpt = new MergeablePassThrough();
+
+		rpt.on('error', (e) => {
+			console.debug('[ShareFile][RangeDownloadStream]', 'Error:', e);
+		});
+
+		setTimeout(async () => {
+			try {
+				await new Promise<void>((resolve, reject) => {
+					let uploadHandler: (...args: any[]) => void,
+						removeHandler: (...args: any[]) => void,
+						errorHandler: (...args: any[]) => void;
+
+					const removeAllListeners = () => {
+						this.removeListener("upload", uploadHandler);
+						this.removeListener("remove", removeHandler);
+						rpt.removeListener("error", errorHandler);
+					};
+
+					this.on("upload", uploadHandler = () => {
+						removeAllListeners();
+						resolve();
+					});
+
+					this.once("remove", removeHandler = () => {
+						removeAllListeners();
+						reject(new Error("Source stream is removed."));
+					});
+
+					rpt.once('error', errorHandler = () => {
+						removeAllListeners();
+						reject(new Error("Source stream is destroyed."));
+					});
+				});
+
+				const partStream = fs.createReadStream(this.#path, {
+					start: startNum,
+					end: endNum
+				});
+				await rpt.merge(partStream);
+				rpt.end();
+			} catch (e) {
+				console.debug('[ShareFile][RangeDownloadStream]', 'Error:', e);
+				rpt.destroy(new Error("Merge stream failed."));
+			}
+		});
+
+		return rpt;
+	}
+
+	remove() {
+		super.canRemove();
 	}
 }
