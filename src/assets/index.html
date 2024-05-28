@@ -1693,7 +1693,9 @@
 					// 每隔15秒检查一次
 					checkpointTimeout = setTimeout(function checkpoint() {
 						api.get(checkpointUrl).finally(() => {
-							checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
+							if (checkpointTimeout != null) {
+								checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
+							}
 						});
 					});
 
@@ -1750,6 +1752,7 @@
 				.finally(() => {
 					enableForm(uploadFileForm);
 					clearTimeout(checkpointTimeout);
+					checkpointTimeout = null;
 				});
 			});
 

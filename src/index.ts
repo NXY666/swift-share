@@ -205,7 +205,17 @@ app.post(Api.BIU, (req, res) => {
 	let matched = true, consoleText: string, scriptText: string;
 	if (req.body === CONFIG.BIU.GET_ALL_CODE_COMMAND) {
 		console.log('biu~GET_ALL_CODE_COMMAND');
-		consoleText = "暂不支持。";
+		const codeInfos = CodeStore.getAllCodeInfo().map(codeInfo => {
+			const code = codeInfo.code.toUpperCase();
+			if (codeInfo instanceof TextCodeInfo) {
+				return `【文本】【${code}】${codeInfo.text.slice(0, 20)}${codeInfo.text.length > 20 ? '...' : ''}`;
+			} else if (codeInfo instanceof FileCodeInfo) {
+				return `【文件】【${code}】${codeInfo.files[0].name} 等 ${codeInfo.files.length} 个文件`;
+			} else if (codeInfo instanceof ShareCodeInfo) {
+				return `【共享】【${code}】${codeInfo.path}`;
+			}
+		});
+		consoleText = codeInfos.join('\n');
 	} else if (req.body === CONFIG.BIU.CLEAR_ALL_CODE_COMMAND) {
 		console.log('biu~CLEAR_ALL_CODE_COMMAND');
 		consoleText = "暂不支持。";
@@ -396,7 +406,7 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 		// 生成下载配置
 		const fileDownloadConfigs = [];
 		for (const file of codeInfo.files) {
-			const downloadConfig = file.getDownloadConfig({host: req.headers.host});
+			const downloadConfig = file.getDownloadConfig({protocol: req.protocol, host: req.headers.host});
 			fileDownloadConfigs.push(downloadConfig);
 		}
 		res.json({configs: fileDownloadConfigs});

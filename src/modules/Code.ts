@@ -28,6 +28,10 @@ export class CodeStore {
 		delete this.#store[code.toLowerCase()];
 	}
 
+	static getAllCodeInfo(): CodeInfo[] {
+		return Object.values(this.#store);
+	}
+
 	/**
 	 * 保存提取码信息
 	 * @param codeInfo 提取码信息

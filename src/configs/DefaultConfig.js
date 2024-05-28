@@ -96,7 +96,7 @@ export default {
 			 * 共享文件夹提取码
 			 * @type {string}
 			 */
-			CODE: "Share"
+			CODE: "share"
 		}
 	}
 };
