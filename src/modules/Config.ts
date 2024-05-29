@@ -1,7 +1,7 @@
 import path from "path";
 import {pathToFileURL} from "url";
 import fs from "fs";
-import {ConfigType} from "@/configs/ConfigType";
+import {ConfigType} from "@/types/ConfigType";
 
 function getAbsPath(Path = "", baseDir = import.meta.dirname) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
