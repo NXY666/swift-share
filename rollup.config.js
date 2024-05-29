@@ -40,7 +40,11 @@ export default defineConfig({
 		!isProd && watchAssets({
 			assets: ['src/assets/**', 'src/package.json']
 		}),
-		isProd && terser(),
+		isProd && terser({
+			compress: {
+				pure_funcs: ['console.debug']
+			}
+		}),
 		copy({
 			targets: [
 				{src: ['src/assets', 'src/package.json'], dest: 'dist'},
