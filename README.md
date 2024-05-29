@@ -1,5 +1,20 @@
 # 快传<img align="right" alt="快传图标" src="https://raw.githubusercontent.com/NXY666/SwiftShare/master/resources/favicon.ico" title="快传" width="60"/>
 
+### 简单、快捷、一目了然
+
+[![npm](https://img.shields.io/npm/v/swift-share?style=flat-square)](https://www.npmjs.com/package/swift-share)
+[![npm](https://img.shields.io/npm/dt/swift-share?style=flat-square)](https://www.npmjs.com/package/swift-share)
+[![GitHub](https://img.shields.io/github/license/NXY666/swift-share?style=flat-square)](https://github.com/NXY666/swift-share/blob/master/LICENSE)
+![GitHub](https://img.shields.io/github/repo-size/NXY666/swift-share?style=flat-square)
+
+<details>
+<summary>网页截图</summary>
+<p align="center">
+  <img alt="网页截图（浅色）" src="https://github.com/NXY666/swift-share/assets/62371554/bfdf5f9e-e758-4543-82c8-b5abb8a21829" width="400"/>
+  <img alt="网页截图（深色）" src="https://github.com/NXY666/swift-share/assets/62371554/e40f7b7c-1de5-44f5-9556-da140ebde1ea" width="400"/>
+</p>
+</details>
+
 ## 功能特性
 
 ### 传递文本
@@ -11,10 +26,13 @@
 > 支持多文件传输，下载前可指定需要下载的文件。
 
 * 大文件使用多线程分片上传，小文件直接上传。
+* 文件过期后不会立刻清除，因为可能存在未过期的链接。
 
 ### 持久共享
 
-> 支持设置一个常驻的共享目录，只需将文件放入该目录，即可通过快传传输。每次启动时会生成一个随机的提取码用于下载共享目录中的文件。
+> 支持设置一个常驻的共享目录，只需将文件放入该目录，即可通过快传传输。
+
+* 如果共享目录所指向的路径不存在，则不会生成提取码。
 
 ### 边传边下
 
