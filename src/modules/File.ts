@@ -58,11 +58,11 @@ export abstract class File extends EventEmitter {
 	/**
 	 * 文件名
 	 */
-	readonly #name: string;
+	#name: string;
 	/**
 	 * 文件大小
 	 */
-	readonly #size: number;
+	#size: number;
 	/**
 	 * 分片大小
 	 */
@@ -111,12 +111,20 @@ export abstract class File extends EventEmitter {
 		return this.#name;
 	}
 
+	set name(name: string) {
+		this.#name = name;
+	}
+
 	get originalname() {
 		return Buffer.from(this.#name, "utf-8").toString("latin1");
 	}
 
 	get size() {
 		return this.status === FileStatus.REMOVED ? 0 : this.#size;
+	}
+
+	set size(size: number) {
+		this.#size = size;
 	}
 
 	get partSize() {
@@ -222,7 +230,7 @@ export abstract class File extends EventEmitter {
 	getSignedDownloadUrl({protocol, host}) {
 		const urlObj = Url.mergeUrl({protocol, host, pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
-		urlObj.searchParams.set("type", "download");
+		urlObj.searchParams.set("type", "down");
 		return Url.sign(urlObj.toString(), CONFIG.STORE.LINK.EXPIRE_INTERVAL);
 	}
 

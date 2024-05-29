@@ -453,7 +453,7 @@ app.get(Api.FETCH, (req, res) => {
 	res.type(mime.getType(file.originalname) || "application/octet-stream");
 
 	switch (type as string) {
-		case "download": {
+		case "down": {
 			res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(file.name)}`);
 			break;
 		}
@@ -487,4 +487,8 @@ process.on("SIGINT", () => {
 		console.error(`Failed to delete directory: ${FileAbsolutePath}`);
 	}
 	process.exit(0);
+});
+
+process.on('uncaughtException', (err) => {
+	console.error(err.stack);
 });

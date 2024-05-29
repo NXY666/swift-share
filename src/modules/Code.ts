@@ -2,9 +2,9 @@ import crypto from "crypto";
 import {File, FileStatus, ShareFile} from "./File";
 import {Api, Url} from "./Url";
 import {getConfig} from "@/modules/Config";
-import fs from "fs";
 import path from "path";
-import {setTimerTimeout} from "@/modules/Timer";
+import {clearTimerTimeout, setTimerTimeout} from "@/modules/Timer";
+import chokidar from "chokidar";
 
 const CONFIG = getConfig();
 
@@ -81,8 +81,11 @@ abstract class CodeInfo {
 
 	#createTime: number = Date.now();
 
+	expireAutoRemoveTimer: number;
+
 	protected constructor() {
-		setTimeout(() => setTimerTimeout(() => {
+		// 到期自动移除计时器
+		setTimeout(() => this.expireAutoRemoveTimer = setTimerTimeout(() => {
 			console.debug('[CodeInfo][Constructor]', 'Code has auto removed:', this.code);
 			this.remove();
 		}, this.removeTime - Date.now()));
@@ -129,8 +132,8 @@ abstract class CodeInfo {
 	hasExpired() {
 		return Date.now() > this.expireTime;
 	}
-
 	remove() {
+		clearTimerTimeout(this.expireAutoRemoveTimer);
 		CodeStore.removeCodeInfo(this.#code.toString());
 	}
 }
@@ -194,36 +197,46 @@ export class FileCodeInfo extends CodeInfo {
 export class ShareCodeInfo extends CodeInfo {
 	readonly #path: string;
 
+	readonly #files: { [key: string]: ShareFile } = {};
+
 	expireInterval = Infinity;
 
-	constructor(path: string) {
+	constructor(sharePath: string) {
 		super();
-		this.#path = path;
+		this.#path = sharePath;
+
+		// 监听文件变化(add、change、unlink)
+		chokidar
+			.watch(sharePath, {persistent: false})
+			.on('add', (filePath, fileStats) => {
+				console.debug('[ShareCodeInfo][add]', 'Share file added:', filePath);
+				const file = new ShareFile({name: path.relative(this.#path, filePath), size: fileStats.size});
+				file.upload(-1, filePath);
+				this.#files[file.name] = file;
+			})
+			.on('unlink', (filePath) => {
+				console.debug('[ShareCodeInfo][unlink]', 'Share file removed:', filePath);
+				const file = this.#files[path.relative(this.#path, filePath)];
+				if (file) {
+					file.remove();
+					delete this.#files[file.name];
+				}
+			})
+			.on('change', (filePath, fileStats) => {
+				console.debug('[ShareCodeInfo][change]', 'Share file changed:', filePath);
+				const file = this.#files[path.relative(this.#path, filePath)];
+				if (file) {
+					file.size = fileStats.size;
+				}
+			})
+			.on('error', (error) => {
+				console.debug('[ShareCodeInfo][error]', 'Error:', error);
+			});
 	}
 
 	// 从path中读取所有文件，包含子文件夹
-	get files(): File[] {
-		const files: ShareFile[] = [];
-
-		// 递归读取文件
-		const scanFiles = (filePath: string) => {
-			const stat = fs.statSync(filePath);
-			if (stat.isDirectory()) {
-				fs.readdirSync(filePath).forEach(file => scanFiles(filePath + '/' + file));
-			} else {
-
-				const newFile = new ShareFile({name: path.relative(this.#path, filePath), size: stat.size});
-				newFile.upload(-1, filePath);
-				files.push(newFile);
-			}
-		};
-		scanFiles(this.#path);
-
-		setTimerTimeout(() => {
-			files.forEach(file => file.remove());
-		}, CONFIG.STORE.LINK.EXPIRE_INTERVAL);
-
-		return files;
+	get files(): ShareFile[] {
+		return Object.values(this.#files);
 	}
 
 	get path() {
