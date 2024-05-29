@@ -10,19 +10,19 @@
 			/* 基础色 */
 			--color: black;
 
-			--primary-color-1: #0969DA;
-			--primary-color-2: #669EFF;
+			--primary-color-1: #0B57D0;
+			--primary-color-2: #649CF5;
 			--primary-color-3: #B4CFFF;
-
-			--text-color-1: #333333;
-			--text-color-2: #606266;
-			--text-color-3: #C0C4CC;
 
 			--material-primary-color-1: #0B57D0;
 			--material-primary-color-2: #64B5F6;
 			--material-primary-color-3: #BBDEFB;
 
 			--material-secondary-color-1: #D32F2F;
+
+			--text-color-1: #333333;
+			--text-color-2: #606266;
+			--text-color-3: #C0C4CC;
 
 			--background-color-1: #FFFFFF;
 			--background-color-2: #F6F8FA;
@@ -46,12 +46,12 @@
 
 			--form-input-color: var(--color);
 			--form-color: var(--text-color-2);
-			--form-error-color: #9F3A38;
+			--form-error-color: #D32F2F;
 			--form-border-color: var(--border-color);
 			--form-border-hover-color: var(--border-hover-color);
 			--form-border-active-color: var(--border-active-color);
 			--form-background-color: var(--background-color-1);
-			--form-background-error-color: #FEE2E2;
+			--form-background-error-color: #FFF1F1;
 			--form-background-hover-color: #F4F4F5;
 			--form-background-active-color: #DEDFE0;
 			--form-box-shadow: 0 1px 1px #1F1F1F0A;
@@ -66,9 +66,15 @@
 			:root {
 				--color: white;
 
-				--primary-color-1: #669EFF;
-				--primary-color-2: #4285F4;
-				--primary-color-3: #4D72B3;
+				--primary-color-1: #A8C7FA;
+				--primary-color-2: #649CF5;
+				--primary-color-3: #4086FF;
+
+				--material-primary-color-1: #A8C7FA;
+				--material-primary-color-2: #0B57D0;
+				--material-primary-color-3: #062E6F;
+
+				--material-secondary-color-1: #F2B8B5;
 
 				--text-color-1: #CCCCCC;
 				--text-color-2: #808080;
@@ -94,12 +100,12 @@
 
 				--form-input-color: var(--color);
 				--form-color: var(--text-color-1);
-				--form-error-color: #F97583;
+				--form-error-color: #F2B8B5;
 				--form-border-color: var(--border-color);
 				--form-border-hover-color: var(--border-hover-color);
 				--form-border-active-color: var(--border-active-color);
 				--form-background-color: var(--background-color-1);
-				--form-background-error-color: #420E09;
+				--form-background-error-color: #200705;
 				--form-background-hover-color: #21262D;
 				--form-background-active-color: #30363D;
 				--form-box-shadow: none;
@@ -965,6 +971,9 @@
 						overflow: hidden;
 						white-space: nowrap;
 					}
+					.dialog-upload-progress-label:last-of-type {
+						flex: auto 0 0;
+					}
 					.dialog-upload-progress {
 						width: 100%;
 						height: 10px;
@@ -1415,24 +1424,26 @@
 
 				this.#buttonGroup.classList.add('dialog-button-group');
 				{
-					this.#selectAllLabel.style.display = 'flex';
-					this.#selectAllLabel.style.alignItems = 'center';
-					this.#selectAllLabel.style.gap = '5px';
-					{
-						this.#selectAllCheckbox.type = 'checkbox';
-						this.#selectAllCheckbox.checked = true; // 默认全选
-						this.#selectAllCheckbox.addEventListener('change', () => {
-							// 全选或取消全选
-							this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
-								checkbox.checked = this.#selectAllCheckbox.checked && !checkbox.disabled;
+					if (!configs.every(config => config.removed)) {
+						this.#selectAllLabel.style.display = 'flex';
+						this.#selectAllLabel.style.alignItems = 'center';
+						this.#selectAllLabel.style.gap = '5px';
+						{
+							this.#selectAllCheckbox.type = 'checkbox';
+							this.#selectAllCheckbox.checked = true; // 默认全选
+							this.#selectAllCheckbox.addEventListener('change', () => {
+								// 全选或取消全选
+								this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
+									checkbox.checked = this.#selectAllCheckbox.checked && !checkbox.disabled;
+								});
 							});
-						});
-						this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
+							this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
 
-						// 全选文字
-						this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+							// 全选文字
+							this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+						}
+						this.#buttonGroup.appendChild(this.#selectAllLabel);
 					}
-					this.#buttonGroup.appendChild(this.#selectAllLabel);
 
 					this.#confirmButton.textContent = '下载';
 					this.#confirmButton.style.marginLeft = 'auto';
@@ -1776,7 +1787,7 @@
 				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
 					const {configs} = data;
-					if (configs.length === 1) {
+					if (configs.length === 1 && !configs[0].removed) {
 						downloadConfigs(configs);
 					} else {
 						new SelectDownloadDialog(configs).open();
@@ -1803,7 +1814,7 @@
 				api.get(`/extract/files/${extractionCode}`)
 				.then(({data}) => {
 					const {configs} = data;
-					if (configs.length === 1) {
+					if (configs.length === 1 && !configs[0].removed) {
 						playFileVideo.src = configs[0].playUrl;
 					} else {
 						new SelectPlayDialog(configs, (config) => {

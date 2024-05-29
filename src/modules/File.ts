@@ -73,6 +73,20 @@ export abstract class File extends EventEmitter {
 				console.debug('[File][Constructor]', 'File reached upload deadline but not uploaded:', this.id);
 			}
 		}, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
+
+		// 上传检查点超时
+		const uploadCheckpointTimeout = () => {
+			// 上传检查点超时，删除文件
+			if (this.status !== FileStatus.UPLOADED) {
+				if (this.hasUploadTimeout()) {
+					this.remove();
+					console.debug('[File][Constructor]', 'File reached upload checkpoint timeout:', this.id);
+				} else {
+					setTimerTimeout(uploadCheckpointTimeout, this.#checkpoint + CONFIG.STORE.FILE.UPLOAD_CHECKPOINT_INTERVAL - Date.now());
+				}
+			}
+		};
+		setTimerTimeout(uploadCheckpointTimeout, CONFIG.STORE.FILE.UPLOAD_CHECKPOINT_INTERVAL);
 	}
 
 	get id() {
