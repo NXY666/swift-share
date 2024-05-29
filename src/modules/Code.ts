@@ -5,6 +5,7 @@ import {getConfig} from "@/modules/Config";
 import path from "path";
 import {clearTimerTimeout, setTimerTimeout} from "@/modules/Timer";
 import chokidar from "chokidar";
+import {CodeInfoTypes} from "@/types/CodeType";
 
 const CONFIG = getConfig();
 
@@ -30,6 +31,14 @@ export class CodeStore {
 
 	static getAllCodeInfo(): CodeInfo[] {
 		return Object.values(this.#store);
+	}
+
+	static clearAllCodeInfo(): void {
+		for (const codeInfo of Object.values(this.#store)) {
+			if (!(codeInfo instanceof ShareCodeInfo)) {
+				codeInfo.remove();
+			}
+		}
 	}
 
 	/**
@@ -138,8 +147,6 @@ abstract class CodeInfo {
 	}
 }
 
-type CodeInfoTypes = typeof FileCodeInfo | typeof TextCodeInfo | typeof ShareCodeInfo;
-
 export class TextCodeInfo extends CodeInfo {
 	readonly #text: string;
 
@@ -245,5 +252,12 @@ export class ShareCodeInfo extends CodeInfo {
 
 	get size(): number {
 		return 0;
+	}
+
+	remove() {
+		super.remove();
+		for (const file of Object.values(this.#files)) {
+			file.remove();
+		}
 	}
 }

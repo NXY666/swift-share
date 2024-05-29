@@ -218,7 +218,8 @@ app.post(Api.BIU, (req, res) => {
 		consoleText = codeInfos.join('\n');
 	} else if (req.body === CONFIG.BIU.CLEAR_ALL_CODE_COMMAND) {
 		console.log('biu~CLEAR_ALL_CODE_COMMAND');
-		consoleText = "暂不支持。";
+		CodeStore.clearAllCodeInfo();
+		consoleText = "已清除所有提取码。";
 	} else if (req.body === CONFIG.BIU.OPEN_CONSOLE_COMMAND) {
 		console.log('biu~OPEN_CONSOLE_COMMAND');
 		consoleText = "已启动虚拟控制台。";

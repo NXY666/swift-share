@@ -7,6 +7,7 @@ import {PassThrough} from "stream";
 import RangeParser from "range-parser";
 import {getConfig} from "@/modules/Config";
 import {setTimerTimeout} from "@/modules/Timer";
+import {DownloadConfig, UploadConfig} from "@/types/FileType";
 
 const CONFIG = getConfig();
 
@@ -15,27 +16,6 @@ export class FileStatus {
 	static UPLOADING = 1;
 	static UPLOADED = 2;
 	static REMOVED = 3;
-}
-
-type DownloadConfig = {
-	id: ObjectKey;
-	name: string;
-	size: number;
-	downUrl: string;
-	playUrl: string;
-	removed: boolean;
-}
-
-type UploadPart = {
-	index: number;
-	range?: [number, number];
-}
-
-type UploadConfig = {
-	id: ObjectKey;
-	key: crypto.UUID;
-	name: string;
-	parts: UploadPart[];
 }
 
 export abstract class File extends EventEmitter {
@@ -504,7 +484,7 @@ export class ShareFile extends File {
 		super({name, size});
 	}
 
-	getUploadConfig(): UploadConfig {
+	getUploadConfig() {
 		const uploadConfig = super.getUploadConfig();
 		uploadConfig.parts.push({
 			index: -1
@@ -600,5 +580,6 @@ export class ShareFile extends File {
 
 	remove() {
 		super.canRemove();
+		// ！！！一定不能删除共享文件夹中的文件！！！
 	}
 }
