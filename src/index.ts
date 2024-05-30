@@ -8,7 +8,7 @@ import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
 import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
-import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourcePath} from "@/modules/Config";
+import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourceAbsolutePath} from "@/modules/Config";
 import {Command} from "commander";
 import {CodeStore, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
@@ -168,7 +168,7 @@ app.use(bodyParser.text({limit: Infinity}));
 app.use(bodyParser.json({limit: Infinity}));
 
 // 设置静态资源目录
-app.use(express.static(ResourcePath));
+app.use(express.static(ResourceAbsolutePath));
 
 // 为Request添加signed属性
 declare global {

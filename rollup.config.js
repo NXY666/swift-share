@@ -8,6 +8,7 @@ import copy from "rollup-plugin-copy";
 import watchAssets from "rollup-plugin-watch-assets";
 import terser from '@rollup/plugin-terser';
 import {execSync} from "child_process";
+import fs from "fs";
 
 // 将 import.meta.url 转换为当前文件的绝对路径
 const __filename = fileURLToPath(import.meta.url);
@@ -47,13 +48,23 @@ export default defineConfig({
 		}),
 		copy({
 			targets: [
-				{src: ['src/assets', 'src/package.json'], dest: 'dist'},
+				{src: ['src/assets'], dest: 'dist'},
 				{src: 'src/configs/DefaultConfig.js', dest: 'dist', rename: 'default.config.js'}
 			]
 		}),
 		isProd && {
 			name: 'generate-package-lock',
-			generateBundle() {
+			async generateBundle() {
+				// 把本项目中的 package.json 中的 dependencies 复制到 dist 目录的 package.json 中
+				const packageJson = (await import('./package.json', {assert: {type: 'json'}})).default;
+				const srcPackageJson = (await import('./src/package.json', {assert: {type: 'json'}})).default;
+
+				['description', 'engines', 'repository', 'bugs', 'author', 'license', 'keywords', 'dependencies'].forEach(key => {
+					srcPackageJson[key] = packageJson[key];
+				});
+
+				await fs.promises.writeFile('dist/package.json', JSON.stringify(srcPackageJson, null, 2));
+
 				execSync('npm install --package-lock-only', {cwd: 'dist'});
 			}
 		}
