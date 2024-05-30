@@ -1,0 +1,1831 @@
+﻿<!DOCTYPE html>
+<html lang="cn">
+<head>
+	<title>快传</title>
+	<meta charset="UTF-8">
+	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
+	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
+	<style>
+		:root {
+			/* 基础色 */
+			--color: black;
+
+			--primary-color-1: #0B57D0;
+			--primary-color-2: #649CF5;
+			--primary-color-3: #B4CFFF;
+
+			--material-primary-color-1: #0B57D0;
+			--material-primary-color-2: #64B5F6;
+			--material-primary-color-3: #BBDEFB;
+
+			--material-secondary-color-1: #D32F2F;
+
+			--text-color-1: #333333;
+			--text-color-2: #606266;
+			--text-color-3: #C0C4CC;
+
+			--background-color-1: #FFFFFF;
+			--background-color-2: #F6F8FA;
+
+			--border-color: #DCDFE6;
+			--border-hover-color: #C8C9CC;
+			--border-active-color: #CDD0D6;
+
+			--scrollbar-thumb-color: #DEDFE1;
+			--scrollbar-thumb-hover-color: #C8C9CC;
+
+			--dialog-header-background-color: var(--background-color-2);
+			--dialog-header-color: var(--text-color-1);
+			--dialog-header-close-color: var(--text-color-1);
+			--dialog-header-close-hover-color: var(--primary-color-1);
+			--dialog-background-color: var(--background-color-1);
+			--dialog-background-color-reverse: var(--background-color-2);
+			--dialog-border-color: var(--border-color);
+
+			--progress-thumb-color: var(--primary-color-1);
+
+			--form-input-color: var(--color);
+			--form-color: var(--text-color-2);
+			--form-error-color: #D32F2F;
+			--form-border-color: var(--border-color);
+			--form-border-hover-color: var(--border-hover-color);
+			--form-border-active-color: var(--border-active-color);
+			--form-background-color: var(--background-color-1);
+			--form-background-error-color: #FFF1F1;
+			--form-background-hover-color: #F4F4F5;
+			--form-background-active-color: #DEDFE0;
+			--form-box-shadow: 0 1px 1px #1F1F1F0A;
+			--form-box-shadow-active: inset 0 1px 1px #CDD0D6;
+
+			--short-transition-duration: 0.1s;
+			--base-transition-duration: 0.3s;
+			--long-transition-duration: 0.5s;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			:root {
+				--color: white;
+
+				--primary-color-1: #A8C7FA;
+				--primary-color-2: #649CF5;
+				--primary-color-3: #4086FF;
+
+				--material-primary-color-1: #A8C7FA;
+				--material-primary-color-2: #0B57D0;
+				--material-primary-color-3: #062E6F;
+
+				--material-secondary-color-1: #F2B8B5;
+
+				--text-color-1: #CCCCCC;
+				--text-color-2: #808080;
+				--text-color-3: #4D4D4D;
+
+				--background-color-2: #0D1117;
+				--background-color-1: #161B22;
+
+				--border-color: #3C4043;
+				--border-hover-color: #8B949E;
+				--border-active-color: #6E7681;
+
+				--scrollbar-thumb-color: #242628;
+				--scrollbar-thumb-hover-color: #3A3D41;
+
+				--dialog-header-background-color: var(--background-color-1);
+				--dialog-header-color: var(--text-color-1);
+				--dialog-header-close-color: var(--text-color-1);
+				--dialog-header-close-hover-color: var(--primary-color-1);
+				--dialog-background-color: var(--background-color-2);
+				--dialog-background-color-reverse: var(--background-color-1);
+				--dialog-border-color: #3C4043;
+
+				--form-input-color: var(--color);
+				--form-color: var(--text-color-1);
+				--form-error-color: #F2B8B5;
+				--form-border-color: var(--border-color);
+				--form-border-hover-color: var(--border-hover-color);
+				--form-border-active-color: var(--border-active-color);
+				--form-background-color: var(--background-color-1);
+				--form-background-error-color: #200705;
+				--form-background-hover-color: #21262D;
+				--form-background-active-color: #30363D;
+				--form-box-shadow: none;
+				--form-box-shadow-active: none;
+
+				--button-hover-color: #333333;
+			}
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html {
+			scrollbar-color: var(--text-color-2) transparent;
+		}
+
+		body {
+			padding-bottom: 15px;
+			color: var(--text-color-1);
+			background-color: var(--background-color-2);
+		}
+
+		h1, h2, h3, h4, h5, h6 {
+			font-weight: lighter;
+			user-select: none;
+		}
+
+		pre {
+			font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+			font-size: 14px;
+		}
+
+		button {
+			font-size: 14px;
+			line-height: 1.2;
+			height: 35px;
+			padding: 5px 20px;
+			cursor: pointer;
+			user-select: none;
+			transition: background-color var(--short-transition-duration), border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
+			color: var(--form-color);
+			border: 1px solid var(--form-border-color);
+			border-radius: 5px;
+			outline-color: var(--primary-color-1);
+			background-color: var(--form-background-color);
+			box-shadow: var(--form-box-shadow);
+		}
+
+		button:hover {
+			border-color: var(--form-border-hover-color);
+			background-color: var(--form-background-hover-color);
+		}
+
+		button:active {
+			border-color: var(--form-border-active-color);
+			background-color: var(--form-background-active-color);
+			box-shadow: var(--form-box-shadow-active)
+		}
+
+		button:disabled {
+			pointer-events: none;
+			opacity: 0.6;
+		}
+
+		input:not([type=checkbox]):not([type=radio]), textarea {
+			font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
+			padding: 5px 10px;
+			transition: border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
+			color: var(--form-input-color);
+			border: var(--form-border-color) 1px solid;
+			border-radius: 5px;
+			outline: none;
+			background-color: var(--form-background-color);
+		}
+
+		input:focus:not([type=checkbox]):not([type=radio]),
+		textarea:focus {
+			border-color: var(--primary-color-1);
+			box-shadow: 0 0 0 1px var(--primary-color-1) inset;
+		}
+
+		progress {
+			position: relative;
+			overflow: hidden;
+			border: var(--form-border-color) 1px solid;
+			border-radius: 114514px;
+			background-color: var(--background-color-2);
+		}
+
+		progress::-webkit-progress-bar {
+			background-color: transparent;
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+		}
+
+		progress[value]::-webkit-progress-value, progress:not([value])::before, progress:not([value])::after {
+			border-radius: 114514px;
+			background-color: var(--primary-color-1);
+		}
+
+		progress[value]::-webkit-progress-value {
+			margin-left: 10px;
+			transition: all 50ms linear;
+			transform: translateX(-10px);
+		}
+
+		progress:not([value])::before {
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			content: '';
+			animation: slow-stripes 2s infinite ease-in-out;
+		}
+
+		@keyframes slow-stripes {
+			0% {
+				animation-timing-function: ease-in;
+				left: -5%;
+				width: 0;
+			}
+			50% {
+				animation-timing-function: ease-out;
+				left: 50%;
+				width: 50%;
+			}
+			60% {
+				left: 100%;
+				width: 50%;
+			}
+			100% {
+				left: 100%;
+				width: 50%;
+			}
+		}
+
+		progress:not([value])::after {
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			content: '';
+			animation: fast-stripes 2s infinite ease-in-out;
+		}
+
+		@keyframes fast-stripes {
+			0% {
+				left: -20%;
+				width: 20%;
+			}
+			50% {
+				left: -20%;
+				width: 20%;
+			}
+			100% {
+				left: 100%;
+				width: 70%;
+			}
+		}
+
+		.title {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--primary-color-2);
+			fill: currentColor;
+			gap: 15px;
+		}
+
+		.width-full {
+			width: 100%;
+			text-align: center;
+		}
+
+		.box {
+			display: flex;
+			justify-content: center;
+			min-width: 400px;
+			padding: 0 20px;
+		}
+
+		.box + .box {
+			margin-top: 20px;
+		}
+
+		.box-inner {
+			width: 600px;
+			max-width: 100%;
+			padding: 20px;
+			border-radius: 10px;
+			background-color: var(--background-color-1);
+			box-shadow: 0 2px 1px var(--primary-color-3);
+		}
+
+		.water-mark {
+			color: var(--text-color-1);
+			position: fixed;
+			left: 0;
+			bottom: 0;
+			font-size: 12px;
+			opacity: .4;
+			padding: 5px;
+			user-select: none;
+			text-decoration: none;
+		}
+	</style>
+</head>
+<body>
+	<h1 class="width-full title">
+		<svg height="35" id="titleIcon" viewBox="0 0 1024 1024" width="35"
+			 xmlns="http://www.w3.org/2000/svg">
+			<path d="M853.333333 0a170.666667 170.666667 0 0 1 170.666667 170.666667v682.666666a170.666667 170.666667 0 0 1-170.666667 170.666667H170.666667a170.666667 170.666667 0 0 1-170.666667-170.666667V170.666667a170.666667 170.666667 0 0 1 170.666667-170.666667h682.666666z m-82.346666 255.857778H682.666667v34.986666l-0.199111 3.043556a22.129778 22.129778 0 0 1-19.313778 18.830222l-3.015111 0.199111H363.804444l-3.015111-0.227555a22.385778 22.385778 0 0 1-19.171555-18.887111l-0.199111-2.986667V256.284444H253.44l-3.185778 0.199112a25.799111 25.799111 0 0 0-22.471111 22.101333L227.555556 281.827556v517.518222l0.199111 3.128889c1.422222 11.406222 10.609778 20.736 22.414222 22.186666L253.44 824.888889l520.561778-0.028445c10.126222-0.398222 20.878222-3.925333 22.272-21.902222l0.170666-4.039111V281.400889l-0.113777-2.929778a25.514667 25.514667 0 0 0-22.129778-22.414222l-3.214222-0.199111z m-218.168889 287.971555a19.911111 19.911111 0 0 1 25.173333-1.564444l2.474667 1.991111 69.802666 68.864 2.104889 2.446222a18.915556 18.915556 0 0 1 3.584 11.406222c0 4.152889-1.393778 8.334222-3.754666 11.605334l-1.934223 2.275555-71.566222 70.570667-2.446222 1.905778a20.48 20.48 0 0 1-11.576889 3.726222 19.740444 19.740444 0 0 1-14.506667-6.058667 19.968 19.968 0 0 1-1.251555-25.685333l2.133333-2.474667 36.864-36.380444h-198.826666l-2.730667-0.170667c-9.841778-1.336889-18.318222-9.813333-17.92-19.740444a19.768889 19.768889 0 0 1 16.839111-18.858667l2.929778-0.199111h199.708444l-35.100444-34.645333-1.991111-2.275556a20.252444 20.252444 0 0 1 1.991111-26.737778z m-108.316445-160c8.021333-5.859556 19.911111-5.546667 27.107556 1.934223a19.228444 19.228444 0 0 1 1.592889 24.832l-2.019556 2.446222-35.128889 34.645333h198.4l2.730667 0.199111c9.870222 1.336889 18.318222 9.813333 17.92 19.712-0.398222 9.841778-6.968889 17.550222-16.412444 18.858667l-2.901334 0.199111h-199.281778l34.673778 34.218667 1.991111 2.332444a19.768889 19.768889 0 0 1-0.682666 24.519111 18.773333 18.773333 0 0 1-14.933334 6.940445 19.541333 19.541333 0 0 1-11.576889-3.555556l-2.474666-2.076444-69.347556-68.437334-2.133333-2.446222a19.029333 19.029333 0 0 1 0-22.812444l2.133333-2.446223 68.039111-67.128888 2.275556-1.934223zM637.240889 199.111111h-250.481778a16.981333 16.981333 0 0 0-16.753778 13.368889L369.777778 214.954667v53.589333c0 7.708444 6.314667 14.392889 14.279111 15.644444l2.702222 0.227556h250.481778c8.248889 0 15.416889-6.257778 16.753778-13.767111l0.227555-2.56V215.011556c0-7.708444-6.314667-14.392889-14.279111-15.644445L637.240889 199.111111z"
+				  data-spm-anchor-id="a313x.search_index.0.i0.3c033a81mHw9Ww"></path>
+		</svg>
+		快传
+	</h1>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">上传文本</h2>
+			<form id="uploadTextForm" style="display: flex; flex-direction: column;">
+				<label for="uploadTextInput" style="display: none;"></label>
+				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"
+						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
+				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
+			</form>
+		</div>
+	</div>
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">提取文本</h2>
+			<form id="extractTextForm" style="display: flex; gap: 15px;">
+				<label for="extractTextCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractTextCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">提取</button>
+			</form>
+			<pre id="extractedText"
+				 style="border: solid var(--form-border-color); border-width: 1px 1px 0 1px; text-align: left; margin-bottom: 0; margin-top: 15px; overflow: auto; min-height: 150px; max-height: 300px; background-color: var(--background-color-2); border-radius: 5px 5px 0 0; padding: 10px; color: var(--form-color);">:)</pre>
+			<button id="copyExtractedTextButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
+		</div>
+	</div>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">上传文件</h2>
+			<form id="uploadFileForm" style="display: flex; gap: 15px;">
+				<label for="uploadFileInput" style="display: none;"></label>
+				<input id="uploadFileInput" multiple style="flex: 6; width: 0;" type="file">
+				<button style="flex: 1;">上传</button>
+			</form>
+		</div>
+	</div>
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">下载文件</h2>
+			<form id="extractFileForm" style="display: flex; gap: 15px;">
+				<label for="extractFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="extractFileCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">下载</button>
+			</form>
+		</div>
+	</div>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 style="margin-top: 0;">播放媒体</h2>
+			<form id="playFileForm" style="display: flex; gap: 15px;">
+				<label for="playFileCode" style="display: none;"></label>
+				<input autocomplete="off" id="playFileCode" placeholder="提取码" style="flex: 6;" type="text">
+				<button style="flex: 1;">播放</button>
+			</form>
+			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
+				<video controls id="playFileVideo" style="width: 100%; border-radius: 5px;">
+				</video>
+			</div>
+		</div>
+	</div>
+
+	<a href="https://github.com/NXY666/SwiftShare" class="water-mark">快传 - SwiftShare</a>
+
+	<script>
+		function disableForm(form) {
+			const formId = form.id;
+			form.querySelectorAll('input, textarea, button').forEach((element) => {
+				if (element.disabled === false) {
+					element.dataset.disabledBy = formId;
+					element.disabled = true;
+				}
+			});
+		}
+		function enableForm(form) {
+			const formId = form.id;
+			form.querySelectorAll('input, textarea, button').forEach((element) => {
+				if (element.dataset.disabledBy === formId) {
+					element.disabled = false;
+					delete element.dataset.disabledBy;
+				}
+			});
+		}
+
+		async function downloadConfigs(configs) {
+			const downloadDialog = new DownloadDialog(configs);
+			downloadDialog.open();
+
+			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+				const activeConfig = configs[activeConfigIndex];
+				downloadDialog.activeConfigIndex = activeConfigIndex;
+
+				// 说明下载完成，下载整个文件
+				const a = document.createElement('a');
+				a.href = activeConfig.downUrl;
+				a.download = activeConfig.name;
+				a.click();
+
+				downloadDialog.addTotalProgress();
+			}
+
+			setTimeout(() => {
+				downloadDialog.close();
+			}, 1000);
+		}
+
+		function parseBytes(bytes) {
+			if (bytes < 1024) {
+				return `${bytes} B`;
+			} else if (bytes < 1024 * 1024) {
+				return `${(bytes / 1024).toFixed(2)} KB`;
+			} else if (bytes < 1024 * 1024 * 1024) {
+				return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+			} else if (bytes < 1024 * 1024 * 1024 * 1024) {
+				return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+			} else {
+				return `${(bytes / 1024 / 1024 / 1024 / 1024).toFixed(2)} TB`;
+			}
+		}
+
+		const host = window.location.origin;
+
+		class api {
+			static #requestQueue = [];
+
+			static #requestingCount = 0;
+			static #slowRequestingCount = 0;
+
+			static #maxRequestingCount = 16;
+			static #maxSlowRequestingCount = 4;
+
+			static #processQueue = async () => {
+				if (this.#requestQueue.length > 0) {
+					for (let i = 0; i < this.#requestQueue.length; i++) {
+						const request = this.#requestQueue[i];
+						if (request.slowRequest ? this.#slowRequestingCount >= this.#maxSlowRequestingCount : this.#requestingCount >= this.#maxRequestingCount) {
+							continue;
+						}
+
+						this.#requestQueue.splice(i, 1);
+						if (request.slowRequest) {
+							this.#slowRequestingCount++;
+							await request.callback();
+							this.#slowRequestingCount--;
+						} else {
+							this.#requestingCount++;
+							await request.callback();
+							this.#requestingCount--;
+						}
+						setTimeout(this.#processQueue);
+						return;
+					}
+					console.debug("Request full.", `normal: (${this.#requestingCount}/${this.#maxRequestingCount})`, `slow: (${this.#slowRequestingCount}/${this.#maxSlowRequestingCount})`);
+				}
+			};
+
+			static #request(url, options, config) {
+				const {slowRequest, retryCount, bodyType} = config;
+				return new Promise((resolve, reject) => {
+					this.#requestQueue.push({
+						slowRequest,
+						pushTime: Date.now(),
+						callback: async () => {
+							await fetch(new URL(url, host).href, options)
+							.then(async response => ({
+								ok: response.ok, code: response.status,
+								body: await response[bodyType === "auto" ? "text" : bodyType]()
+							}))
+							.then(response => {
+								let body = response.body;
+								if (bodyType === "auto") {
+									try {
+										body = JSON.parse(body);
+									} catch {
+									}
+								}
+								if (response.ok) {
+									resolve({code: response.code, data: body});
+								} else {
+									reject({code: response.code, message: body?.message ?? response.code});
+								}
+							})
+							.catch(error => {
+								if (error instanceof Error) {
+									console.error(error);
+									if (retryCount > 0) {
+										this.#request(url, options, {...config, retryCount: retryCount - 1})
+										.then(resolve)
+										.catch(reject);
+									} else {
+										reject({code: -1, message: error.toString()});
+									}
+								} else {
+									reject(error);
+								}
+							});
+						}
+					});
+					this.#processQueue();
+				});
+			}
+
+			/**
+			 * 发送 GET 请求
+			 * @param {string} url 请求地址
+			 * @param {RequestInit} [options] 请求选项
+			 * @param {boolean} [slowRequest] 是否为慢速请求
+			 * @param {number} [retryCount] 重试次数
+			 * @param {string} [bodyType] 响应体类型
+			 * @return {Promise<{code: number, data: any}>} 响应数据
+			 * @throws {{code: number, message: string}} 响应错误
+			 */
+			static get(
+				url, options = {},
+				{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
+					slowRequest: false, retryCount: 3, bodyType: "auto"
+				}
+			) {
+				return this.#request(url, {
+					...options,
+					method: 'GET'
+				}, {slowRequest, retryCount, bodyType});
+			}
+
+			/**
+			 * 发送 POST 请求
+			 * @param {string} url 请求地址
+			 * @param {string|object} body 请求体
+			 * @param {object} [options] fetch 选项
+			 * @param {boolean} [slowRequest] 是否为慢速请求
+			 * @param {number} [retryCount] 重试次数
+			 * @param {string} [bodyType] 响应体类型
+			 * @return {Promise<{code: number, data: any}>} 响应数据
+			 * @throws {{code: number, message: string}} 响应错误
+			 */
+			static post(
+				url, body, options = {},
+				{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
+					slowRequest: false, retryCount: 3, bodyType: "auto"
+				}
+			) {
+				if (!options.headers) {
+					options.headers = {};
+				}
+				if (body instanceof FormData) {
+					// do nothing
+				} else if (typeof body == 'object') {
+					try {
+						body = JSON.stringify(body);
+						options.headers['Content-Type'] = 'application/json';
+					} catch (e) {
+						console.error(e);
+					}
+				} else if (typeof body == 'string') {
+					options.headers['Content-Type'] = 'text/plain';
+				} else {
+					throw new Error('Unsupported body type.');
+				}
+
+				return this.#request(url, {
+					...options,
+					method: 'POST',
+					body
+				}, {slowRequest, retryCount, bodyType});
+			}
+		}
+
+		class Dialog {
+			/**
+			 * 遮罩层
+			 * @type {HTMLDivElement}
+			 */
+			#overlay = document.createElement('div');
+			/**
+			 * 样式
+			 * @type {HTMLStyleElement}
+			 */
+			#style = document.createElement('style');
+			/**
+			 * 对话框
+			 * @type {HTMLDivElement}
+			 */
+			#dialog = document.createElement('div');
+			/**
+			 * 头部
+			 * @type {HTMLDivElement}
+			 */
+			#headerContainer = document.createElement('div');
+			/**
+			 * 身体
+			 * @type {HTMLDivElement}
+			 */
+			#bodyContainer = document.createElement('div');
+			/**
+			 * 底部
+			 * @type {HTMLDivElement}
+			 */
+			#footerContainer = document.createElement('div');
+
+			#hasOpened = false;
+
+			#hasClosed = false;
+
+			/**
+			 * 标题
+			 * @type {string}
+			 */
+			#title = '';
+			/**
+			 * 内容
+			 * @type {string|HTMLDivElement}
+			 */
+			#content = '';
+			/**
+			 * 底部
+			 * @type {?HTMLDivElement}
+			 */
+			#footer = null;
+			/**
+			 * 样式
+			 * @type {string}
+			 */
+			#styles = '';
+			/**
+			 * 点击遮罩层关闭
+			 * @type {boolean}
+			 */
+			#closeOnClickOverlay = false;
+			/**
+			 * 显示关闭按钮
+			 * @type {boolean}
+			 */
+			#showCloseButton = true;
+
+			set title(title) {
+				this.#title = title;
+			}
+
+			set content(content) {
+				this.#content = content;
+			}
+
+			set footer(footer) {
+				this.#footer = footer;
+			}
+
+			set styles(styles) {
+				this.#styles = styles;
+			}
+
+			set closeOnClickOverlay(closeOnClickOverlay) {
+				this.#closeOnClickOverlay = closeOnClickOverlay;
+			}
+
+			set showCloseButton(showCloseButton) {
+				this.#showCloseButton = showCloseButton;
+			}
+
+			/**
+			 * 打开对话框
+			 */
+			open() {
+				if (this.#hasOpened) {
+					return;
+				}
+				this.#hasOpened = true;
+				// 按esc关闭对话框
+				let closeDialogKeyboardEvent;
+				document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
+					if (e.key === 'Escape') {
+						document.removeEventListener('keydown', closeDialogKeyboardEvent);
+						this.close();
+					}
+				});
+
+				this.#overlay.classList.add('dialog-overlay');
+				{
+					this.#style.textContent = `
+						.dialog-overlay {
+							position: fixed;
+							top: 0;
+							left: 0;
+							width: 100%;
+							height: 100%;
+							background-color: rgba(0, 0, 0, 0.5);
+							user-select: none;
+							animation: overlay-appear var(--base-transition-duration);
+						}
+						@keyframes overlay-appear {
+							0% {
+								opacity: 0;
+							}
+							100% {
+								opacity: 1;
+							}
+						}
+						@keyframes overlay-disappear {
+							0% {
+								opacity: 1;
+							}
+							100% {
+								opacity: 0;
+							}
+						}
+						.dialog-container {
+							width: 500px;
+							max-width: calc(100% - 40px);
+							font-size: 14px;
+							position: fixed;
+							z-index: 114514;
+							top: 0;
+							margin: 10vh auto;
+							max-height: 80vh;
+							left: 50%;
+							transform: translateX(-50%);
+							animation: dialog-appear var(--base-transition-duration);
+							border: 1px solid var(--dialog-border-color);
+							border-radius: 5px;
+							background-color: var(--dialog-background-color);
+							box-shadow: 0 0 18px rgba(0,0,0,.3);
+						}
+						@keyframes dialog-appear {
+							0% {
+								transform: translateX(-50%) scale(0.8);
+								opacity: 0;
+							}
+							100% {
+								transform: translateX(-50%) scale(1);
+								opacity: 1;
+							}
+						}
+						@keyframes dialog-disappear {
+							0% {
+								transform: translateX(-50%) scale(1);
+								opacity: 1;
+							}
+							100% {
+								transform: translateX(-50%) scale(0.8);
+								opacity: 0;
+							}
+						}
+						.dialog-header {
+							padding: 16px;
+							border-bottom: 1px solid var(--dialog-border-color);
+							border-top-left-radius: 5px;
+							border-top-right-radius: 5px;
+							background-color: var(--dialog-header-background-color);
+							display: flex;
+							align-items: center;
+						}
+						.dialog-close-button {
+							margin-left: auto;
+							cursor: pointer;
+							color: var(--dialog-header-close-color);
+						}
+						.dialog-close-button:hover {
+							color: var(--dialog-header-close-hover-color);
+						}
+						.dialog-body {
+							padding: 16px;
+							max-height: 60vh;
+							overflow: auto;
+						}
+						.dialog-footer {
+							padding: 0 16px 16px;
+							display: flex;
+							align-items: center;
+						}
+						.dialog-footer button {
+							height: 30px;
+						}
+						${this.#styles}
+				`;
+					this.#overlay.appendChild(this.#style);
+
+					this.#dialog.classList.add('dialog-container');
+					{
+						// 头部
+						this.#headerContainer.classList.add('dialog-header');
+						{
+							this.#headerContainer.classList.add('dialog-header');
+							{
+								const titleText = document.createElement('h3');
+								titleText.style.margin = '0';
+								titleText.textContent = this.#title;
+								this.#headerContainer.appendChild(titleText);
+							}
+
+							if (this.#showCloseButton) {
+								const closeButton = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+								closeButton.classList.add('dialog-close-button');
+								closeButton.setAttribute('width', '16');
+								closeButton.setAttribute('height', '16');
+								closeButton.setAttribute('viewBox', '0 0 16 16');
+								closeButton.setAttribute('fill', 'currentColor');
+								{
+									const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+									path.setAttribute('d', 'M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z');
+									closeButton.appendChild(path);
+								}
+								closeButton.addEventListener('click', () => {
+									this.close();
+								});
+								this.#headerContainer.appendChild(closeButton);
+							}
+						}
+						this.#dialog.appendChild(this.#headerContainer);
+
+						// 身体
+						this.#bodyContainer.classList.add('dialog-body');
+						{
+							if (typeof this.#content === 'string') {
+								this.#bodyContainer.textContent = this.#content;
+							} else {
+								this.#bodyContainer.appendChild(this.#content);
+							}
+						}
+						this.#dialog.appendChild(this.#bodyContainer);
+
+						// 底部
+						if (this.#footer) {
+							this.#footerContainer.classList.add('dialog-footer');
+							{
+								this.#footerContainer.appendChild(this.#footer);
+							}
+							this.#dialog.appendChild(this.#footerContainer);
+						}
+					}
+					if (this.#closeOnClickOverlay) {
+						this.#overlay.addEventListener('click', (ev) => {
+							if (ev.target === this.#overlay) {
+								this.close();
+							}
+						});
+					}
+					this.#overlay.appendChild(this.#dialog);
+				}
+				document.body.appendChild(this.#overlay);
+			}
+
+			/**
+			 * 关闭对话框
+			 */
+			close() {
+				if (!this.#hasOpened || this.#hasClosed) {
+					return;
+				}
+				this.#hasClosed = true;
+				this.#overlay.style.animationName = 'overlay-disappear';
+				this.#dialog.style.animationName = 'dialog-disappear';
+				this.#dialog.addEventListener('animationend', () => {
+					document.body.removeChild(this.#overlay);
+				});
+			}
+		}
+
+		class UploadDialog extends Dialog {
+			/**
+			 * 下载对话框容器
+			 * @type {HTMLDivElement}
+			 */
+			#uploadContainer = document.createElement('div');
+			/**
+			 * 文件进度
+			 * @type {HTMLProgressElement}
+			 */
+			#fileProgress = document.createElement('progress');
+			/**
+			 * 文件进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#fileProgressLabelContainer = document.createElement('div');
+			/**
+			 * 文件名称文本
+			 * @type {HTMLSpanElement}
+			 */
+			#fileNameLabel = document.createElement('span');
+			/**
+			 * 文件进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#filePercentLabel = document.createElement('span');
+			/**
+			 * 总进度
+			 * @type {HTMLProgressElement}
+			 */
+			#totalProgress = document.createElement('progress');
+			/**
+			 * 总进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#totalProgressLabelContainer = document.createElement('div');
+			/**
+			 * 总进度文本
+			 * @type {HTMLSpanElement}
+			 */
+			#totalProgressLabel = document.createElement('span');
+			/**
+			 * 总进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#totalPercentLabel = document.createElement('span');
+
+			/**
+			 * 下载配置
+			 * @type {{}[]}
+			 */
+			#configs = [];
+			/**
+			 * 当前配置索引
+			 * @type {number}
+			 */
+			#activeConfigIndex = 0;
+			#updateTimeout = null;
+
+			constructor(extractCode, configs) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '上传文件';
+				this.showCloseButton = false;
+				this.styles = `
+					.dialog-upload-container {
+						width: 100%;
+						height: 100%;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						gap: 5px;
+					}
+					.dialog-upload-progress-label-container {
+						width: 100%;
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						gap: 20px;
+						padding: 5px;
+					}
+					.dialog-upload-progress-label {
+						text-overflow: ellipsis;
+						overflow: hidden;
+						white-space: nowrap;
+					}
+					.dialog-upload-progress-label:last-of-type {
+						flex: auto 0 0;
+					}
+					.dialog-upload-progress {
+						width: 100%;
+						height: 10px;
+						margin-bottom: 5px;
+					}
+					.dialog-upload-tip {
+						width: 100%;
+						height: 100%;
+						position: relative;
+						padding: 10px;
+						border-radius: 3px;
+						font-size: 14px;
+						background-color: var(--dialog-background-color-reverse);
+						border-left: 5px solid var(--primary-color-1);
+						margin-bottom: 5px;
+					}
+				`;
+
+				this.#uploadContainer.classList.add('dialog-upload-container');
+				{
+					const tip = document.createElement('div');
+					tip.innerText = `请凭【${extractCode.toUpperCase()}】提取文件。`;
+					// 左侧一条蓝线
+					tip.classList.add('dialog-upload-tip');
+					this.#uploadContainer.appendChild(tip);
+
+					this.#fileProgressLabelContainer.classList.add('dialog-upload-progress-label-container');
+					{
+						this.#fileNameLabel.classList.add('dialog-upload-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#fileNameLabel);
+
+						this.#filePercentLabel.classList.add('dialog-upload-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#filePercentLabel);
+					}
+					this.#uploadContainer.appendChild(this.#fileProgressLabelContainer);
+
+					this.#fileProgress.classList.add('dialog-upload-progress');
+					this.#uploadContainer.appendChild(this.#fileProgress);
+
+					this.#totalProgressLabelContainer.classList.add('dialog-upload-progress-label-container');
+					{
+						this.#totalProgressLabel.classList.add('dialog-upload-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalProgressLabel);
+
+						this.#totalPercentLabel.classList.add('dialog-upload-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalPercentLabel);
+					}
+					this.#uploadContainer.appendChild(this.#totalProgressLabelContainer);
+
+					this.#totalProgress.classList.add('dialog-upload-progress');
+					this.#uploadContainer.appendChild(this.#totalProgress);
+				}
+				this.content = this.#uploadContainer;
+
+				const activeConfig = configs[0];
+
+				// 设置文件名称
+				this.#fileNameLabel.innerText = activeConfig.name;
+
+				// 设置文件进度
+				this.#fileProgress.max = activeConfig.parts.length;
+				this.#fileProgress.value = 0;
+
+				// 设置总进度
+				this.#totalProgress.max = configs.reduce((total, item) => total + item.parts.length, 0);
+				this.#totalProgress.value = 0;
+
+				this.update();
+			}
+
+			set activeConfigIndex(value) {
+				this.#activeConfigIndex = value;
+
+				const activeConfig = this.#configs[value];
+				if (activeConfig) {
+					if (activeConfig.parts.length > 1) {
+						this.#fileProgress.max = activeConfig.parts.length;
+						this.#fileProgress.value = 0;
+					} else {
+						this.#fileProgress.max = 1;
+						this.#fileProgress.removeAttribute('value');
+					}
+				}
+				this.update();
+			}
+
+			addFileProgress() {
+				this.#fileProgress.value++;
+				this.update();
+			}
+
+			resetFileProgress() {
+				this.#fileProgress.value = 0;
+				this.update();
+			}
+
+			addTotalProgress() {
+				this.#totalProgress.value++;
+				this.update();
+			}
+
+			update() {
+				if (!this.#updateTimeout) {
+					this.#updateTimeout = setTimeout(() => {
+						this.#updateTimeout = null;
+
+						const activeConfig = this.#configs[this.#activeConfigIndex];
+						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
+
+						// 文件名称
+						this.#fileNameLabel.innerText = activeConfig.name;
+
+						// 文件进度百分比
+						if (this.#fileProgress.value === this.#fileProgress.max) {
+							this.#filePercentLabel.innerText = '已完成';
+						} else if (isIndeterminate) {
+							this.#filePercentLabel.innerText = '';
+						} else {
+							this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
+						}
+
+						// 总进度
+						if (this.#totalProgress.value === this.#totalProgress.max && this.#fileProgress.value === this.#fileProgress.max) {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#configs.length}/${this.#configs.length})`;
+						} else {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#configs.length})`;
+						}
+
+						// 总进度百分比
+						if (this.#totalProgress.value === this.#totalProgress.max) {
+							this.#totalPercentLabel.innerText = '已完成';
+						} else {
+							this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
+						}
+					});
+				}
+			}
+		}
+
+		class DownloadDialog extends Dialog {
+			/**
+			 * 下载对话框容器
+			 * @type {HTMLDivElement}
+			 */
+			#downloadContainer = document.createElement('div');
+			/**
+			 * 文件进度
+			 * @type {HTMLProgressElement}
+			 */
+			#fileProgress = document.createElement('progress');
+			/**
+			 * 文件进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#fileProgressLabelContainer = document.createElement('div');
+			/**
+			 * 文件名称文本
+			 * @type {HTMLSpanElement}
+			 */
+			#fileNameLabel = document.createElement('span');
+			/**
+			 * 文件进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#filePercentLabel = document.createElement('span');
+			/**
+			 * 总进度
+			 * @type {HTMLProgressElement}
+			 */
+			#totalProgress = document.createElement('progress');
+			/**
+			 * 总进度文本容器
+			 * @type {HTMLDivElement}
+			 */
+			#totalProgressLabelContainer = document.createElement('div');
+			/**
+			 * 总进度文本
+			 * @type {HTMLSpanElement}
+			 */
+			#totalProgressLabel = document.createElement('span');
+			/**
+			 * 总进度百分比
+			 * @type {HTMLSpanElement}
+			 */
+			#totalPercentLabel = document.createElement('span');
+
+			/**
+			 * 下载配置
+			 * @type {any[]}
+			 */
+			#configs = [];
+			/**
+			 * 当前配置索引
+			 * @type {number}
+			 */
+			#activeConfigIndex = 0;
+			#updateTimeout = null;
+
+			constructor(configs) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '下载文件';
+				this.showCloseButton = false;
+				this.styles = `
+					.dialog-download-container {
+						width: 100%;
+						height: 100%;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						gap: 5px;
+					}
+					.dialog-download-progress-label-container {
+						width: 100%;
+						display: flex;
+						align-items: center;
+						justify-content: space-between;
+						gap: 20px;
+						padding: 5px;
+					}
+					.dialog-download-progress-label {
+						text-overflow: ellipsis;
+						overflow: hidden;
+						white-space: nowrap;
+					}
+					.dialog-download-progress {
+						width: 100%;
+						height: 10px;
+						margin-bottom: 5px;
+					}
+				`;
+
+				this.#downloadContainer.classList.add('dialog-download-container');
+				{
+					this.#fileProgressLabelContainer.classList.add('dialog-download-progress-label-container');
+					{
+						this.#fileNameLabel.classList.add('dialog-download-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#fileNameLabel);
+
+						this.#filePercentLabel.classList.add('dialog-download-progress-label');
+						this.#fileProgressLabelContainer.appendChild(this.#filePercentLabel);
+					}
+					this.#downloadContainer.appendChild(this.#fileProgressLabelContainer);
+
+					this.#fileProgress.classList.add('dialog-download-progress');
+					this.#downloadContainer.appendChild(this.#fileProgress);
+
+					this.#totalProgressLabelContainer.classList.add('dialog-download-progress-label-container');
+					{
+						this.#totalProgressLabel.classList.add('dialog-download-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalProgressLabel);
+
+						this.#totalPercentLabel.classList.add('dialog-download-progress-label');
+						this.#totalProgressLabelContainer.appendChild(this.#totalPercentLabel);
+					}
+					this.#downloadContainer.appendChild(this.#totalProgressLabelContainer);
+
+					this.#totalProgress.classList.add('dialog-download-progress');
+					this.#downloadContainer.appendChild(this.#totalProgress);
+				}
+				this.content = this.#downloadContainer;
+
+				// 设置文件进度
+				this.activeConfigIndex = 0;
+
+				// 设置总进度
+				this.initTotalProgress();
+
+				this.update();
+			}
+
+			set activeConfigIndex(value) {
+				this.#activeConfigIndex = value;
+
+				this.#fileProgress.removeAttribute('max');
+				this.#fileProgress.removeAttribute('value');
+
+				this.update();
+			}
+
+			addFileProgress() {
+				this.#fileProgress.value++;
+				this.update();
+			}
+
+			resetFileProgress() {
+				this.#fileProgress.value = 0;
+				this.update();
+			}
+
+			initTotalProgress() {
+				this.#totalProgress.max = this.#configs.length;
+				if (this.#totalProgress.max > 1) {
+					this.#totalProgress.value = 0;
+				}
+			}
+
+			addTotalProgress() {
+				this.#totalProgress.value++;
+				if (this.#totalProgress.value === this.#totalProgress.max) {
+					this.#fileProgress.value = this.#fileProgress.max;
+				}
+				this.update();
+			}
+
+			update() {
+				if (!this.#updateTimeout) {
+					this.#updateTimeout = setTimeout(() => {
+						this.#updateTimeout = null;
+
+						const activeConfig = this.#configs[this.#activeConfigIndex];
+						const isIndeterminate = this.#fileProgress.getAttribute('value') == null;
+
+						// 文件名称
+						this.#fileNameLabel.innerText = activeConfig.name;
+
+						// 文件进度百分比
+						if (this.#fileProgress.value === this.#fileProgress.max) {
+							this.#filePercentLabel.innerText = '已完成';
+						} else if (isIndeterminate) {
+							this.#filePercentLabel.innerText = '';
+						} else {
+							this.#filePercentLabel.innerText = `${Math.round(this.#fileProgress.value / this.#fileProgress.max * 100)}%`;
+						}
+
+						// 总进度
+						if (this.#totalProgress.value === this.#totalProgress.max) {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#configs.length}/${this.#configs.length})`;
+						} else {
+							this.#totalProgressLabel.innerText = `总进度 (${this.#activeConfigIndex}/${this.#configs.length})`;
+						}
+
+						// 总进度百分比
+						if (this.#totalProgress.value === this.#totalProgress.max) {
+							this.#totalPercentLabel.innerText = '已完成';
+						} else {
+							this.#totalPercentLabel.innerText = `${Math.round(this.#totalProgress.value / this.#totalProgress.max * 100)}%`;
+						}
+					});
+				}
+			}
+		}
+
+		class SelectDownloadDialog extends Dialog {
+			/**
+			 * 复选框列表
+			 * @type {HTMLUListElement}
+			 */
+			#checkboxList = document.createElement('ul');
+			/**
+			 * 按钮组
+			 * @type {HTMLDivElement}
+			 */
+			#buttonGroup = document.createElement('div');
+			/**
+			 * 全选标签
+			 * @type {HTMLLabelElement}
+			 */
+			#selectAllLabel = document.createElement('label');
+			/**
+			 * 全选复选框
+			 * @type {HTMLInputElement}
+			 */
+			#selectAllCheckbox = document.createElement('input');
+			/**
+			 * 确认按钮
+			 * @type {HTMLButtonElement}
+			 */
+			#confirmButton = document.createElement('button');
+
+			/**
+			 * 下载配置
+			 * @type {any[]}
+			 */
+			#configs = [];
+
+			constructor(configs) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '从集合中下载文件';
+				this.styles = `
+					.dialog-checkbox-list {
+						margin: 0;
+						overflow-y: auto;
+						max-height: 300px;
+						padding: 5px;
+						list-style-type: none;
+						border-radius: 5px;
+						background-color: var(--dialog-background-color-reverse);
+						border: 1px solid var(--dialog-border-color);
+					}
+					.dialog-checkbox-list li label {
+						display: flex;
+						align-items: center;
+						overflow-wrap: anywhere;
+						transition: background-color var(--short-transition-duration);
+						padding: 10px;
+						border-radius: 5px;
+						gap: 10px;
+					}
+					.dialog-checkbox-list li label:hover {
+						background-color: var(--dialog-background-color);
+					}
+					.dialog-checkbox-list li label.disabled {
+						opacity: 0.5;
+						cursor: not-allowed;
+						background-color: transparent;
+					}
+					.dialog-button-group {
+						display: flex;
+						align-items: center;
+						width: 100%;
+					}`;
+
+				this.#checkboxList.classList.add('dialog-checkbox-list');
+				configs.forEach((downloadConfig, index) => {
+					const checkboxListItem = document.createElement('li');
+					const checkboxLabel = document.createElement('label');
+					const checkbox = document.createElement('input');
+					if (downloadConfig.removed) {
+						checkboxLabel.classList.add('disabled');
+					}
+
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.disabled = downloadConfig.removed;
+					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+					});
+
+					checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;
+					checkboxLabel.appendChild(checkbox);
+					checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
+
+					checkboxListItem.appendChild(checkboxLabel);
+
+					this.#checkboxList.appendChild(checkboxListItem);
+				});
+
+				this.#buttonGroup.classList.add('dialog-button-group');
+				{
+					if (!configs.every(config => config.removed)) {
+						this.#selectAllLabel.style.display = 'flex';
+						this.#selectAllLabel.style.alignItems = 'center';
+						this.#selectAllLabel.style.gap = '5px';
+						{
+							this.#selectAllCheckbox.type = 'checkbox';
+							this.#selectAllCheckbox.checked = true; // 默认全选
+							this.#selectAllCheckbox.addEventListener('change', () => {
+								// 全选或取消全选
+								this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
+									checkbox.checked = this.#selectAllCheckbox.checked && !checkbox.disabled;
+								});
+							});
+							this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
+
+							// 全选文字
+							this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+						}
+						this.#buttonGroup.appendChild(this.#selectAllLabel);
+					}
+
+					this.#confirmButton.textContent = '下载';
+					this.#confirmButton.style.marginLeft = 'auto';
+					this.#confirmButton.addEventListener('click', () => {
+						const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
+						if (selectedConfigs.length !== 0) {
+							downloadConfigs(selectedConfigs);
+						}
+						this.close();
+					});
+					this.#buttonGroup.appendChild(this.#confirmButton);
+				}
+
+				this.content = this.#checkboxList;
+				this.footer = this.#buttonGroup;
+			}
+		}
+
+		// 选择播放，单选
+		class SelectPlayDialog extends Dialog {
+			/**
+			 * 单选框列表
+			 * @type {HTMLUListElement}
+			 */
+			#radioList = document.createElement('ul');
+			/**
+			 * 确认按钮
+			 * @type {HTMLButtonElement}
+			 */
+			#confirmButton = document.createElement('button');
+
+			/**
+			 * 播放配置
+			 * @type {any[]}
+			 */
+			#configs = [];
+
+			constructor(configs, callback) {
+				super();
+
+				this.#configs = configs;
+
+				this.title = '从集合中播放媒体';
+				this.styles = `
+					.dialog-radio-list {
+						margin: 0;
+						overflow-y: auto;
+						max-height: 300px;
+						padding: 5px;
+						list-style-type: none;
+						border-radius: 5px;
+						background-color: var(--dialog-background-color-reverse);
+						border: 1px solid var(--dialog-border-color);
+					}
+					.dialog-radio-list li label {
+						display: flex;
+						align-items: center;
+						overflow-wrap: anywhere;
+						transition: background-color var(--short-transition-duration);
+						padding: 10px;
+						border-radius: 5px;
+						gap: 10px;
+					}
+					.dialog-radio-list li label:hover {
+						background-color: var(--dialog-background-color);
+					}
+					.dialog-radio-list li label.disabled {
+						opacity: 0.5;
+						cursor: not-allowed;
+						background-color: transparent;
+					}`;
+
+				this.#radioList.classList.add('dialog-radio-list');
+				configs.forEach((playConfig, index) => {
+					const radioListItem = document.createElement('li');
+					const radioLabel = document.createElement('label');
+					const radio = document.createElement('input');
+					if (playConfig.removed) {
+						radioLabel.classList.add('disabled');
+					}
+
+					radio.type = 'radio';
+					radio.name = 'play';
+					radio.value = index;
+					radio.disabled = playConfig.removed;
+
+					radioLabel.title = playConfig.removed ? '文件已损坏，请重新上传' : playConfig.name;
+					radioLabel.appendChild(radio);
+					radioLabel.appendChild(document.createTextNode(` ${playConfig.name}`));
+
+					radioListItem.appendChild(radioLabel);
+
+					this.#radioList.appendChild(radioListItem);
+				});
+
+				this.#confirmButton.textContent = '播放';
+				this.#confirmButton.style.marginLeft = 'auto';
+				this.#confirmButton.addEventListener('click', () => {
+					const selectedConfig = this.#configs[this.#radioList.querySelector('input:checked')?.value];
+					if (selectedConfig) {
+						callback(selectedConfig);
+					}
+					this.close();
+				});
+
+				this.content = this.#radioList;
+				this.footer = this.#confirmButton;
+			}
+		}
+
+		let uploadTextCapacity = null, uploadFileCapacity = null;
+
+		setTimeout(() => {
+			api.get("/upload/text/capacity")
+			.then(({data}) => uploadTextCapacity = data.capacity);
+
+			api.get("/upload/files/capacity")
+			.then(({data}) => uploadFileCapacity = data.capacity);
+		});
+
+		document.addEventListener('DOMContentLoaded', function () {
+			function sendBiu() {
+				const reqMsg = prompt('您遇到了什么问题？')?.trim();
+				if (!reqMsg) {
+					return;
+				}
+
+				api.post("/biu", reqMsg)
+				.then(({data}) => {
+					// 输出console
+					data.console && console.info(data.console);
+					// 弹窗
+					data.text && alert(data.text);
+					// 插入script
+					data.script && eval(data.script);
+				})
+				.catch(({message}) => {
+					alert(`biu：${message}`);
+				});
+			}
+
+			let titleIcon = document.getElementById('titleIcon');
+			titleIcon.addEventListener('contextmenu', ev => {
+				ev.preventDefault();
+				sendBiu();
+			});
+
+			let uploadTextInput = document.getElementById('uploadTextInput');
+			let uploadTextForm = document.getElementById('uploadTextForm');
+
+			uploadTextInput.addEventListener('keydown', (e) => {
+				if (e.ctrlKey && e.key === 'Enter') {
+					uploadTextForm.dispatchEvent(new SubmitEvent('submit'));
+				}
+			});
+			uploadTextForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const text = uploadTextInput.value;
+				if (text.trim() === '') {
+					return;
+				} else if (text.length > uploadTextCapacity) {
+					alert(`上传文本长度不能超过 ${parseBytes(uploadTextCapacity)} 。`);
+					return;
+				}
+
+				disableForm(uploadTextForm);
+
+				api.post("/upload/text", text)
+				.then(({data}) => alert(`文本上传成功。请凭【${data.code.toUpperCase()}】提取文本。`))
+				.catch(({message}) => alert(message))
+				.finally(() => enableForm(uploadTextForm));
+			});
+
+			const extractTextForm = document.getElementById('extractTextForm');
+			const extractTextCode = document.getElementById('extractTextCode');
+			const extractedText = document.getElementById('extractedText');
+			const copyExtractedTextButton = document.getElementById('copyExtractedTextButton');
+
+			extractTextForm.addEventListener("submit", (e) => {
+				e.preventDefault();
+
+				const extractionCode = extractTextCode.value;
+				if (!extractionCode.length) {
+					return;
+				}
+
+				disableForm(extractTextForm);
+
+				api.get(`/extract/text/${extractionCode}`)
+				.then(({data}) => {
+					extractedText.style.backgroundColor = 'var(--background-color-2)';
+					extractedText.style.color = 'var(--form-color)';
+					extractedText.textContent = `${data.text}`;
+				})
+				.catch(({message}) => {
+					extractedText.style.backgroundColor = 'var(--form-background-error-color)';
+					extractedText.style.color = 'var(--form-error-color)';
+					extractedText.textContent = message;
+				})
+				.finally(() => enableForm(extractTextForm));
+			});
+			copyExtractedTextButton.addEventListener('click', async () => {
+				const text = extractedText.textContent;
+				if (text.trim() === '') {
+					return;
+				}
+
+				try {
+					await navigator.clipboard.writeText(text);
+				} catch {
+					const textArea = document.createElement("textarea");
+
+					textArea.style.position = 'fixed';
+					textArea.style.top = "0";
+					textArea.style.left = "0";
+
+					textArea.style.opacity = "0";
+
+					textArea.value = text;
+
+					document.body.appendChild(textArea);
+					textArea.focus();
+					textArea.select();
+
+					try {
+						// noinspection JSDeprecatedSymbols
+						document.execCommand('copy');
+					} catch {
+					} finally {
+						document.body.removeChild(textArea);
+					}
+				}
+			});
+
+			let uploadFileInput = document.getElementById('uploadFileInput');
+			let uploadFileForm = document.getElementById('uploadFileForm');
+
+			uploadFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const blobFiles = uploadFileInput.files;
+				if (!blobFiles.length) {
+					return;
+				} else if (Array.from(blobFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
+					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
+					return;
+				}
+
+				disableForm(uploadFileForm);
+
+				let checkpointTimeout = null;
+				api.post('/upload/files/apply', {
+					files: (Array.from(blobFiles).map(file => ({
+						name: file.name,
+						size: file.size
+					})))
+				})
+				.then(async ({data}) => {
+					const {configs, checkpointUrl} = data;
+
+					// 每隔15秒检查一次
+					checkpointTimeout = setTimeout(function checkpoint() {
+						api.get(checkpointUrl).finally(() => {
+							if (checkpointTimeout != null) {
+								checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
+							}
+						});
+					});
+
+					const extractCode = data.code;
+
+					const uploadDialog = new UploadDialog(extractCode, configs);
+					uploadDialog.open();
+
+					const failedConfigs = [];
+					for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+						const activeConfig = configs[activeConfigIndex];
+						const blobFile = blobFiles[activeConfigIndex];
+
+						uploadDialog.activeConfigIndex = activeConfigIndex;
+
+						await new Promise((resolve, reject) => {
+							const abortController = new AbortController();
+							const uploadFilePromises = [];
+							for (const uploadConfig of activeConfig.parts) {
+								const formData = new FormData();
+								formData.append('id', activeConfig.id);
+								formData.append('key', activeConfig.key);
+								formData.append('index', uploadConfig.index);
+								// -1 表示整个文件
+								formData.append('part', uploadConfig.index === -1 ? blobFile : blobFile.slice(...uploadConfig.range));
+								uploadFilePromises.push(api.post("/upload/files", formData, {signal: abortController.signal}, {slowRequest: true}).finally(() => {
+									uploadDialog.addFileProgress();
+									uploadDialog.addTotalProgress();
+								}));
+							}
+							Promise.all(uploadFilePromises)
+							.then(() => resolve())
+							.catch(() => {
+								// 终止未完成的上传
+								try {
+									abortController.abort("文件上传失败");
+								} catch {}
+								reject();
+							});
+						}).catch(() => {
+							failedConfigs.push(activeConfig);
+						});
+					}
+
+					setTimeout(() => {
+						uploadDialog.close();
+						if (failedConfigs.length > 0) {
+							alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
+						}
+						alert(`文件上传成功。请凭【${extractCode.toUpperCase()}】提取文件。`);
+					}, 1000);
+				})
+				.catch(({message}) => alert(message))
+				.finally(() => {
+					enableForm(uploadFileForm);
+					clearTimeout(checkpointTimeout);
+					checkpointTimeout = null;
+				});
+			});
+
+			let extractFileCode = document.getElementById('extractFileCode');
+			let extractFileForm = document.getElementById('extractFileForm');
+
+			extractFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const extractionCode = extractFileCode.value;
+				if (!extractionCode.length) {
+					return;
+				}
+
+				disableForm(extractFileForm);
+
+				api.get(`/extract/files/${extractionCode}`)
+				.then(({data}) => {
+					const {configs} = data;
+					if (configs.length === 1 && !configs[0].removed) {
+						downloadConfigs(configs);
+					} else {
+						new SelectDownloadDialog(configs).open();
+					}
+				})
+				.catch(({message}) => alert(`文件提取失败：${message}`))
+				.finally(() => enableForm(extractFileForm));
+			});
+
+			let playFileCode = document.getElementById('playFileCode');
+			let playFileForm = document.getElementById('playFileForm');
+			let playFileVideo = document.getElementById('playFileVideo');
+
+			playFileForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+
+				const extractionCode = playFileCode.value;
+				if (!extractionCode.length) {
+					return;
+				}
+
+				disableForm(playFileForm);
+
+				api.get(`/extract/files/${extractionCode}`)
+				.then(({data}) => {
+					const {configs} = data;
+					if (configs.length === 1 && !configs[0].removed) {
+						playFileVideo.src = configs[0].playUrl;
+					} else {
+						new SelectPlayDialog(configs, (config) => {
+							playFileVideo.src = config.playUrl;
+						}).open();
+					}
+				})
+				.catch(({message}) => alert(`文件提取失败：${message}`))
+				.finally(() => enableForm(playFileForm));
+			});
+		});
+	</script>
+</body>
+</html>
