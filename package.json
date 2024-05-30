@@ -17,6 +17,9 @@
     "url": "git+https://github.com/NXY666/SwiftShare.git",
     "branch": "master"
   },
+  "bugs": {
+    "url": "https://github.com/NXY666/SwiftShare/issues"
+  },
   "license": "MIT",
   "keywords": [
     "share",
