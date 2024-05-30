@@ -1,0 +1,13 @@
+// tsconfig.json
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"outDir": "dist",
+		"sourceMap": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	}
+}
