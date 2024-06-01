@@ -126,10 +126,10 @@ abstract class CodeInfo {
 	 * @param host
 	 * @return {string}
 	 */
-	getSignedCheckpointUrl({protocol, host}): string {
-		const url = Url.mergeUrl({protocol, host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
+	getSignedCheckpointUrl({host}): string {
+		const url = Url.mergeUrl({host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
 		url.searchParams.set('code', this.#code);
-		return Url.sign(url.toString(), CONFIG.STORE.FILE.UPLOAD_INTERVAL);
+		return Url.sign(url.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
 	/**
