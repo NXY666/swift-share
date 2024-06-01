@@ -1,4 +1,4 @@
-# 快传<img align="right" alt="快传图标" src="https://raw.githubusercontent.com/NXY666/SwiftShare/master/resources/favicon.ico" title="快传" width="60"/>
+# 快传<img align="right" alt="快传图标" src="https://github.com/NXY666/swift-share/assets/62371554/cda94cf6-9944-4706-8f5f-6199e6b5816e" title="快传" width="60"/>
 
 ### 简单、快捷、一目了然
 
