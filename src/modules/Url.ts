@@ -120,12 +120,6 @@ export const Api = {
 
 	BIU: "/biu",
 
-	EXTRACT_CODE_LENGTH: "/extract/code/length",
-
-	UPLOAD_TEXT_CAPACITY: "/upload/text/capacity",
-
-	UPLOAD_FILES_CAPACITY: "/upload/files/capacity",
-
 	UPLOAD_TEXT: "/upload/text",
 	EXTRACT_TEXT: "/extract/text/:code",
 

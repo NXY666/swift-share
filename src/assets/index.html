@@ -447,7 +447,6 @@
 			}
 		}
 
-		const host = window.location.origin;
 		const base = window.location.pathname.replace(/^\/$/, '');
 
 		class api {
@@ -1593,16 +1592,6 @@
 			}
 		}
 
-		let uploadTextCapacity = null, uploadFileCapacity = null;
-
-		setTimeout(() => {
-			api.get("/upload/text/capacity")
-			.then(({data}) => uploadTextCapacity = data.capacity);
-
-			api.get("/upload/files/capacity")
-			.then(({data}) => uploadFileCapacity = data.capacity);
-		});
-
 		document.addEventListener('DOMContentLoaded', function () {
 			function sendBiu() {
 				const reqMsg = prompt('您遇到了什么问题？')?.trim();
@@ -1643,9 +1632,6 @@
 
 				const text = uploadTextInput.value;
 				if (text.trim() === '') {
-					return;
-				} else if (text.length > uploadTextCapacity) {
-					alert(`上传文本长度不能超过 ${parseBytes(uploadTextCapacity)} 。`);
 					return;
 				}
 
@@ -1726,9 +1712,6 @@
 
 				const blobFiles = uploadFileInput.files;
 				if (!blobFiles.length) {
-					return;
-				} else if (Array.from(blobFiles).reduce((acc, file) => acc + file.size, 0) > uploadFileCapacity) {
-					alert(`上传文件总大小不能超过 ${parseBytes(uploadFileCapacity)} 。`);
 					return;
 				}
 
