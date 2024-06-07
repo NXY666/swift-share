@@ -210,7 +210,6 @@
 
 		progress[value]::-webkit-progress-value {
 			margin-left: 10px;
-			transition: all 50ms linear;
 			transform: translateX(-10px);
 		}
 
@@ -382,8 +381,8 @@
 				<button style="flex: 1;">播放</button>
 			</form>
 			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
-				<video controls id="playFileVideo" style="width: 100%; border-radius: 5px;">
-				</video>
+				<video controls id="playFileVideo"
+					   style="width: 100%; border-radius: 5px; border: 1px solid var(--form-border-color); background-color: var(--background-color-2);"></video>
 			</div>
 		</div>
 	</div>
