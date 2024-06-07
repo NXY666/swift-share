@@ -122,14 +122,12 @@ abstract class CodeInfo {
 
 	/**
 	 * 获取用于刷新上传文件检查点的URL
-	 * @param protocol
-	 * @param host
 	 * @return {string}
 	 */
-	getSignedCheckpointUrl({host}): string {
-		const url = Url.mergeUrl({host, pathname: Api.UPLOAD_FILES_CHECKPOINT});
-		url.searchParams.set('code', this.#code);
-		return Url.sign(url.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
+	getSignedCheckpointUrl(): string {
+		const urlObj = Url.mergeUrl({pathname: Api.UPLOAD_FILES_CHECKPOINT});
+		urlObj.searchParams.set('code', this.#code);
+		return Url.sign(urlObj.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
 	/**

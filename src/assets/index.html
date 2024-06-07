@@ -4,7 +4,7 @@
 	<title>快传</title>
 	<meta charset="UTF-8">
 	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
-	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
+	<meta content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。" name="description">
 	<style>
 		:root {
 			/* 基础色 */
@@ -305,15 +305,15 @@
 		}
 
 		.water-mark {
-			color: var(--text-color-1);
-			position: fixed;
-			left: 0;
-			bottom: 0;
 			font-size: 12px;
-			opacity: .4;
+			position: fixed;
+			bottom: 0;
+			left: 0;
 			padding: 5px;
 			user-select: none;
 			text-decoration: none;
+			opacity: .4;
+			color: var(--text-color-1);
 		}
 	</style>
 </head>
@@ -388,7 +388,7 @@
 		</div>
 	</div>
 
-	<a href="https://github.com/NXY666/SwiftShare" class="water-mark">快传 - SwiftShare</a>
+	<a class="water-mark" href="https://github.com/NXY666/SwiftShare">快传 - SwiftShare</a>
 
 	<script>
 		function disableForm(form) {
@@ -400,6 +400,7 @@
 				}
 			});
 		}
+
 		function enableForm(form) {
 			const formId = form.id;
 			form.querySelectorAll('input, textarea, button').forEach((element) => {
@@ -447,14 +448,17 @@
 		}
 
 		const host = window.location.origin;
+		const base = window.location.pathname.replace(/^\/$/, '');
 
 		class api {
 			static #requestQueue = [];
 
 			static #requestingCount = 0;
+
 			static #slowRequestingCount = 0;
 
 			static #maxRequestingCount = 16;
+
 			static #maxSlowRequestingCount = 4;
 
 			static #processQueue = async () => {
@@ -489,7 +493,7 @@
 						slowRequest,
 						pushTime: Date.now(),
 						callback: async () => {
-							await fetch(new URL(url, host).href, options)
+							await fetch(new URL(base + url, location).href, options)
 							.then(async response => ({
 								ok: response.ok, code: response.status,
 								body: await response[bodyType === "auto" ? "text" : bodyType]()
@@ -599,26 +603,31 @@
 			 * @type {HTMLDivElement}
 			 */
 			#overlay = document.createElement('div');
+
 			/**
 			 * 样式
 			 * @type {HTMLStyleElement}
 			 */
 			#style = document.createElement('style');
+
 			/**
 			 * 对话框
 			 * @type {HTMLDivElement}
 			 */
 			#dialog = document.createElement('div');
+
 			/**
 			 * 头部
 			 * @type {HTMLDivElement}
 			 */
 			#headerContainer = document.createElement('div');
+
 			/**
 			 * 身体
 			 * @type {HTMLDivElement}
 			 */
 			#bodyContainer = document.createElement('div');
+
 			/**
 			 * 底部
 			 * @type {HTMLDivElement}
@@ -634,26 +643,31 @@
 			 * @type {string}
 			 */
 			#title = '';
+
 			/**
 			 * 内容
 			 * @type {string|HTMLDivElement}
 			 */
 			#content = '';
+
 			/**
 			 * 底部
 			 * @type {?HTMLDivElement}
 			 */
 			#footer = null;
+
 			/**
 			 * 样式
 			 * @type {string}
 			 */
 			#styles = '';
+
 			/**
 			 * 点击遮罩层关闭
 			 * @type {boolean}
 			 */
 			#closeOnClickOverlay = false;
+
 			/**
 			 * 显示关闭按钮
 			 * @type {boolean}
@@ -888,41 +902,49 @@
 			 * @type {HTMLDivElement}
 			 */
 			#uploadContainer = document.createElement('div');
+
 			/**
 			 * 文件进度
 			 * @type {HTMLProgressElement}
 			 */
 			#fileProgress = document.createElement('progress');
+
 			/**
 			 * 文件进度文本容器
 			 * @type {HTMLDivElement}
 			 */
 			#fileProgressLabelContainer = document.createElement('div');
+
 			/**
 			 * 文件名称文本
 			 * @type {HTMLSpanElement}
 			 */
 			#fileNameLabel = document.createElement('span');
+
 			/**
 			 * 文件进度百分比
 			 * @type {HTMLSpanElement}
 			 */
 			#filePercentLabel = document.createElement('span');
+
 			/**
 			 * 总进度
 			 * @type {HTMLProgressElement}
 			 */
 			#totalProgress = document.createElement('progress');
+
 			/**
 			 * 总进度文本容器
 			 * @type {HTMLDivElement}
 			 */
 			#totalProgressLabelContainer = document.createElement('div');
+
 			/**
 			 * 总进度文本
 			 * @type {HTMLSpanElement}
 			 */
 			#totalProgressLabel = document.createElement('span');
+
 			/**
 			 * 总进度百分比
 			 * @type {HTMLSpanElement}
@@ -934,11 +956,13 @@
 			 * @type {{}[]}
 			 */
 			#configs = [];
+
 			/**
 			 * 当前配置索引
 			 * @type {number}
 			 */
 			#activeConfigIndex = 0;
+
 			#updateTimeout = null;
 
 			constructor(extractCode, configs) {
@@ -1119,41 +1143,49 @@
 			 * @type {HTMLDivElement}
 			 */
 			#downloadContainer = document.createElement('div');
+
 			/**
 			 * 文件进度
 			 * @type {HTMLProgressElement}
 			 */
 			#fileProgress = document.createElement('progress');
+
 			/**
 			 * 文件进度文本容器
 			 * @type {HTMLDivElement}
 			 */
 			#fileProgressLabelContainer = document.createElement('div');
+
 			/**
 			 * 文件名称文本
 			 * @type {HTMLSpanElement}
 			 */
 			#fileNameLabel = document.createElement('span');
+
 			/**
 			 * 文件进度百分比
 			 * @type {HTMLSpanElement}
 			 */
 			#filePercentLabel = document.createElement('span');
+
 			/**
 			 * 总进度
 			 * @type {HTMLProgressElement}
 			 */
 			#totalProgress = document.createElement('progress');
+
 			/**
 			 * 总进度文本容器
 			 * @type {HTMLDivElement}
 			 */
 			#totalProgressLabelContainer = document.createElement('div');
+
 			/**
 			 * 总进度文本
 			 * @type {HTMLSpanElement}
 			 */
 			#totalProgressLabel = document.createElement('span');
+
 			/**
 			 * 总进度百分比
 			 * @type {HTMLSpanElement}
@@ -1165,11 +1197,13 @@
 			 * @type {any[]}
 			 */
 			#configs = [];
+
 			/**
 			 * 当前配置索引
 			 * @type {number}
 			 */
 			#activeConfigIndex = 0;
+
 			#updateTimeout = null;
 
 			constructor(configs) {
@@ -1326,21 +1360,25 @@
 			 * @type {HTMLUListElement}
 			 */
 			#checkboxList = document.createElement('ul');
+
 			/**
 			 * 按钮组
 			 * @type {HTMLDivElement}
 			 */
 			#buttonGroup = document.createElement('div');
+
 			/**
 			 * 全选标签
 			 * @type {HTMLLabelElement}
 			 */
 			#selectAllLabel = document.createElement('label');
+
 			/**
 			 * 全选复选框
 			 * @type {HTMLInputElement}
 			 */
 			#selectAllCheckbox = document.createElement('input');
+
 			/**
 			 * 确认按钮
 			 * @type {HTMLButtonElement}
@@ -1469,6 +1507,7 @@
 			 * @type {HTMLUListElement}
 			 */
 			#radioList = document.createElement('ul');
+
 			/**
 			 * 确认按钮
 			 * @type {HTMLButtonElement}

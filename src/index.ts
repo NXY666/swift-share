@@ -330,7 +330,7 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 
 	res.json({
 		code: codeInfo.code,
-		checkpointUrl: codeInfo.getSignedCheckpointUrl({host: req.headers.host}),
+		checkpointUrl: codeInfo.getSignedCheckpointUrl(),
 		configs: fileUploadConfigs
 	});
 });
@@ -407,7 +407,7 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 		// 生成下载配置
 		const fileDownloadConfigs = [];
 		for (const file of codeInfo.files) {
-			const downloadConfig = file.getDownloadConfig({host: req.headers.host});
+			const downloadConfig = file.getDownloadConfig();
 			fileDownloadConfigs.push(downloadConfig);
 		}
 		res.json({configs: fileDownloadConfigs});
