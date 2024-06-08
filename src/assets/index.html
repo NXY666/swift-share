@@ -3,8 +3,10 @@
 <head>
 	<title>快传</title>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=no">
-	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
+	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
+	<meta content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。" name="description">
+	<meta content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放" name="keywords">
+	<link id="favicon" rel="icon" type="image/x-icon">
 	<style>
 		:root {
 			/* 基础色 */
@@ -1480,6 +1482,10 @@
 				this.footer = this.#confirmButton;
 			}
 		}
+
+		// 设置favicon
+		const favicon = document.createElement('link');
+		favicon.href = location.pathname.replace(/\/$/, '') + '/favicon.ico';
 
 		document.addEventListener('DOMContentLoaded', function () {
 			function sendBiu() {
