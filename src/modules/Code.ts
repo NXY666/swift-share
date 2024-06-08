@@ -18,7 +18,7 @@ export class CodeStore {
 	 * @return 提取码信息
 	 */
 	static getCodeInfo(code: string): CodeInfo {
-		return this.#store[code.toLowerCase()];
+		return this.#store[code?.toLowerCase()];
 	}
 
 	/**
