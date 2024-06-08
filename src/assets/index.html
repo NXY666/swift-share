@@ -442,6 +442,13 @@
 			}
 		}
 
+		function parseExtractCode(code) {
+			if (!code) {
+				return '';
+			}
+			return code.replace(/[.\\\/?#%\s]/g, '');
+		}
+
 		const base = window.location.pathname.replace(/^\/$/, '');
 
 		class api {
@@ -1533,7 +1540,7 @@
 			extractTextForm.addEventListener("submit", (e) => {
 				e.preventDefault();
 
-				const extractionCode = extractTextCode.value;
+				const extractionCode = parseExtractCode(extractTextCode.value);
 				if (!extractionCode.length) {
 					return;
 				}
@@ -1686,7 +1693,7 @@
 			extractFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const extractionCode = extractFileCode.value;
+				const extractionCode = parseExtractCode(extractFileCode.value);
 				if (!extractionCode.length) {
 					return;
 				}
@@ -1713,7 +1720,7 @@
 			playFileForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 
-				const extractionCode = playFileCode.value;
+				const extractionCode = parseExtractCode(playFileCode.value);
 				if (!extractionCode.length) {
 					return;
 				}
