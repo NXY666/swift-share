@@ -1,10 +1,10 @@
 ﻿<!DOCTYPE html>
-<html lang="cn">
+<html lang="zh-Hans">
 <head>
 	<title>快传</title>
 	<meta charset="UTF-8">
-	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
-	<meta content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。" name="description">
+	<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=no">
+	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
 	<style>
 		:root {
 			/* 基础色 */
@@ -502,6 +502,8 @@
 								}
 								if (response.ok) {
 									resolve({code: response.code, data: body});
+								} else if (!body) {
+									throw new Error(`HTTP code ${response.code} without body.`);
 								} else {
 									reject({code: response.code, message: body?.message ?? response.code});
 								}
