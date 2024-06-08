@@ -425,7 +425,7 @@
 
 				// 说明下载完成，下载整个文件
 				const a = document.createElement('a');
-				a.href = activeConfig.downUrl;
+				a.href = completeUrl(activeConfig.downUrl);
 				a.download = activeConfig.name;
 				a.click();
 
@@ -455,7 +455,11 @@
 			return code.replace(/[.\\\/?#%\s]/g, '');
 		}
 
-		const base = window.location.pathname.replace(/^\/$/, '');
+		const base = window.location.pathname.replace(/\/$/, '');
+
+		function completeUrl(url) {
+			return new URL(base + url, location).href;
+		}
 
 		class api {
 			static #requestQueue = [];
@@ -500,7 +504,7 @@
 						slowRequest,
 						pushTime: Date.now(),
 						callback: async () => {
-							await fetch(new URL(base + url, location).href, options)
+							await fetch(completeUrl(url), options)
 							.then(async response => ({
 								ok: response.ok, code: response.status,
 								body: await response[bodyType === "auto" ? "text" : bodyType]()
@@ -1737,10 +1741,10 @@
 				.then(({data}) => {
 					const {configs} = data;
 					if (configs.length === 1 && !configs[0].removed) {
-						playFileVideo.src = configs[0].playUrl;
+						playFileVideo.src = completeUrl(configs[0].playUrl);
 					} else {
 						new SelectPlayDialog(configs, (config) => {
-							playFileVideo.src = config.playUrl;
+							playFileVideo.src = completeUrl(config.playUrl);
 						}).open();
 					}
 				})
