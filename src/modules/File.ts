@@ -193,13 +193,13 @@ export abstract class File extends EventEmitter {
 	 * 获取下载配置
 	 * @returns
 	 */
-	getDownloadConfig({host}: { host?: string } = {}): DownloadConfig {
+	getDownloadConfig(): DownloadConfig {
 		return {
 			id: this.id,
 			name: this.name,
 			size: this.size,
-			downUrl: this.getSignedDownloadUrl({host}),
-			playUrl: this.getSignedPlayUrl({host}),
+			downUrl: this.getSignedDownloadUrl(),
+			playUrl: this.getSignedPlayUrl(),
 			removed: this.status === FileStatus.REMOVED
 		};
 	}
@@ -221,15 +221,15 @@ export abstract class File extends EventEmitter {
 
 	abstract remove(): void;
 
-	getSignedDownloadUrl({host}) {
-		const urlObj = Url.mergeUrl({host, pathname: Api.FETCH});
+	getSignedDownloadUrl() {
+		const urlObj = Url.mergeUrl({pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("type", "down");
 		return Url.sign(urlObj.shortHref, CONFIG.STORE.LINK.EXPIRE_INTERVAL);
 	}
 
-	getSignedPlayUrl({host}) {
-		const urlObj = Url.mergeUrl({host, pathname: Api.FETCH});
+	getSignedPlayUrl() {
+		const urlObj = Url.mergeUrl({pathname: Api.FETCH});
 		urlObj.searchParams.set("id", this.id.toString());
 		urlObj.searchParams.set("type", "play");
 		return Url.sign(urlObj.shortHref, CONFIG.STORE.LINK.EXPIRE_INTERVAL);
