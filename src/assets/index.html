@@ -144,6 +144,10 @@
 			font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
 			font-size: 14px;
 		}
+		
+		label.hide {
+			display: none;
+		}
 
 		button {
 			font-size: 14px;
@@ -310,6 +314,73 @@
 			box-shadow: 0 2px 1px var(--primary-color-3);
 		}
 
+		.box-title {
+			margin-top: 0;
+		}
+
+		.input-form {
+			display: flex;
+			gap: 15px;
+		}
+
+		.input-form > input {
+			flex: 6;
+		}
+
+		.input-form > button {
+			flex: 1;
+		}
+
+		#uploadTextInput {
+			resize: vertical;
+			width: 100%;
+			border-radius: 5px 5px 0 0;
+			min-height: 150px;
+			max-height: 300px;
+			height: 150px;
+		}
+
+		#uploadTextButton {
+			border-radius: 0 0 5px 5px;
+			margin-top: -1px;
+		}
+
+		#extractedText {
+			border: solid var(--form-border-color);
+			border-width: 1px 1px 0 1px;
+			text-align: left;
+			margin-bottom: 0;
+			margin-top: 15px;
+			overflow: auto;
+			min-height: 150px;
+			max-height: 300px;
+			background-color: var(--background-color-2);
+			border-radius: 5px 5px 0 0;
+			padding: 10px;
+			color: var(--form-color);
+		}
+
+		#copyExtractedTextButton {
+			width: 100%;
+			border-radius: 0 0 5px 5px;
+		}
+
+		#playFileVideoContainer {
+			margin-top: 15px;
+			border-radius: 5px;
+			position: relative;
+		}
+
+		#playFileVideo {
+			width: 100%;
+			border-radius: 5px;
+		}
+
+		#uploadTextForm {
+			display: flex;
+			flex-direction: column;
+		}
+		
 		#playFileVideo:not(:fullscreen) {
 			border: 1px solid var(--form-border-color);
 			background-color: var(--background-color-2);
@@ -340,60 +411,58 @@
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文本</h2>
-			<form id="uploadTextForm" style="display: flex; flex-direction: column;">
-				<label for="uploadTextInput" style="display: none;"></label>
-				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"
-						  style="resize: vertical; width: 100%; border-radius: 5px 5px 0 0; min-height: 150px; max-height: 300px; height: 150px;"></textarea>
-				<button style="border-radius: 0 0 5px 5px; margin-top: -1px;">上传</button>
+			<h2 class="box-title">上传文本</h2>
+			<form id="uploadTextForm">
+				<label for="uploadTextInput" class="hide"></label>
+				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"></textarea>
+				<button id="uploadTextButton">上传</button>
 			</form>
 		</div>
 	</div>
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">提取文本</h2>
-			<form id="extractTextForm" style="display: flex; gap: 15px;">
-				<label for="extractTextCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractTextCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">提取</button>
+			<h2 class="box-title">提取文本</h2>
+			<form id="extractTextForm" class="input-form">
+				<label for="extractTextCode" class="hide"></label>
+				<input autocomplete="off" id="extractTextCode" placeholder="提取码" type="text">
+				<button>提取</button>
 			</form>
-			<pre id="extractedText"
-				 style="border: solid var(--form-border-color); border-width: 1px 1px 0 1px; text-align: left; margin-bottom: 0; margin-top: 15px; overflow: auto; min-height: 150px; max-height: 300px; background-color: var(--background-color-2); border-radius: 5px 5px 0 0; padding: 10px; color: var(--form-color);">:)</pre>
-			<button id="copyExtractedTextButton" style="width: 100%; border-radius: 0 0 5px 5px;">复制</button>
-		</div>
-	</div>
-
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">上传文件</h2>
-			<form id="uploadFileForm" style="display: flex; gap: 15px;">
-				<label for="uploadFileInput" style="display: none;"></label>
-				<input id="uploadFileInput" multiple style="flex: 6; width: 0;" type="file">
-				<button style="flex: 1;">上传</button>
-			</form>
-		</div>
-	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 style="margin-top: 0;">下载文件</h2>
-			<form id="extractFileForm" style="display: flex; gap: 15px;">
-				<label for="extractFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="extractFileCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">下载</button>
-			</form>
+			<pre id="extractedText">:)</pre>
+			<button id="copyExtractedTextButton">复制</button>
 		</div>
 	</div>
 
 	<div class="width-full box">
 		<div class="box-inner">
-			<h2 style="margin-top: 0;">播放媒体</h2>
-			<form id="playFileForm" style="display: flex; gap: 15px;">
-				<label for="playFileCode" style="display: none;"></label>
-				<input autocomplete="off" id="playFileCode" placeholder="提取码" style="flex: 6;" type="text">
-				<button style="flex: 1;">播放</button>
+			<h2 class="box-title">上传文件</h2>
+			<form id="uploadFileForm" class="input-form">
+				<label for="uploadFileInput" class="hide"></label>
+				<input id="uploadFileInput" multiple type="file">
+				<button>上传</button>
 			</form>
-			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
-				<video controls id="playFileVideo" style="width: 100%; border-radius: 5px;"></video>
+		</div>
+	</div>
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 class="box-title">下载文件</h2>
+			<form id="extractFileForm" class="input-form">
+				<label for="extractFileCode" class="hide"></label>
+				<input autocomplete="off" id="extractFileCode" placeholder="提取码" type="text">
+				<button>下载</button>
+			</form>
+		</div>
+	</div>
+
+	<div class="width-full box">
+		<div class="box-inner">
+			<h2 class="box-title">播放媒体</h2>
+			<form id="playFileForm" class="input-form">
+				<label for="playFileCode" class="hide"></label>
+				<input autocomplete="off" id="playFileCode" placeholder="提取码" type="text">
+				<button>播放</button>
+			</form>
+			<div id="playFileVideoContainer">
+				<video controls id="playFileVideo"></video>
 			</div>
 		</div>
 	</div>
