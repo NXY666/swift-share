@@ -274,7 +274,8 @@
 				width: 70%;
 			}
 		}
-
+	</style>
+	<style>
 		.title {
 			display: flex;
 			align-items: center;
@@ -307,6 +308,11 @@
 			border-radius: 10px;
 			background-color: var(--background-color-1);
 			box-shadow: 0 2px 1px var(--primary-color-3);
+		}
+
+		#playFileVideo:not(:fullscreen) {
+			border: 1px solid var(--form-border-color);
+			background-color: var(--background-color-2);
 		}
 
 		.water-mark {
@@ -387,8 +393,7 @@
 				<button style="flex: 1;">播放</button>
 			</form>
 			<div id="playFileVideoContainer" style="margin-top: 15px; border-radius: 5px; position: relative;">
-				<video controls id="playFileVideo"
-					   style="width: 100%; border-radius: 5px; border: 1px solid var(--form-border-color); background-color: var(--background-color-2);"></video>
+				<video controls id="playFileVideo" style="width: 100%; border-radius: 5px;"></video>
 			</div>
 		</div>
 	</div>
