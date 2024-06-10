@@ -3,13 +3,19 @@
 <head>
 	<title>快传</title>
 	<meta charset="UTF-8">
-	<meta content="width=device-width, initial-scale=0.8, user-scalable=no" name="viewport">
-	<meta content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。" name="description">
-	<meta content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放" name="keywords">
+	<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=no">
+	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
+	<meta name="keywords" content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放">
 	<link rel="icon" type="image/x-icon">
 	<script>
+		const base = window.location.pathname.replace(/\/$/, '');
+
+		function completeUrl(url) {
+			return new URL(base + url, location).href;
+		}
+
 		const faviconLink = document.querySelector('link[rel="icon"]');
-		faviconLink.href = location.pathname.replace(/\/$/, '') + '/favicon.ico';
+		faviconLink.href = completeUrl('/favicon.ico');
 	</script>
 	<style>
 		:root {
@@ -527,12 +533,6 @@
 				return '';
 			}
 			return code.replace(/[.\\\/?#%\s]/g, '');
-		}
-
-		const base = window.location.pathname.replace(/\/$/, '');
-
-		function completeUrl(url) {
-			return new URL(base + url, location).href;
 		}
 
 		class api {
