@@ -72,6 +72,11 @@
 			--short-transition-duration: 0.1s;
 			--base-transition-duration: 0.3s;
 			--long-transition-duration: 0.5s;
+
+			--common-transition: background var(--short-transition-duration) ease,
+			color var(--short-transition-duration) ease,
+			border var(--short-transition-duration) ease,
+			box-shadow var(--short-transition-duration) ease;
 		}
 
 		@media (prefers-color-scheme: dark) {
@@ -79,8 +84,8 @@
 				--color: white;
 
 				--primary-color-1: #A8C7FA;
-				--primary-color-2: #649CF5;
-				--primary-color-3: #4086FF;
+				--primary-color-2: #87B2F7;
+				--primary-color-3: #669EFF;
 
 				--material-primary-color-1: #A8C7FA;
 				--material-primary-color-2: #0B57D0;
@@ -129,6 +134,7 @@
 
 		* {
 			box-sizing: border-box;
+			transition: var(--common-transition);
 		}
 
 		html {
@@ -150,7 +156,7 @@
 			font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
 			font-size: 14px;
 		}
-		
+
 		label.hide {
 			display: none;
 		}
@@ -162,7 +168,6 @@
 			padding: 5px 20px;
 			cursor: pointer;
 			user-select: none;
-			transition: background-color var(--short-transition-duration), border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
 			color: var(--form-color);
 			border: 1px solid var(--form-border-color);
 			border-radius: 5px;
@@ -190,7 +195,6 @@
 		input:not([type=checkbox]):not([type=radio]), textarea {
 			font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
 			padding: 5px 10px;
-			transition: border-color var(--short-transition-duration), box-shadow var(--short-transition-duration);
 			color: var(--form-input-color);
 			border: var(--form-border-color) 1px solid;
 			border-radius: 5px;
@@ -338,32 +342,32 @@
 		}
 
 		#uploadTextInput {
-			resize: vertical;
 			width: 100%;
-			border-radius: 5px 5px 0 0;
+			height: 150px;
 			min-height: 150px;
 			max-height: 300px;
-			height: 150px;
+			resize: vertical;
+			border-radius: 5px 5px 0 0;
 		}
 
 		#uploadTextButton {
-			border-radius: 0 0 5px 5px;
 			margin-top: -1px;
+			border-radius: 0 0 5px 5px;
 		}
 
 		#extractedText {
-			border: solid var(--form-border-color);
-			border-width: 1px 1px 0 1px;
-			text-align: left;
-			margin-bottom: 0;
-			margin-top: 15px;
 			overflow: auto;
 			min-height: 150px;
 			max-height: 300px;
-			background-color: var(--background-color-2);
-			border-radius: 5px 5px 0 0;
+			margin-top: 15px;
+			margin-bottom: 0;
 			padding: 10px;
+			text-align: left;
 			color: var(--form-color);
+			border: solid var(--form-border-color);
+			border-width: 1px 1px 0 1px;
+			border-radius: 5px 5px 0 0;
+			background-color: var(--background-color-2);
 		}
 
 		#copyExtractedTextButton {
@@ -372,9 +376,9 @@
 		}
 
 		#playFileVideoContainer {
+			position: relative;
 			margin-top: 15px;
 			border-radius: 5px;
-			position: relative;
 		}
 
 		#playFileVideo {
@@ -386,7 +390,7 @@
 			display: flex;
 			flex-direction: column;
 		}
-		
+
 		#playFileVideo:not(:fullscreen) {
 			border: 1px solid var(--form-border-color);
 			background-color: var(--background-color-2);
@@ -415,65 +419,242 @@
 		快传
 	</h1>
 
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 class="box-title">上传文本</h2>
-			<form id="uploadTextForm">
-				<label for="uploadTextInput" class="hide"></label>
-				<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本" rows="8"></textarea>
-				<button id="uploadTextButton">上传</button>
-			</form>
-		</div>
+	<div>
+		<page-bar style="margin: 25px auto;">
+			<page-item for="text">文本</page-item>
+			<page-item for="file">文件</page-item>
+			<page-item for="drop">投送</page-item>
+		</page-bar>
 	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 class="box-title">提取文本</h2>
-			<form id="extractTextForm" class="input-form">
-				<label for="extractTextCode" class="hide"></label>
-				<input autocomplete="off" id="extractTextCode" placeholder="提取码" type="text">
-				<button>提取</button>
-			</form>
-			<pre id="extractedText">:)</pre>
-			<button id="copyExtractedTextButton">复制</button>
+
+	<div id="text">
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">上传文本</h2>
+				<form id="uploadTextForm">
+					<label class="hide" for="uploadTextInput"></label>
+					<textarea cols="50" id="uploadTextInput" maxlength="67108864" placeholder="文本"
+							  rows="8"></textarea>
+					<button id="uploadTextButton">上传</button>
+				</form>
+			</div>
+		</div>
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">提取文本</h2>
+				<form class="input-form" id="extractTextForm">
+					<label class="hide" for="extractTextCode"></label>
+					<input autocomplete="off" id="extractTextCode" placeholder="提取码" type="text">
+					<button>提取</button>
+				</form>
+				<pre id="extractedText">:)</pre>
+				<button id="copyExtractedTextButton">复制</button>
+			</div>
 		</div>
 	</div>
 
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 class="box-title">上传文件</h2>
-			<form id="uploadFileForm" class="input-form">
-				<label for="uploadFileInput" class="hide"></label>
-				<input id="uploadFileInput" multiple type="file">
-				<button>上传</button>
-			</form>
+	<div id="file">
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">上传文件</h2>
+				<form class="input-form" id="uploadFileForm">
+					<label class="hide" for="uploadFileInput"></label>
+					<input id="uploadFileInput" multiple type="file">
+					<button>上传</button>
+				</form>
+			</div>
 		</div>
-	</div>
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 class="box-title">下载文件</h2>
-			<form id="extractFileForm" class="input-form">
-				<label for="extractFileCode" class="hide"></label>
-				<input autocomplete="off" id="extractFileCode" placeholder="提取码" type="text">
-				<button>下载</button>
-			</form>
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">下载文件</h2>
+				<form class="input-form" id="extractFileForm">
+					<label class="hide" for="extractFileCode"></label>
+					<input autocomplete="off" id="extractFileCode" placeholder="提取码" type="text">
+					<button>下载</button>
+				</form>
+			</div>
+		</div>
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">播放媒体</h2>
+				<form class="input-form" id="playFileForm">
+					<label class="hide" for="playFileCode"></label>
+					<input autocomplete="off" id="playFileCode" placeholder="提取码" type="text">
+					<button>播放</button>
+				</form>
+				<div id="playFileVideoContainer">
+					<video controls id="playFileVideo"></video>
+				</div>
+			</div>
 		</div>
 	</div>
 
-	<div class="width-full box">
-		<div class="box-inner">
-			<h2 class="box-title">播放媒体</h2>
-			<form id="playFileForm" class="input-form">
-				<label for="playFileCode" class="hide"></label>
-				<input autocomplete="off" id="playFileCode" placeholder="提取码" type="text">
-				<button>播放</button>
-			</form>
-			<div id="playFileVideoContainer">
-				<video controls id="playFileVideo"></video>
+	<div id="drop">
+		<div class="width-full box">
+			<div class="box-inner">
+				<h2 class="box-title">敬请期待</h2>
 			</div>
 		</div>
 	</div>
 
 	<a class="water-mark" href="https://github.com/NXY666/SwiftShare">快传 - SwiftShare</a>
+
+	<script>
+		class PageBar extends HTMLElement {
+			constructor() {
+				super();
+				const shadow = this.attachShadow({mode: 'open'});
+
+				const style = document.createElement('style');
+				style.textContent = `
+						:host {
+							line-height: 1;
+							position: relative;
+							display: flex;
+							justify-content: center;
+							width: fit-content;
+							padding: 5px;
+							user-select: none;
+							border-radius: 100px;
+							background-color: var(--background-color-1);
+							gap: 5px;
+							box-shadow: 0 0px 5px 0px var(--primary-color-3);
+						}
+
+						.slider {
+							position: absolute;
+							top: 5px;
+							height: 2em;
+							transition: all var(--base-transition-duration) ease;
+							border-radius: 100px;
+							background-color: var(--primary-color-2);
+						}
+					`;
+
+				this.slider = document.createElement('div');
+				this.slider.classList.add('slider');
+
+				const slot = document.createElement('slot');
+
+				shadow.appendChild(style);
+				shadow.appendChild(this.slider);
+				shadow.appendChild(slot);
+			}
+
+			connectedCallback() {
+				this.shadowRoot.querySelector('slot').addEventListener('slotchange', () => {
+					const items = this.querySelectorAll('page-item');
+					items.forEach((item, index) => this.initItem(item, index));
+					this.updateSlider();
+				});
+			}
+
+			initItem(item, index) {
+				// 移除活动项
+				item.classList.remove('active');
+
+				// 重新设置点击事件
+				if (item.clickListener) {
+					item.removeEventListener('click', item.clickListener);
+				}
+				item.addEventListener('click', item.clickListener = () => this.updateSlider(index));
+
+				// 移除设置活动项的延时
+				if (item.toActiveTimeout) {
+					clearTimeout(item.toActiveTimeout);
+					delete item.toActiveTimeout;
+				}
+
+				// 初始化页面元素
+				const page = document.querySelector(`#${item.getAttribute('for')}`);
+				page.style.display = 'none';
+				item.pageElement = page;
+			}
+
+			updateSlider(index = 0) {
+				const items = this.querySelectorAll('page-item');
+
+				const item = items[index];
+
+				if (item?.classList.contains('active')) {
+					return;
+				}
+
+				const activeItem = Array.from(items).filter((item) => item.classList.contains('active'))[0];
+				if (activeItem) {
+					activeItem.classList.remove('active');
+					clearTimeout(activeItem.toActiveTimeout);
+
+					activeItem.pageElement.style.display = 'none';
+				}
+
+				if (item) {
+					const itemRect = item.getBoundingClientRect();
+					const barRect = this.getBoundingClientRect();
+					const left = itemRect.left - barRect.left;
+					const width = itemRect.width;
+
+					this.slider.style.left = `${left}px`;
+					this.slider.style.width = `${width}px`;
+
+					item.toActiveTimeout = setTimeout(() => {
+						item.classList.add('active');
+						delete item.toActiveTimeout;
+					}, activeItem ? 100 : 0);
+
+					item.pageElement.style.display = 'block';
+				}
+			}
+		}
+
+		customElements.define('page-bar', PageBar);
+
+		class PageItem extends HTMLElement {
+			constructor() {
+				super();
+				const shadow = this.attachShadow({mode: 'open'});
+
+				const style = document.createElement('style');
+				style.textContent = `
+						:host {
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							width: 5em;
+							height: 2em;
+							border-radius: 100px;
+							cursor: pointer;
+						}
+
+						:host(:hover) {
+							background-color: var(--form-background-hover-color);
+						}
+
+						:host(:active) {
+							background-color: var(--form-background-active-color);
+						}
+
+						:host(.active) {
+							color: var(--background-color-1);
+							background-color: unset;
+						}
+
+						:host > slot {
+							display: block;
+							position: relative;
+							pointer-events: none;
+						}
+					`;
+
+				const innerText = document.createElement('slot');
+
+				shadow.appendChild(style);
+				shadow.appendChild(innerText);
+			}
+		}
+
+		customElements.define('page-item', PageItem);
+	</script>
 
 	<script>
 		function disableForm(form) {
@@ -1385,7 +1566,6 @@
 						display: flex;
 						align-items: center;
 						overflow-wrap: anywhere;
-						transition: background-color var(--short-transition-duration);
 						padding: 10px;
 						border-radius: 5px;
 						gap: 10px;
@@ -1513,7 +1693,6 @@
 						display: flex;
 						align-items: center;
 						overflow-wrap: anywhere;
-						transition: background-color var(--short-transition-duration);
 						padding: 10px;
 						border-radius: 5px;
 						gap: 10px;
