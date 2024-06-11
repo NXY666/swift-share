@@ -129,5 +129,9 @@ export const Api = {
 
 	EXTRACT_FILES: "/extract/files/:code",
 
-	FETCH: "/fetch"
+	FETCH: "/fetch",
+
+	DROP_APPLY: "/drop/apply",
+
+	WS_DROP_RECV: "/ws/recv",
 };

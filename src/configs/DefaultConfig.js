@@ -97,6 +97,13 @@ export default {
 			 * @type {string}
 			 */
 			CODE: "share"
+		},
+		DROP: {
+			/**
+			 * 接收连接超时时间（单位：毫秒）
+			 * @type {number}
+			 */
+			CONNECT_TIMEOUT: 60 * 1000
 		}
 	}
 };

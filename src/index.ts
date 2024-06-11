@@ -10,8 +10,11 @@ import {Api, Url} from "@/modules/Url";
 import mime from 'mime/lite';
 import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourceAbsolutePath} from "@/modules/Config";
 import {Command} from "commander";
-import {CodeStore, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
+import {CodeStore, DropCodeInfo, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
+import * as http from "node:http";
+import {WebSocketServer} from "ws";
+import {Client} from "@/modules/WebSocket";
 
 // 路径检查和初始化
 if (fs.existsSync(FileAbsolutePath)) {
@@ -461,7 +464,65 @@ app.get(Api.FETCH, (req, res) => {
 	downloadStream.pipe(res);
 });
 
-app.listen(port, () => {
+// 申请投送连接码
+app.get(Api.DROP_APPLY, (_req, res) => {
+	const codeInfo = new DropCodeInfo();
+	CodeStore.saveCodeInfo(codeInfo);
+
+	res.json({code: codeInfo.code, wsRecvUrl: codeInfo.getSignedWsRecvUrl()});
+});
+
+const server = http.createServer(app);
+
+const wss = new WebSocketServer({server});
+
+// 监听WebSocket连接事件
+wss.on('connection', (ws, req) => {
+	const url = new URL(req.url, "ws://websocket.client/");
+
+	// 验证URL
+	const signed = Url.check(url);
+
+	const {searchParams} = url;
+	switch (url.pathname) {
+		case Api.WS_DROP_RECV: {
+			if (!signed) {
+				console.error('Invalid signature.');
+				ws.close(4003, "请求不够安全。");
+				return;
+			}
+
+			const code = searchParams.get('code');
+
+			const codeInfo = CodeStore.getCodeInfo(code);
+
+			if (!codeInfo) {
+				console.error(`Code not found or has expired: ${code}`);
+				ws.close(4001, "连接码不存在或已过期。");
+				return;
+			} else if (codeInfo.hasExpired()) {
+				console.error(`Code has expired: ${code}`);
+				ws.close(4001, "连接码已过期。");
+				return;
+			}
+
+			if (codeInfo instanceof DropCodeInfo) {
+				const client = new Client('drop', code, ws);
+				codeInfo.receiverConnect(client);
+			} else {
+				console.error(`Specified code is not a drop: ${code}`);
+				ws.close(4001, "连接码不存在或已过期。");
+			}
+			break;
+		}
+		default: {
+			ws.close();
+			break;
+		}
+	}
+});
+
+server.listen(port, () => {
 	console.info(`Server is running on http://localhost:${port}/ .`);
 });
 

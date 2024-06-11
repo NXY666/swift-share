@@ -31,11 +31,16 @@ interface StoreShareConfig {
 	CODE: string;
 }
 
+interface StoreDropConfig {
+	CONNECT_TIMEOUT: number;
+}
+
 interface StoreConfig {
 	LINK: StoreLinkConfig;
 	TEXT: StoreTextConfig;
 	FILE: StoreFileConfig;
 	SHARE: StoreShareConfig;
+	DROP: StoreDropConfig;
 }
 
 export interface ConfigType {

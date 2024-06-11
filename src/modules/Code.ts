@@ -1,11 +1,12 @@
 import crypto from "crypto";
-import {File, FileStatus, ShareFile} from "./File";
+import {File, FileStatus, MultipartFile, ShareFile, SimpleFile} from "./File";
 import {Api, Url} from "./Url";
 import {getConfig} from "@/modules/Config";
 import path from "path";
 import {clearTimerTimeout, setTimerTimeout} from "@/modules/Timer";
 import chokidar from "chokidar";
 import {CodeInfoTypes} from "@/types/CodeType";
+import {Client} from "@/modules/WebSocket";
 
 const CONFIG = getConfig();
 
@@ -54,7 +55,15 @@ export class CodeStore {
 			this.#store[code] = codeInfo;
 		}
 	}
-
+	static getUsedSpace(type: CodeInfoTypes): number {
+		let size = 0;
+		for (const codeInfo of Object.values(this.#store)) {
+			if (codeInfo instanceof type) {
+				size += codeInfo.size;
+			}
+		}
+		return size;
+	}
 	static #getUniqueCode() {
 		let failedCount = 0;
 		while (true) {
@@ -67,30 +76,19 @@ export class CodeStore {
 			}
 		}
 	}
-
 	static #generateCode(length: number) {
 		return crypto.randomBytes(length).toString('hex');
-	}
-
-	static getUsedSpace(type: CodeInfoTypes): number {
-		let size = 0;
-		for (const codeInfo of Object.values(this.#store)) {
-			if (codeInfo instanceof type) {
-				size += codeInfo.size;
-			}
-		}
-		return size;
 	}
 }
 
 abstract class CodeInfo {
-	#code: string = null;
-
 	abstract readonly expireInterval: number;
 
-	#createTime: number = Date.now();
-
 	expireAutoRemoveTimer: number;
+
+	#code: string = null;
+
+	#createTime: number = Date.now();
 
 	protected constructor() {
 		// 到期自动移除计时器
@@ -139,6 +137,7 @@ abstract class CodeInfo {
 	hasExpired() {
 		return Date.now() > this.expireTime;
 	}
+
 	remove() {
 		clearTimerTimeout(this.expireAutoRemoveTimer);
 		CodeStore.removeCodeInfo(this.#code.toString());
@@ -146,9 +145,9 @@ abstract class CodeInfo {
 }
 
 export class TextCodeInfo extends CodeInfo {
-	readonly #text: string;
+	readonly expireInterval = CONFIG.STORE.TEXT.EXPIRE_INTERVAL;
 
-	expireInterval = CONFIG.STORE.TEXT.EXPIRE_INTERVAL;
+	readonly #text: string;
 
 	constructor(text: string) {
 		super();
@@ -165,12 +164,12 @@ export class TextCodeInfo extends CodeInfo {
 }
 
 export class FileCodeInfo extends CodeInfo {
+	readonly expireInterval = CONFIG.STORE.FILE.EXPIRE_INTERVAL;
+
 	/**
 	 * 文件列表
 	 */
 	readonly #files: File[];
-
-	expireInterval = CONFIG.STORE.FILE.EXPIRE_INTERVAL;
 
 	constructor(files: File[]) {
 		super();
@@ -185,6 +184,10 @@ export class FileCodeInfo extends CodeInfo {
 		return this.#files;
 	}
 
+	get size(): number {
+		return this.#files.reduce((size, file) => file.status !== FileStatus.REMOVED ? size + file.size : size, 0);
+	}
+
 	checkpoint() {
 		this.#files.forEach(file => file.checkpoint());
 	}
@@ -193,18 +196,14 @@ export class FileCodeInfo extends CodeInfo {
 		super.remove();
 		this.#files.forEach(file => file.remove());
 	}
-
-	get size(): number {
-		return this.#files.reduce((size, file) => file.status !== FileStatus.REMOVED ? size + file.size : size, 0);
-	}
 }
 
 export class ShareCodeInfo extends CodeInfo {
+	expireInterval = Infinity;
+
 	readonly #path: string;
 
 	readonly #files: { [key: string]: ShareFile } = {};
-
-	expireInterval = Infinity;
 
 	constructor(sharePath: string) {
 		super();
@@ -257,5 +256,75 @@ export class ShareCodeInfo extends CodeInfo {
 		for (const file of Object.values(this.#files)) {
 			file.remove();
 		}
+	}
+}
+
+export class DropCodeInfo extends CodeInfo {
+	readonly expireInterval = Infinity;
+
+	readonly #data: ({ type: 'text', codeInfo: TextCodeInfo } | { type: 'files', codeInfo: FileCodeInfo })[] = [];
+
+	#recvClient: Client = null;
+
+	readonly #sendClients: Client[] = [];
+
+	constructor() {
+		super();
+
+		// 2分钟后如果没有连接则自动移除
+		setTimerTimeout(() => {
+			if (!this.#recvClient) {
+				console.debug('[DropCodeInfo][Constructor]', 'Code has auto removed:', this.code);
+				this.remove();
+			}
+		}, CONFIG.STORE.DROP.CONNECT_TIMEOUT);
+	}
+
+	get size(): number {
+		return 0;
+	}
+
+	receiverConnect(client: Client) {
+		if (this.#recvClient) {
+			throw new Error('Only one connection can be received.');
+		}
+
+		this.#recvClient = client;
+
+		client.on('close', () => this.remove());
+	}
+
+	senderConnect(client: Client) {
+		this.#sendClients.push(client);
+
+		client.on('close', () => {
+			const index = this.#sendClients.indexOf(client);
+			if (index !== -1) {
+				this.#sendClients.splice(index, 1);
+			}
+		});
+	}
+
+	getSignedWsRecvUrl(): string {
+		const urlObj = Url.mergeUrl({pathname: Api.WS_DROP_RECV});
+		urlObj.searchParams.set('code', this.code);
+		return Url.sign(urlObj.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
+	}
+
+	addText(text: string) {
+		this.#data.push({type: 'text', codeInfo: new TextCodeInfo(text)});
+	}
+
+	addFiles(files: (SimpleFile | MultipartFile)[]) {
+		this.#data.push({type: 'files', codeInfo: new FileCodeInfo(files)});
+	}
+
+	remove() {
+		super.remove();
+		if (this.#recvClient) {
+			this.#recvClient.close();
+		}
+		this.#sendClients.forEach(conn => conn.close());
+		this.#data.forEach(({codeInfo}) => codeInfo.remove());
 	}
 }
