@@ -15,29 +15,29 @@ class HTMLPageBarElement extends HTMLElement {
 
 		const style = document.createElement('style');
 		style.textContent = `
-						:host {
-							line-height: 1;
-							position: relative;
-							display: flex;
-							justify-content: center;
-							width: fit-content;
-							padding: 5px;
-							user-select: none;
-							border-radius: 100px;
-							background-color: var(--background-color-1);
-							gap: 5px;
-							box-shadow: 0 0px 5px 0px var(--primary-color-3);
-						}
+			:host {
+				line-height: 1;
+				position: relative;
+				display: flex;
+				justify-content: center;
+				width: fit-content;
+				padding: 5px;
+				user-select: none;
+				border-radius: 100px;
+				background-color: var(--background-color-1);
+				gap: 5px;
+				box-shadow: 0 0px 5px 0px var(--primary-color-3);
+			}
 
-						.slider {
-							position: absolute;
-							top: 5px;
-							height: 2em;
-							transition: all var(--base-transition-duration) ease;
-							border-radius: 100px;
-							background-color: var(--primary-color-2);
-						}
-					`;
+			.slider {
+				position: absolute;
+				top: 5px;
+				height: 2em;
+				transition: all var(--base-transition-duration) ease;
+				border-radius: 100px;
+				background-color: var(--primary-color-2);
+			}
+		`;
 
 		this.slider = document.createElement('div');
 		this.slider.classList.add('slider');
@@ -133,50 +133,51 @@ class HTMLPageBarElement extends HTMLElement {
 customElements.define('page-bar', HTMLPageBarElement);
 
 class HTMLPageItemElement extends HTMLElement {
-	connectedCallback() {
-		this.tabIndex = 0;
-	}
-
 	constructor() {
 		super();
 		const shadow = this.attachShadow({mode: 'open'});
 
 		const style = document.createElement('style');
 		style.textContent = `
-						:host {
-							display: flex;
-							align-items: center;
-							justify-content: center;
-							width: 5em;
-							height: 2em;
-							border-radius: 100px;
-							cursor: pointer;
-						}
+			:host {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 5em;
+				height: 2em;
+				border-radius: 100px;
+				cursor: pointer;
+				color: var(--text-color-2);
+			}
 
-						:host(:hover) {
-							background-color: var(--form-background-hover-color);
-						}
+			:host(:hover) {
+				background-color: var(--form-background-hover-color);
+			}
 
-						:host(:active) {
-							background-color: var(--form-background-active-color);
-						}
+			:host(:active) {
+				background-color: var(--form-background-active-color);
+			}
 
-						:host(.active) {
-							color: var(--background-color-1);
-							background-color: unset;
-						}
+			:host(.active) {
+				color: var(--background-color-1);
+				background-color: unset;
+			}
 
-						:host > slot {
-							display: block;
-							position: relative;
-							pointer-events: none;
-						}
-					`;
+			:host > slot {
+				display: block;
+				position: relative;
+				pointer-events: none;
+			}
+		`;
 
 		const innerText = document.createElement('slot');
 
 		shadow.appendChild(style);
 		shadow.appendChild(innerText);
+	}
+
+	connectedCallback() {
+		this.tabIndex = 0;
 	}
 }
 
