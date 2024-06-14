@@ -131,7 +131,9 @@ export const Api = {
 
 	FETCH: "/fetch",
 
-	DROP_APPLY: "/drop/apply",
+	DROP_RECV_APPLY: "/drop/recv/apply",
+	DROP_SEND_APPLY: "/drop/send/apply",
 
 	WS_DROP_RECV: "/ws/recv",
+	WS_DROP_SEND: "/ws/send",
 };

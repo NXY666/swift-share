@@ -1,0 +1,225 @@
+.title {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--primary-color-2);
+	fill: currentColor;
+	gap: 15px;
+}
+
+.width-full {
+	width: 100%;
+	text-align: center;
+}
+
+.box {
+	display: flex;
+	justify-content: center;
+	min-width: 400px;
+	padding: 0 20px;
+}
+
+.box + .box {
+	margin-top: 20px;
+}
+
+.box-inner {
+	width: 600px;
+	max-width: 100%;
+	padding: 20px;
+	border-radius: 10px;
+	background-color: var(--background-color-1);
+	box-shadow: 0 2px 1px var(--primary-color-3);
+}
+
+.box-title {
+	margin-top: 0;
+}
+
+.input-form {
+	display: flex;
+	gap: 15px;
+}
+
+.input-form > input {
+	flex: 6;
+}
+
+.input-form > button {
+	flex: 1;
+}
+
+#uploadTextForm, #uploadDropTextForm {
+	line-height: 0;
+}
+
+#uploadTextInput, #uploadDropTextInput {
+	width: 100%;
+	height: 150px;
+	min-height: 150px;
+	max-height: 300px;
+	resize: vertical;
+	border-radius: 5px 5px 0 0;
+}
+
+#uploadTextButton, #uploadDropTextButton {
+	width: 100%;
+	margin-top: -1px;
+	border-radius: 0 0 5px 5px;
+}
+
+#extractedText {
+	overflow: auto;
+	min-height: 150px;
+	max-height: 300px;
+	margin-top: 15px;
+	margin-bottom: 0;
+	padding: 10px;
+	text-align: left;
+	color: var(--form-color);
+	border: solid var(--form-border-color);
+	border-width: 1px 1px 0 1px;
+	border-radius: 5px 5px 0 0;
+	background-color: var(--background-color-2);
+}
+
+#copyExtractedTextButton {
+	width: 100%;
+	border-radius: 0 0 5px 5px;
+}
+
+#playFileVideoContainer {
+	position: relative;
+	margin-top: 15px;
+	border-radius: 5px;
+}
+
+#playFileVideo {
+	width: 100%;
+	border-radius: 5px;
+}
+
+#uploadTextForm {
+	display: flex;
+	flex-direction: column;
+}
+
+#playFileVideo:not(:fullscreen) {
+	border: 1px solid var(--form-border-color);
+	background-color: var(--background-color-2);
+}
+
+#dropQrCode {
+	line-height: 1;
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	padding: 15px 15px 10px;
+	border-radius: 5px;
+	background-color: #F6F8FA;
+	gap: 10px;
+}
+
+.drop-qrcode-tip {
+	font-size: 14px;
+	margin: auto;
+	color: black;
+}
+
+#dropQrCodeTable {
+}
+
+.drop-tip {
+	font-size: 14px;
+	line-height: 1.5;
+	position: relative;
+	flex: 1;
+	width: 100%;
+	padding: 10px;
+	border-left: 5px solid var(--primary-color-2);
+	border-radius: 3px;
+	background-color: var(--background-color-2);
+}
+
+.water-mark {
+	font-size: 12px;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	padding: 5px;
+	user-select: none;
+	text-decoration: none;
+	opacity: .4;
+	color: var(--text-color-1);
+}
+
+#dropSwitchRecvButton {
+	width: 100%;
+}
+
+.drop-recv-methods-container {
+	display: flex;
+	margin-top: 20px;
+	text-align: left;
+	gap: 20px;
+}
+
+#dropQrCode {
+	position: relative;
+	image-rendering: pixelated;
+}
+
+.drop-recv-methods {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	gap: 20px;
+}
+
+.recv-data-list {
+	display: flex;
+	gap: 10px;
+	flex-direction: column;
+	margin-top: 20px;
+	text-align: left;
+}
+
+.recv-data-list.empty {
+	display: none;
+}
+
+.recv-data-item {
+	background-color: var(--background-color-2);
+	padding: 10px 15px 10px 10px;
+	border-radius: 5px;
+	width: 100%;
+	display: flex;
+	gap: 10px;
+}
+
+.recv-data-item-stick {
+	width: 5px;
+	border-radius: 5px;
+	background-color: var(--primary-color-2);
+}
+
+.recv-data-item-detail {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
+.recv-data-item-content {
+	font-size: 14px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	flex: 1;
+	color: var(--text-color-2);
+}
+
+.recv-data-item-button {
+	margin: auto 0 auto auto;
+	height: 30px;
+}

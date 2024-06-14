@@ -1,0 +1,270 @@
+:root {
+	/* 基础色 */
+	--color: black;
+
+	--primary-color-1: #0B57D0;
+	--primary-color-2: #649CF5;
+	--primary-color-3: #B4CFFF;
+
+	--material-primary-color-1: #0B57D0;
+	--material-primary-color-2: #64B5F6;
+	--material-primary-color-3: #BBDEFB;
+
+	--material-secondary-color-1: #D32F2F;
+
+	--text-color-1: #333333;
+	--text-color-2: #606266;
+	--text-color-3: #C0C4CC;
+
+	--background-color-1: #FFFFFF;
+	--background-color-2: #F6F8FA;
+
+	--border-color: #DCDFE6;
+	--border-hover-color: #C8C9CC;
+	--border-active-color: #CDD0D6;
+
+	--scrollbar-thumb-color: #DEDFE1;
+	--scrollbar-thumb-hover-color: #C8C9CC;
+
+	--dialog-header-background-color: var(--background-color-2);
+	--dialog-header-color: var(--text-color-1);
+	--dialog-header-close-color: var(--text-color-1);
+	--dialog-header-close-hover-color: var(--primary-color-1);
+	--dialog-background-color: var(--background-color-1);
+	--dialog-background-color-reverse: var(--background-color-2);
+	--dialog-border-color: var(--border-color);
+
+	--progress-thumb-color: var(--primary-color-1);
+
+	--form-input-color: var(--color);
+	--form-color: var(--text-color-2);
+	--form-error-color: #D32F2F;
+	--form-border-color: var(--border-color);
+	--form-border-hover-color: var(--border-hover-color);
+	--form-border-active-color: var(--border-active-color);
+	--form-background-color: var(--background-color-1);
+	--form-background-error-color: #FFF1F1;
+	--form-background-hover-color: #F4F4F5;
+	--form-background-active-color: #DEDFE0;
+	--form-box-shadow: 0 1px 1px #1F1F1F0A;
+	--form-box-shadow-active: inset 0 1px 1px #CDD0D6;
+
+	--short-transition-duration: 0.1s;
+	--base-transition-duration: 0.3s;
+	--long-transition-duration: 0.5s;
+
+	--common-transition: background var(--short-transition-duration) ease,
+	color var(--short-transition-duration) ease,
+	border var(--short-transition-duration) ease,
+	box-shadow var(--short-transition-duration) ease;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color: white;
+
+		--primary-color-1: #A8C7FA;
+		--primary-color-2: #87B2F7;
+		--primary-color-3: #669EFF;
+
+		--material-primary-color-1: #A8C7FA;
+		--material-primary-color-2: #0B57D0;
+		--material-primary-color-3: #062E6F;
+
+		--material-secondary-color-1: #F2B8B5;
+
+		--text-color-1: #CCCCCC;
+		--text-color-2: #808080;
+		--text-color-3: #4D4D4D;
+
+		--background-color-2: #0D1117;
+		--background-color-1: #161B22;
+
+		--border-color: #3C4043;
+		--border-hover-color: #8B949E;
+		--border-active-color: #6E7681;
+
+		--scrollbar-thumb-color: #242628;
+		--scrollbar-thumb-hover-color: #3A3D41;
+
+		--dialog-header-background-color: var(--background-color-1);
+		--dialog-header-color: var(--text-color-1);
+		--dialog-header-close-color: var(--text-color-1);
+		--dialog-header-close-hover-color: var(--primary-color-1);
+		--dialog-background-color: var(--background-color-2);
+		--dialog-background-color-reverse: var(--background-color-1);
+		--dialog-border-color: #3C4043;
+
+		--form-input-color: var(--color);
+		--form-color: var(--text-color-1);
+		--form-error-color: #F2B8B5;
+		--form-border-color: var(--border-color);
+		--form-border-hover-color: var(--border-hover-color);
+		--form-border-active-color: var(--border-active-color);
+		--form-background-color: var(--background-color-1);
+		--form-background-error-color: #200705;
+		--form-background-hover-color: #21262D;
+		--form-background-active-color: #30363D;
+		--form-box-shadow: none;
+		--form-box-shadow-active: none;
+
+		--button-hover-color: #333333;
+	}
+}
+
+* {
+	box-sizing: border-box;
+	transition: var(--common-transition);
+}
+
+html {
+	scrollbar-color: var(--text-color-2) transparent;
+}
+
+body {
+	padding-bottom: 15px;
+	color: var(--text-color-1);
+	background-color: var(--background-color-2);
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-weight: lighter;
+	user-select: none;
+}
+
+pre {
+	font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+	font-size: 14px;
+}
+
+label.hide {
+	display: none;
+}
+
+button {
+	font-size: 14px;
+	line-height: 1.2;
+	height: 35px;
+	padding: 5px 20px;
+	cursor: pointer;
+	user-select: none;
+	color: var(--form-color);
+	border: 1px solid var(--form-border-color);
+	border-radius: 5px;
+	outline-color: var(--primary-color-1);
+	background-color: var(--form-background-color);
+	box-shadow: var(--form-box-shadow);
+}
+
+button:hover {
+	border-color: var(--form-border-hover-color);
+	background-color: var(--form-background-hover-color);
+}
+
+button:active {
+	border-color: var(--form-border-active-color);
+	background-color: var(--form-background-active-color);
+	box-shadow: var(--form-box-shadow-active)
+}
+
+button:disabled {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+input:not([type=checkbox]):not([type=radio]), textarea {
+	font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
+	padding: 5px 10px;
+	color: var(--form-input-color);
+	border: var(--form-border-color) 1px solid;
+	border-radius: 5px;
+	outline: none;
+	background-color: var(--form-background-color);
+}
+
+input:focus:not([type=checkbox]):not([type=radio]),
+textarea:focus {
+	border-color: var(--primary-color-1);
+	box-shadow: 0 0 0 1px var(--primary-color-1) inset;
+}
+
+progress {
+	position: relative;
+	overflow: hidden;
+	border: var(--form-border-color) 1px solid;
+	border-radius: 114514px;
+	background-color: var(--background-color-2);
+}
+
+progress::-webkit-progress-bar {
+	background-color: transparent;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+}
+
+progress[value]::-webkit-progress-value, progress:not([value])::before, progress:not([value])::after {
+	border-radius: 114514px;
+	background-color: var(--primary-color-1);
+}
+
+progress[value]::-webkit-progress-value {
+	margin-left: 10px;
+	transform: translateX(-10px);
+}
+
+progress:not([value])::before {
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	content: '';
+	animation: slow-stripes 2s infinite ease-in-out;
+}
+
+@keyframes slow-stripes {
+	0% {
+		animation-timing-function: ease-in;
+		left: -5%;
+		width: 0;
+	}
+	50% {
+		animation-timing-function: ease-out;
+		left: 50%;
+		width: 50%;
+	}
+	60% {
+		left: 100%;
+		width: 50%;
+	}
+	100% {
+		left: 100%;
+		width: 50%;
+	}
+}
+
+progress:not([value])::after {
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	content: '';
+	animation: fast-stripes 2s infinite ease-in-out;
+}
+
+@keyframes fast-stripes {
+	0% {
+		left: -20%;
+		width: 20%;
+	}
+	50% {
+		left: -20%;
+		width: 20%;
+	}
+	100% {
+		left: 100%;
+		width: 70%;
+	}
+}

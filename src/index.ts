@@ -12,7 +12,7 @@ import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourceAb
 import {Command} from "commander";
 import {CodeStore, DropCodeInfo, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
-import * as http from "node:http";
+import http from "http";
 import {WebSocketServer} from "ws";
 import {Client} from "@/modules/WebSocket";
 
@@ -239,6 +239,7 @@ app.post(Api.BIU, (req, res) => {
 
 // 所有 API
 app.get(Api.API, (_req, res) => {
+	// console.log(_req.headers['x-forwarded-for'] || _req.socket.remoteAddress);
 	res.json(Api);
 });
 
@@ -256,6 +257,15 @@ app.post(Api.UPLOAD_TEXT, (req, res) => {
 
 	const codeInfo = new TextCodeInfo(text);
 	CodeStore.saveCodeInfo(codeInfo);
+
+	const {drop} = req.query;
+
+	if (drop) {
+		const dropCodeInfo = CodeStore.getCodeInfo(drop as string);
+		if (dropCodeInfo instanceof DropCodeInfo) {
+			dropCodeInfo.addText(codeInfo);
+		}
+	}
 
 	res.json({code: codeInfo.code});
 });
@@ -279,7 +289,7 @@ app.get(Api.EXTRACT_TEXT, (req, res) => {
 
 	if (codeInfo instanceof TextCodeInfo) {
 		console.info('Text extracted:', extractionCode);
-		res.json({text: (codeInfo).text});
+		res.json({text: codeInfo.text});
 	} else {
 		console.info('Specified code is not a text:', extractionCode);
 		res.status(400).json({message: '指定的提取码类型不是文本。'});
@@ -464,13 +474,37 @@ app.get(Api.FETCH, (req, res) => {
 	downloadStream.pipe(res);
 });
 
-// 申请投送连接码
-app.get(Api.DROP_APPLY, (_req, res) => {
+// 申请投送接收端
+app.get(Api.DROP_RECV_APPLY, (_req, res) => {
 	const codeInfo = new DropCodeInfo();
 	CodeStore.saveCodeInfo(codeInfo);
 
 	res.json({code: codeInfo.code, wsRecvUrl: codeInfo.getSignedWsRecvUrl()});
 });
+
+// 申请投送发送端
+app.get(Api.DROP_SEND_APPLY, (_req, res) => {
+	const {code} = _req.query;
+
+	const codeInfo = CodeStore.getCodeInfo(code as string);
+
+	if (!codeInfo) {
+		console.error(`Code not found: ${code}`);
+		res.status(404).json({message: '连接码不存在。'});
+		return;
+	} else if (codeInfo.hasExpired()) {
+		console.error(`Code has expired: ${code}`);
+		res.status(404).json({message: '连接码已过期。'});
+		return;
+	} else if (!(codeInfo instanceof DropCodeInfo)) {
+		console.error(`Specified code is not a drop: ${code}`);
+		res.status(404).json({message: '连接码不存在。'});
+		return;
+	}
+
+	res.json({wsSendUrl: codeInfo.getSignedWsSendUrl()});
+});
+
 
 const server = http.createServer(app);
 
@@ -509,6 +543,36 @@ wss.on('connection', (ws, req) => {
 			if (codeInfo instanceof DropCodeInfo) {
 				const client = new Client('drop', code, ws);
 				codeInfo.receiverConnect(client);
+			} else {
+				console.error(`Specified code is not a drop: ${code}`);
+				ws.close(4001, "连接码不存在或已过期。");
+			}
+			break;
+		}
+		case Api.WS_DROP_SEND: {
+			if (!signed) {
+				console.error('Invalid signature.');
+				ws.close(4003, "请求不够安全。");
+				return;
+			}
+
+			const code = searchParams.get('code');
+
+			const codeInfo = CodeStore.getCodeInfo(code);
+
+			if (!codeInfo) {
+				console.error(`Code not found or has expired: ${code}`);
+				ws.close(4001, "连接码不存在或已过期。");
+				return;
+			} else if (codeInfo.hasExpired()) {
+				console.error(`Code has expired: ${code}`);
+				ws.close(4001, "连接码已过期。");
+				return;
+			}
+
+			if (codeInfo instanceof DropCodeInfo) {
+				const client = new Client('drop', code, ws);
+				codeInfo.senderConnect(client);
 			} else {
 				console.error(`Specified code is not a drop: ${code}`);
 				ws.close(4001, "连接码不存在或已过期。");

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import {File, FileStatus, MultipartFile, ShareFile, SimpleFile} from "./File";
+import {File, FileStatus, ShareFile} from "./File";
 import {Api, Url} from "./Url";
 import {getConfig} from "@/modules/Config";
 import path from "path";
@@ -311,12 +311,33 @@ export class DropCodeInfo extends CodeInfo {
 		return Url.sign(urlObj.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
-	addText(text: string) {
-		this.#data.push({type: 'text', codeInfo: new TextCodeInfo(text)});
+	getSignedWsSendUrl(): string {
+		const urlObj = Url.mergeUrl({pathname: Api.WS_DROP_SEND});
+		urlObj.searchParams.set('code', this.code);
+		return Url.sign(urlObj.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
-	addFiles(files: (SimpleFile | MultipartFile)[]) {
-		this.#data.push({type: 'files', codeInfo: new FileCodeInfo(files)});
+	notifyRecv(type: 'text' | 'files', data: any) {
+		this.#recvClient?.send(JSON.stringify({type, data}));
+	}
+
+	addText(textCodeInfo: TextCodeInfo) {
+		this.#data.push({type: 'text', codeInfo: textCodeInfo});
+
+		this.notifyRecv('text', {text: textCodeInfo.text});
+	}
+
+	addFiles(fileCodeInfo: FileCodeInfo) {
+		this.#data.push({type: 'files', codeInfo: fileCodeInfo});
+
+		// 生成下载配置
+		const fileDownloadConfigs = [];
+		for (const file of fileCodeInfo.files) {
+			const downloadConfig = file.getDownloadConfig();
+			fileDownloadConfigs.push(downloadConfig);
+		}
+
+		this.notifyRecv('files', {configs: fileDownloadConfigs});
 	}
 
 	remove() {

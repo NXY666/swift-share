@@ -7,25 +7,23 @@ function getAbsPath(Path = "", baseDir = import.meta.dirname) {
 	return path.isAbsolute(Path) ? Path : path.join(baseDir, Path);
 }
 function deepMergeObject<T>(def: T, act: T): T {
-	if (typeof def == "undefined" || def == null) {
+	if (def == null) { // 默认值为空
 		return act;
-	} else if (typeof act == "undefined" || act == null) {
+	} else if (act == null) { // 实际值为空
 		return def;
 	}
 
-	if (typeof def !== "object" || typeof act !== "object") {
+	if (typeof def !== "object" || typeof act !== "object") { // 双方至少有一方不是对象
 		return typeof def !== typeof act ? def : act;
-	} else if (Array.isArray(def) !== Array.isArray(act)) {
-		return def;
-	} else if (Array.isArray(def) && Array.isArray(act)) {
+	} else if (Array.isArray(def) && Array.isArray(act)) { // 双方都是数组
 		return def.concat(act) as T;
+	} else if (Number(Array.isArray(def)) + Number(Array.isArray(act)) === 1) { // 只有一方是数组
+		return def;
 	}
 
-	let res: any = {};
+	// 双方都是对象
+	let res: T = {} as T;
 	for (let k in def) {
-		res[k] = deepMergeObject(def[k], act[k]);
-	}
-	for (let k in act) {
 		res[k] = deepMergeObject(def[k], act[k]);
 	}
 	return res;
@@ -48,7 +46,7 @@ if (!fs.existsSync(ConfigAbsolutePath)) {
 	fs.cpSync(DefaultConfigAbsolutePath, ConfigAbsolutePath);
 }
 
-const config: ConfigType = deepMergeObject(await import("@/configs/DefaultConfig"), (await import(pathToFileURL(ConfigAbsolutePath).toString())).default);
+const config: ConfigType = deepMergeObject((await import("@/configs/DefaultConfig")).default, (await import(pathToFileURL(ConfigAbsolutePath).toString())).default);
 
 export function getConfig(): ConfigType {
 	return config;
