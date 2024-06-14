@@ -97,8 +97,9 @@ class HTMLPageBarElement extends HTMLElement {
 			return;
 		}
 
-		const activeItem = Array.from(items).filter((item) => item.classList.contains('active'))[0];
+		const activeItem = Array.from(items).filter((item) => item.dataset.active)[0];
 		if (activeItem) {
+			delete activeItem.dataset.active;
 			activeItem.classList.remove('active');
 			clearTimeout(activeItem.toActiveTimeout);
 
@@ -116,6 +117,7 @@ class HTMLPageBarElement extends HTMLElement {
 			this.slider.style.left = `${left}px`;
 			this.slider.style.width = `${width}px`;
 
+			item.dataset.active = 'true';
 			item.toActiveTimeout = setTimeout(() => {
 				item.classList.add('active');
 				delete item.toActiveTimeout;

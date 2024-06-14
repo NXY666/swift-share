@@ -232,6 +232,8 @@ class Dialog {
 					if (this.#showCloseButton) {
 						const closeButton = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 						closeButton.classList.add('dialog-close-button');
+						closeButton.setAttribute('tabindex', '0');
+						closeButton.setAttribute('role', 'button');
 						closeButton.setAttribute('width', '16');
 						closeButton.setAttribute('height', '16');
 						closeButton.setAttribute('viewBox', '0 0 16 16');
@@ -616,10 +618,10 @@ class TransferDialog extends Dialog {
 }
 
 class UploadDialog extends TransferDialog {
-	constructor(extractCode, configs) {
+	constructor(extractCode, configs, showTip = true) {
 		super({
 			title: '上传文件',
-			tip: `请凭【${extractCode.toUpperCase()}】提取文件。`,
+			tip: showTip ? `请凭【${extractCode.toUpperCase()}】提取文件。` : '',
 			configs: configs.map(config => ({
 				name: config.name,
 				max: config.parts[0].index !== -1 ? config.parts.length : null

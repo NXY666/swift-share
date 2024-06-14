@@ -188,6 +188,10 @@ textarea:focus {
 	box-shadow: 0 0 0 1px var(--primary-color-1) inset;
 }
 
+input:not([type=checkbox]):not([type=radio]):disabled, textarea:disabled {
+	background-color: var(--background-color-2);
+}
+
 progress {
 	position: relative;
 	overflow: hidden;

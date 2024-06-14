@@ -152,12 +152,25 @@
 						<input autocomplete="off" id="dropConnectCode" placeholder="连接码" type="text">
 						<button>连接</button>
 					</form>
-					<form id="uploadDropTextForm">
-						<label class="hide" for="uploadDropTextInput"></label>
-						<textarea cols="50" id="uploadDropTextInput" maxlength="67108864" placeholder="文本"
-								  rows="8"></textarea>
-						<button id="uploadDropTextButton">上传</button>
-					</form>
+					<div id="dropSendForms">
+						<div style="padding: 20px; background-color: var(--background-color-2); border-radius: 5px;">
+							<h3 style="margin: -5px 0 15px;">发送文本</h3>
+							<form id="uploadDropTextForm">
+								<label class="hide" for="uploadDropTextInput"></label>
+								<textarea cols="50" id="uploadDropTextInput" maxlength="67108864" placeholder="文本"
+										  rows="8"></textarea>
+								<button id="uploadDropTextButton">发送</button>
+							</form>
+						</div>
+						<div style="padding: 20px; background-color: var(--background-color-2); border-radius: 5px;">
+							<h3 style="margin: -5px 0 15px;">发送文件</h3>
+							<form class="input-form" id="uploadDropFileForm">
+								<label class="hide" for="uploadDropFileInput"></label>
+								<input id="uploadDropFileInput" multiple type="file">
+								<button>发送</button>
+							</form>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

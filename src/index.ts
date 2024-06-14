@@ -326,6 +326,15 @@ app.post(Api.UPLOAD_FILES_APPLY, (req, res) => {
 	const codeInfo = new FileCodeInfo(localFiles);
 	CodeStore.saveCodeInfo(codeInfo);
 
+	const {drop} = req.query;
+
+	if (drop) {
+		const dropCodeInfo = CodeStore.getCodeInfo(drop as string);
+		if (dropCodeInfo instanceof DropCodeInfo) {
+			dropCodeInfo.addFiles(codeInfo);
+		}
+	}
+
 	res.json({
 		code: codeInfo.code,
 		checkpointUrl: codeInfo.getSignedCheckpointUrl(),

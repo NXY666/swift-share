@@ -223,3 +223,9 @@
 	margin: auto 0 auto auto;
 	height: 30px;
 }
+
+#dropSendForms {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}

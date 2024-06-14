@@ -469,6 +469,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	const dropConnectCode = document.getElementById('dropConnectCode');
 	const dropConnectForm = document.getElementById('dropConnectForm');
+	const dropSendForms = document.getElementById('dropSendForms')
 	let dropSendWsClient;
 
 	function enableDropSend() {
@@ -478,6 +479,9 @@ document.addEventListener('DOMContentLoaded', function () {
 		// 改变表单状态
 		dropConnectForm.dataset.enabled = 'true';
 		dropConnectForm.querySelector('button').textContent = '断开';
+
+		// 显示表单
+		dropSendForms.style.display = '';
 	}
 
 	function disableDropSend() {
@@ -487,7 +491,12 @@ document.addEventListener('DOMContentLoaded', function () {
 		// 改变表单状态
 		dropConnectForm.dataset.enabled = 'false';
 		dropConnectForm.querySelector('button').textContent = '连接';
+
+		// 隐藏表单
+		dropSendForms.style.display = 'none';
 	}
+
+	disableDropSend();
 
 	dropConnectForm.addEventListener('submit', (e) => {
 		e.preventDefault();
@@ -541,9 +550,104 @@ document.addEventListener('DOMContentLoaded', function () {
 		disableForm(uploadDropTextForm);
 
 		api.post("/upload/text?drop=" + dropConnectCode.value, text)
-		.then(() => uploadDropTextInput.value = '')
+		.then(() => uploadDropTextForm.reset())
 		.catch(({message}) => alert(message))
 		.finally(() => enableForm(uploadDropTextForm));
+	});
+
+	const uploadDropFileInput = document.getElementById('uploadDropFileInput');
+	const uploadDropFileForm = document.getElementById('uploadDropFileForm');
+
+	uploadDropFileForm.addEventListener('submit', (e) => {
+		e.preventDefault();
+
+		const blobFiles = uploadDropFileInput.files;
+		if (!blobFiles.length) {
+			return;
+		}
+
+		disableForm(uploadDropFileForm);
+
+		let checkpointTimeout = null;
+		api.post('/upload/files/apply?drop=' + dropConnectCode.value, {
+			files: (Array.from(blobFiles).map(file => ({
+				name: file.name,
+				size: file.size
+			})))
+		})
+		.then(async ({data}) => {
+			const {configs, checkpointUrl} = data;
+
+			// 每隔15秒检查一次
+			checkpointTimeout = setTimeout(function checkpoint() {
+				api.get(checkpointUrl).finally(() => {
+					if (checkpointTimeout != null) {
+						checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
+					}
+				});
+			});
+
+			const extractCode = data.code;
+
+			const uploadDialog = new UploadDialog(extractCode, configs, false);
+			uploadDialog.open();
+
+			let activeAbortController = null;
+			uploadDialog.signal.addEventListener('abort', () => {
+				activeAbortController?.abort("上传已取消");
+			});
+
+			const failedConfigs = [];
+			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+				if (uploadDialog.signal.aborted) {
+					failedConfigs.push(...configs.slice(activeConfigIndex));
+					break;
+				}
+
+				const activeConfig = configs[activeConfigIndex];
+				const blobFile = blobFiles[activeConfigIndex];
+
+				await new Promise((resolve, reject) => {
+					activeAbortController = new AbortController();
+					const uploadFilePromises = [];
+					for (const uploadConfig of activeConfig.parts) {
+						const formData = new FormData();
+						formData.append('id', activeConfig.id);
+						formData.append('key', activeConfig.key);
+						formData.append('index', uploadConfig.index);
+						// -1 表示整个文件
+						formData.append('part', uploadConfig.index === -1 ? blobFile : blobFile.slice(...uploadConfig.range));
+						uploadFilePromises.push(api.post("/upload/files", formData, {signal: activeAbortController.signal}, {slowRequest: true}).finally(() => {
+							uploadDialog.addFileProgress();
+						}));
+					}
+					Promise.all(uploadFilePromises)
+					.then(() => resolve())
+					.catch(() => {
+						// 终止未完成的上传
+						try {
+							activeAbortController.abort("文件上传失败");
+						} catch {}
+						reject();
+					});
+				}).catch(() => {
+					failedConfigs.push(activeConfig);
+				}).finally(() => {
+					uploadDialog.addTotalProgress();
+				});
+			}
+
+			if (failedConfigs.length > 0) {
+				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
+			}
+		})
+		.catch(({message}) => alert(message))
+		.finally(() => {
+			uploadDropFileForm.reset();
+			enableForm(uploadDropFileForm);
+			clearTimeout(checkpointTimeout);
+			checkpointTimeout = null;
+		});
 	});
 
 	const dropSwitchRecvButton = document.getElementById('dropSwitchRecvButton');
@@ -638,7 +742,15 @@ document.addEventListener('DOMContentLoaded', function () {
 						});
 						break;
 					case 'files':
-						console.log(data);
+						clone.querySelector('.recv-data-item-type').textContent = "文件";
+						if (data.configs.length > 1) {
+							clone.querySelector('.recv-data-item-content').textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
+						} else {
+							clone.querySelector('.recv-data-item-content').textContent = data.configs[0].name;
+						}
+						clone.querySelector('.recv-data-item-button').addEventListener('click', async () => {
+							new SelectDownloadDialog(data.configs).open();
+						});
 						break;
 				}
 
@@ -667,19 +779,32 @@ document.addEventListener('DOMContentLoaded', function () {
 			const param = hashMatch[2];
 
 			switch (type) {
-				case 'DROP':
-					dropConnectCode.value = param;
-					dropConnectForm.dispatchEvent(new SubmitEvent('submit'));
-					break;
 				case 'TEXT':
+					document.querySelector('page-item[for=text]').click();
 					extractTextCode.value = param;
 					extractTextForm.dispatchEvent(new SubmitEvent('submit'));
 					break;
 				case 'FILE':
+					document.querySelector('page-item[for=file]').click();
 					extractFileCode.value = param;
 					extractFileForm.dispatchEvent(new SubmitEvent('submit'));
 					break;
+				case 'PLAY':
+					document.querySelector('page-item[for=file]').click();
+					playFileCode.value = param;
+					playFileForm.dispatchEvent(new SubmitEvent('submit'));
+					break;
+				case 'DROP':
+					document.querySelector('page-item[for=drop]').click();
+					dropConnectCode.value = param;
+					dropConnectForm.dispatchEvent(new SubmitEvent('submit'));
+					break;
 			}
+
+			// 清除hash replace
+			const newUrl = new URL(location);
+			newUrl.hash = '';
+			history.replaceState(null, '', newUrl);
 		}
 	}
 });
