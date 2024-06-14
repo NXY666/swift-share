@@ -773,10 +773,10 @@ class SelectDownloadDialog extends Dialog {
 
 			this.#confirmButton.textContent = '下载';
 			this.#confirmButton.style.marginLeft = 'auto';
-			this.#confirmButton.addEventListener('click', () => {
+			this.#confirmButton.addEventListener('click', async () => {
 				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
 				if (selectedConfigs.length !== 0) {
-					downloadConfigs(selectedConfigs);
+					await downloadConfigs(selectedConfigs);
 				}
 				this.close();
 			});

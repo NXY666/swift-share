@@ -146,30 +146,28 @@
 		<div class="width-full box">
 			<div class="box-inner">
 				<h2 class="box-title">发送</h2>
-				<div style="display: flex; flex-direction: column; gap: 20px;">
-					<form class="input-form" id="dropConnectForm">
-						<label class="hide" for="dropConnectCode"></label>
-						<input autocomplete="off" id="dropConnectCode" placeholder="连接码" type="text">
-						<button>连接</button>
-					</form>
-					<div id="dropSendForms">
-						<div style="padding: 20px; background-color: var(--background-color-2); border-radius: 5px;">
-							<h3 style="margin: -5px 0 15px;">发送文本</h3>
-							<form id="uploadDropTextForm">
-								<label class="hide" for="uploadDropTextInput"></label>
-								<textarea cols="50" id="uploadDropTextInput" maxlength="67108864" placeholder="文本"
-										  rows="8"></textarea>
-								<button id="uploadDropTextButton">发送</button>
-							</form>
-						</div>
-						<div style="padding: 20px; background-color: var(--background-color-2); border-radius: 5px;">
-							<h3 style="margin: -5px 0 15px;">发送文件</h3>
-							<form class="input-form" id="uploadDropFileForm">
-								<label class="hide" for="uploadDropFileInput"></label>
-								<input id="uploadDropFileInput" multiple type="file">
-								<button>发送</button>
-							</form>
-						</div>
+				<form class="input-form" id="dropConnectForm">
+					<label class="hide" for="dropConnectCode"></label>
+					<input autocomplete="off" id="dropConnectCode" placeholder="连接码" type="text">
+					<button>连接</button>
+				</form>
+				<div id="dropSendForms">
+					<div class="drop-send-box">
+						<h3 class="drop-send-box-title">发送文本</h3>
+						<form id="dropUploadTextForm">
+							<label class="hide" for="dropUploadTextInput"></label>
+							<textarea cols="50" id="dropUploadTextInput" maxlength="67108864" placeholder="文本"
+									  rows="8"></textarea>
+							<button id="dropUploadTextButton">发送</button>
+						</form>
+					</div>
+					<div class="drop-send-box">
+						<h3 class="drop-send-box-title">发送文件</h3>
+						<form class="input-form" id="dropUploadFileForm">
+							<label class="hide" for="dropUploadFileInput"></label>
+							<input id="dropUploadFileInput" multiple type="file">
+							<button>发送</button>
+						</form>
 					</div>
 				</div>
 			</div>
@@ -177,29 +175,29 @@
 		<div class="width-full box">
 			<div class="box-inner">
 				<h2 class="box-title">接收</h2>
-				<button id="dropSwitchRecvButton">启用</button>
-				<div id="dropRecvHelper" class="drop-recv-methods-container">
+				<button id="dropRecvSwitchButton">启用</button>
+				<div id="dropRecvHelper">
 					<span id="dropQrCode"></span>
-					<div class="drop-recv-methods">
-						<div class="drop-tip">
+					<div class="drop-recv-method-list">
+						<div class="drop-recv-method">
 							<b>连接方法１：</b><br>
 							扫描左侧二维码快速连接。
 						</div>
-						<div class="drop-tip">
+						<div class="drop-recv-method">
 							<b>连接方法２：</b><br>
 							凭连接码【<span id="dropCode"></span>】手动连接。
 						</div>
 					</div>
 				</div>
-				<div id="dropRecvDataList" class="recv-data-list empty">
+				<div id="dropRecvDataList" class="drop-recv-data-list empty">
 					<template id="recvDataItemTemplate">
-						<div class="recv-data-item">
-							<div class="recv-data-item-stick"></div>
-							<div class="recv-data-item-detail">
-								<b class="recv-data-item-type">类型</b>
-								<span class="recv-data-item-content">内容</span>
+						<div class="drop-recv-data">
+							<div class="stick"></div>
+							<div class="detail">
+								<b class="type">类型</b>
+								<span class="content">内容</span>
 							</div>
-							<button class="recv-data-item-button">查看</button>
+							<button class="operate-button">查看</button>
 						</div>
 					</template>
 				</div>

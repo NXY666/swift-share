@@ -95,7 +95,7 @@ class api {
 
 	static #request(url, options, config) {
 		const {slowRequest, retryCount, bodyType} = config;
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject) => {
 			this.#requestQueue.push({
 				slowRequest,
 				pushTime: Date.now(),
@@ -137,7 +137,7 @@ class api {
 					});
 				}
 			});
-			this.#processQueue();
+			await this.#processQueue();
 		});
 	}
 
@@ -426,10 +426,10 @@ document.addEventListener('DOMContentLoaded', function () {
 		disableForm(extractFileForm);
 
 		api.get(`/extract/files/${extractionCode}`)
-		.then(({data}) => {
+		.then(async ({data}) => {
 			const {configs} = data;
 			if (configs.length === 1 && !configs[0].removed) {
-				downloadConfigs(configs);
+				await downloadConfigs(configs);
 			} else {
 				new SelectDownloadDialog(configs).open();
 			}
@@ -531,42 +531,42 @@ document.addEventListener('DOMContentLoaded', function () {
 		.finally(() => enableForm(dropConnectForm));
 	});
 
-	const uploadDropTextInput = document.getElementById('uploadDropTextInput');
-	const uploadDropTextForm = document.getElementById('uploadDropTextForm');
+	const dropUploadTextInput = document.getElementById('dropUploadTextInput');
+	const dropUploadTextForm = document.getElementById('dropUploadTextForm');
 
-	uploadDropTextInput.addEventListener('keydown', (e) => {
+	dropUploadTextInput.addEventListener('keydown', (e) => {
 		if (e.ctrlKey && e.key === 'Enter') {
-			uploadDropTextForm.dispatchEvent(new SubmitEvent('submit'));
+			dropUploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	uploadDropTextForm.addEventListener('submit', (e) => {
+	dropUploadTextForm.addEventListener('submit', (e) => {
 		e.preventDefault();
 
-		const text = uploadDropTextInput.value;
+		const text = dropUploadTextInput.value;
 		if (text.trim() === '') {
 			return;
 		}
 
-		disableForm(uploadDropTextForm);
+		disableForm(dropUploadTextForm);
 
 		api.post("/upload/text?drop=" + dropConnectCode.value, text)
-		.then(() => uploadDropTextForm.reset())
+		.then(() => dropUploadTextForm.reset())
 		.catch(({message}) => alert(message))
-		.finally(() => enableForm(uploadDropTextForm));
+		.finally(() => enableForm(dropUploadTextForm));
 	});
 
-	const uploadDropFileInput = document.getElementById('uploadDropFileInput');
-	const uploadDropFileForm = document.getElementById('uploadDropFileForm');
+	const dropUploadFileInput = document.getElementById('dropUploadFileInput');
+	const dropUploadFileForm = document.getElementById('dropUploadFileForm');
 
-	uploadDropFileForm.addEventListener('submit', (e) => {
+	dropUploadFileForm.addEventListener('submit', (e) => {
 		e.preventDefault();
 
-		const blobFiles = uploadDropFileInput.files;
+		const blobFiles = dropUploadFileInput.files;
 		if (!blobFiles.length) {
 			return;
 		}
 
-		disableForm(uploadDropFileForm);
+		disableForm(dropUploadFileForm);
 
 		let checkpointTimeout = null;
 		api.post('/upload/files/apply?drop=' + dropConnectCode.value, {
@@ -643,14 +643,14 @@ document.addEventListener('DOMContentLoaded', function () {
 		})
 		.catch(({message}) => alert(message))
 		.finally(() => {
-			uploadDropFileForm.reset();
-			enableForm(uploadDropFileForm);
+			dropUploadFileForm.reset();
+			enableForm(dropUploadFileForm);
 			clearTimeout(checkpointTimeout);
 			checkpointTimeout = null;
 		});
 	});
 
-	const dropSwitchRecvButton = document.getElementById('dropSwitchRecvButton');
+	const dropRecvSwitchButton = document.getElementById('dropRecvSwitchButton');
 	const dropRecvHelper = document.getElementById('dropRecvHelper');
 	const dropCode = document.getElementById('dropCode');
 	const dropQrCode = document.getElementById('dropQrCode');
@@ -660,8 +660,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	function enableRecv() {
 		// 按钮切换
-		dropSwitchRecvButton.dataset.enabled = 'true';
-		dropSwitchRecvButton.textContent = '停止';
+		dropRecvSwitchButton.dataset.enabled = 'true';
+		dropRecvSwitchButton.textContent = '停止';
 
 		// 显示提示
 		dropRecvHelper.style.display = '';
@@ -669,26 +669,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	function disableRecv() {
 		// 按钮切换
-		dropSwitchRecvButton.dataset.enabled = 'false';
-		dropSwitchRecvButton.textContent = '启用';
+		dropRecvSwitchButton.dataset.enabled = 'false';
+		dropRecvSwitchButton.textContent = '启用';
 
 		// 隐藏提示
 		dropRecvHelper.style.display = 'none';
 	}
 
-	dropSwitchRecvButton.addEventListener('click', () => {
-		if (dropSwitchRecvButton.dataset.enabled === 'true') {
+	dropRecvSwitchButton.addEventListener('click', () => {
+		if (dropRecvSwitchButton.dataset.enabled === 'true') {
 			dropRecvWsClient.close();
 
 			disableRecv();
 			return;
 		}
 
-		dropSwitchRecvButton.disabled = true;
+		dropRecvSwitchButton.disabled = true;
 
 		api.get('/drop/recv/apply')
 		.then(({data}) => {
-			console.log(data);
 			const {code, wsRecvUrl} = data;
 
 			// 制作二维码
@@ -735,20 +734,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 				switch (type) {
 					case 'text':
-						clone.querySelector('.recv-data-item-type').textContent = "文本";
-						clone.querySelector('.recv-data-item-content').textContent = data.text;
-						clone.querySelector('.recv-data-item-button').addEventListener('click', () => {
+						clone.querySelector('.type').textContent = "文本";
+						clone.querySelector('.content').textContent = data.text;
+						clone.querySelector('.operate-button').addEventListener('click', () => {
 							alert(data.text);
 						});
 						break;
 					case 'files':
-						clone.querySelector('.recv-data-item-type').textContent = "文件";
+						clone.querySelector('.type').textContent = "文件";
 						if (data.configs.length > 1) {
-							clone.querySelector('.recv-data-item-content').textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
+							clone.querySelector('.content').textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
 						} else {
-							clone.querySelector('.recv-data-item-content').textContent = data.configs[0].name;
+							clone.querySelector('.content').textContent = data.configs[0].name;
 						}
-						clone.querySelector('.recv-data-item-button').addEventListener('click', async () => {
+						clone.querySelector('.operate-button').addEventListener('click', async () => {
 							new SelectDownloadDialog(data.configs).open();
 						});
 						break;
@@ -765,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			enableRecv();
 		})
 		.catch(({message}) => alert(`启动失败：${message}`))
-		.finally(() => dropSwitchRecvButton.disabled = false);
+		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
 
 	disableRecv();
