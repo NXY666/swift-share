@@ -62,9 +62,12 @@
 	border-radius: 5px 5px 0 0;
 }
 
+#uploadTextInput:not(:focus), #dropUploadTextInput:not(:focus) {
+	border-bottom: none;
+}
+
 #uploadTextButton, #dropUploadTextButton {
 	width: 100%;
-	margin-top: -1px;
 	border-radius: 0 0 5px 5px;
 }
 
@@ -104,20 +107,18 @@
 	background-color: var(--background-color-2);
 }
 
-#dropConnectForm {
-	margin-bottom: 20px;
-}
-
-#dropSendForms {
+#dropSender {
 	display: flex;
 	flex-direction: column;
+	margin-top: 20px;
 	gap: 20px;
 }
 
 .drop-send-box {
 	padding: 20px;
-	background-color: var(--background-color-2);
+	border: 1px solid var(--form-border-color);
 	border-radius: 5px;
+	background-color: var(--background-color-2);
 }
 
 .drop-send-box-title {
@@ -173,10 +174,10 @@
 
 .drop-recv-data-list {
 	display: flex;
-	gap: 10px;
 	flex-direction: column;
 	margin-top: 20px;
 	text-align: left;
+	gap: 10px;
 }
 
 .drop-recv-data-list.empty {
@@ -184,11 +185,11 @@
 }
 
 .drop-recv-data {
-	background-color: var(--background-color-2);
+	display: flex;
+	width: 100%;
 	padding: 10px 15px 10px 10px;
 	border-radius: 5px;
-	width: 100%;
-	display: flex;
+	background-color: var(--background-color-2);
 	gap: 10px;
 }
 
@@ -200,23 +201,23 @@
 
 .drop-recv-data .detail {
 	display: flex;
-	flex-direction: column;
-	flex: 1;
 	overflow: hidden;
+	flex: 1;
+	flex-direction: column;
 }
 
 .drop-recv-data .content {
 	font-size: 14px;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 	color: var(--text-color-2);
 }
 
 .drop-recv-data .operate-button {
-	margin: auto 0 auto auto;
 	height: 30px;
+	margin: auto 0 auto auto;
 }
 
 .water-mark {

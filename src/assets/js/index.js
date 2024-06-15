@@ -57,6 +57,34 @@ function parseExtractCode(code) {
 	return code.replace(/[.\\\/?#%\s]/g, '');
 }
 
+async function copyText(text) {
+	try {
+		await navigator.clipboard.writeText(text);
+	} catch {
+		const textArea = document.createElement("textarea");
+
+		textArea.style.position = 'fixed';
+		textArea.style.top = "0";
+		textArea.style.left = "0";
+
+		textArea.style.opacity = "0";
+
+		textArea.value = text;
+
+		document.body.appendChild(textArea);
+		textArea.focus();
+		textArea.select();
+
+		try {
+			// noinspection JSDeprecatedSymbols
+			document.execCommand('copy');
+		} catch {
+		} finally {
+			document.body.removeChild(textArea);
+		}
+	}
+}
+
 class api {
 	static #requestQueue = [];
 
@@ -291,31 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		try {
-			await navigator.clipboard.writeText(text);
-		} catch {
-			const textArea = document.createElement("textarea");
-
-			textArea.style.position = 'fixed';
-			textArea.style.top = "0";
-			textArea.style.left = "0";
-
-			textArea.style.opacity = "0";
-
-			textArea.value = text;
-
-			document.body.appendChild(textArea);
-			textArea.focus();
-			textArea.select();
-
-			try {
-				// noinspection JSDeprecatedSymbols
-				document.execCommand('copy');
-			} catch {
-			} finally {
-				document.body.removeChild(textArea);
-			}
-		}
+		await copyText(text);
 	});
 
 	const uploadFileInput = document.getElementById('uploadFileInput');
@@ -469,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	const dropConnectCode = document.getElementById('dropConnectCode');
 	const dropConnectForm = document.getElementById('dropConnectForm');
-	const dropSendForms = document.getElementById('dropSendForms')
+	const dropSender = document.getElementById('dropSender')
 	let dropSendWsClient;
 
 	function enableDropSend() {
@@ -481,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropConnectForm.querySelector('button').textContent = '断开';
 
 		// 显示表单
-		dropSendForms.style.display = '';
+		dropSender.style.display = '';
 	}
 
 	function disableDropSend() {
@@ -493,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropConnectForm.querySelector('button').textContent = '连接';
 
 		// 隐藏表单
-		dropSendForms.style.display = 'none';
+		dropSender.style.display = 'none';
 	}
 
 	disableDropSend();
@@ -520,15 +524,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			dropSendWsClient = new WebSocketClient(completeWsUrl(wsSendUrl));
 			dropSendWsClient.onOpen = () => {
+				enableForm(dropConnectForm);
 				enableDropSend();
 			};
 			dropSendWsClient.onClose = () => {
+				enableForm(dropConnectForm);
 				disableDropSend();
 			};
 			dropSendWsClient.open();
 		})
-		.catch(({message}) => alert(`连接失败：${message}`))
-		.finally(() => enableForm(dropConnectForm));
+		.catch(({message}) => {
+			enableForm(dropConnectForm);
+			alert(`连接失败：${message}`);
+		});
 	});
 
 	const dropUploadTextInput = document.getElementById('dropUploadTextInput');
@@ -655,7 +663,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const dropCode = document.getElementById('dropCode');
 	const dropQrCode = document.getElementById('dropQrCode');
 	const dropRecvDataList = document.getElementById('dropRecvDataList');
-	const recvDataItemTemplate = document.getElementById('recvDataItemTemplate');
+	const dropRecvDataTemplate = document.getElementById('dropRecvDataTemplate');
 	let dropRecvWsClient;
 
 	function enableRecv() {
@@ -728,29 +736,41 @@ document.addEventListener('DOMContentLoaded', function () {
 			// 连接 WebSocket
 			dropRecvWsClient = new WebSocketClient(completeWsUrl(wsRecvUrl));
 			dropRecvWsClient.onMessage = (message) => {
-				const clone = recvDataItemTemplate.content.cloneNode(true);
+				const clone = dropRecvDataTemplate.content.cloneNode(true);
 
 				const {type, data} = JSON.parse(message);
 
+				const typeEl = clone.querySelector('.type');
+				const contentEl = clone.querySelector('.content');
+				const operateButton = clone.querySelector('.operate-button');
+
 				switch (type) {
-					case 'text':
-						clone.querySelector('.type').textContent = "文本";
-						clone.querySelector('.content').textContent = data.text;
-						clone.querySelector('.operate-button').addEventListener('click', () => {
-							alert(data.text);
+					case 'text': {
+						typeEl.textContent = "文本";
+						contentEl.textContent = data.text;
+						operateButton.textContent = '复制';
+						operateButton.addEventListener('click', async () => {
+							await copyText(data.text);
 						});
 						break;
-					case 'files':
-						clone.querySelector('.type').textContent = "文件";
+					}
+					case 'files': {
+						typeEl.textContent = "文件";
 						if (data.configs.length > 1) {
-							clone.querySelector('.content').textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
+							contentEl.textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
+							operateButton.textContent = '查看';
+							operateButton.addEventListener('click', async () => {
+								new SelectDownloadDialog(data.configs).open();
+							});
 						} else {
-							clone.querySelector('.content').textContent = data.configs[0].name;
+							contentEl.textContent = data.configs[0].name;
+							operateButton.textContent = '下载';
+							operateButton.addEventListener('click', async () => {
+								await downloadConfigs(data.configs);
+							});
 						}
-						clone.querySelector('.operate-button').addEventListener('click', async () => {
-							new SelectDownloadDialog(data.configs).open();
-						});
 						break;
+					}
 				}
 
 				dropRecvDataList.appendChild(clone);

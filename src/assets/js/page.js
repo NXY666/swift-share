@@ -26,7 +26,7 @@ class HTMLPageBarElement extends HTMLElement {
 				border-radius: 100px;
 				background-color: var(--background-color-1);
 				gap: 5px;
-				box-shadow: 0 0px 5px 0px var(--primary-color-3);
+				box-shadow: 0 2px 1px 0 var(--primary-color-3);
 			}
 
 			.slider {
