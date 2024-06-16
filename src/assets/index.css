@@ -111,20 +111,19 @@
 
 #dropSender {
 	display: flex;
+	background-color: var(--background-color-2);
 	flex-direction: column;
 	margin-top: 20px;
 	gap: 20px;
+	padding: 20px;
+	border-radius: 5px;
 }
 
 .drop-send-box {
-	padding: 20px;
-	border: 1px solid var(--form-border-color);
-	border-radius: 5px;
-	background-color: var(--background-color-2);
 }
 
 .drop-send-box-title {
-	margin: -5px 0 15px;
+	margin-top: 0;
 }
 
 #dropRecvSwitchButton {
