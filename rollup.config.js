@@ -9,6 +9,9 @@ import watchAssets from "rollup-plugin-watch-assets";
 import terser from '@rollup/plugin-terser';
 import {execSync} from "child_process";
 import fs from "fs";
+import babel from '@rollup/plugin-babel';
+import postcss from 'rollup-plugin-postcss';
+import postcssImport from 'postcss-import';
 
 // 将 import.meta.url 转换为当前文件的绝对路径
 const __filename = fileURLToPath(import.meta.url);
@@ -17,10 +20,11 @@ const __dirname = path.dirname(__filename);
 
 const isProd = !process.env.ROLLUP_WATCH;
 
-export default defineConfig({
+export default defineConfig([{
 	input: 'src/index.ts',
 	watch: {
-		include: ['src/**']
+		include: ['src/**'],
+		exclude: ['src/assets/**']
 	},
 	output: {
 		dir: 'dist',
@@ -39,7 +43,7 @@ export default defineConfig({
 			]
 		}),
 		!isProd && watchAssets({
-			assets: ['src/assets/**', 'src/package.json']
+			assets: ['src/package.json']
 		}),
 		isProd && terser({
 			compress: {
@@ -48,7 +52,6 @@ export default defineConfig({
 		}),
 		copy({
 			targets: [
-				{src: ['src/assets'], dest: 'dist'},
 				{src: 'src/configs/DefaultConfig.js', dest: 'dist', rename: 'default.config.js'}
 			]
 		}),
@@ -75,4 +78,37 @@ export default defineConfig({
 		// 第三方模块
 		'express', 'body-parser', 'multer', 'range-parser', 'mime/lite', 'commander', 'chokidar', 'tinyqueue', 'ws'
 	] // 外部依赖，不会被打包
-});
+}, {
+	input: ['src/assets/index.js', 'src/assets/custom.js'],
+	watch: {
+		include: ['src/assets/**']
+	},
+	output: {
+		dir: 'dist/assets',
+		format: 'es',
+		sourcemap: isProd ? false : 'inline'
+	},
+	plugins: [
+		!isProd && watchAssets({
+			assets: [
+				'src/assets/index.html',
+				'src/assets/favicon.ico'
+			]
+		}),
+		postcss({
+			plugins: [
+				postcssImport()
+			],
+			extract: true,
+			minimize: isProd
+		}),
+		isProd && babel({babelHelpers: 'bundled'}),
+		isProd && terser(),
+		copy({
+			targets: [
+				{src: 'src/assets/index.html', dest: 'dist/assets'},
+				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
+			]
+		})
+	]
+}]);

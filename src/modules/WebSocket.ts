@@ -70,7 +70,7 @@ export class Client extends EventEmitter {
 	checkHealth() {
 		const currentTime = Date.now();
 		if (currentTime - this.lastActive >= this.#inactivityTimeout) {
-			this.close(1001, '长时间未活动');
+			this.close(1001, '长时间未活动。');
 		}
 	}
 	/**

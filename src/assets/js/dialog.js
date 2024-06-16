@@ -617,7 +617,7 @@ class TransferDialog extends Dialog {
 	}
 }
 
-class UploadDialog extends TransferDialog {
+export class UploadDialog extends TransferDialog {
 	constructor(extractCode, configs, showTip = true) {
 		super({
 			title: '上传文件',
@@ -631,7 +631,7 @@ class UploadDialog extends TransferDialog {
 	}
 }
 
-class DownloadDialog extends TransferDialog {
+export class DownloadDialog extends TransferDialog {
 	constructor(configs) {
 		super({
 			title: '下载文件',
@@ -643,7 +643,7 @@ class DownloadDialog extends TransferDialog {
 	}
 }
 
-class SelectDownloadDialog extends Dialog {
+export class SelectDownloadDialog extends Dialog {
 	/**
 	 * 复选框列表
 	 * @type {HTMLUListElement}
@@ -788,7 +788,7 @@ class SelectDownloadDialog extends Dialog {
 	}
 }
 
-class SelectPlayDialog extends Dialog {
+export class SelectPlayDialog extends Dialog {
 	/**
 	 * 单选框列表
 	 * @type {HTMLUListElement}

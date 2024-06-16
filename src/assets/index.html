@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=no">
 	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
 	<meta name="keywords" content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放">
-	<script src="https://fastly.jsdelivr.net/npm/qrcode-generator@1.4.4"></script>
+	<script defer src="https://fastly.jsdelivr.net/npm/qrcode-generator@1.4.4"></script>
 	<script>
 		const base = window.location.pathname.replace(/\/$/, '');
 
@@ -56,12 +56,9 @@
 			observer.observe(document, config);
 		}
 	</script>
-	<script src="./js/page.js"></script>
-	<script defer src="./js/dialog.js"></script>
-	<script defer src="./js/websocket.js"></script>
-	<script defer src="./js/index.js"></script>
-	<link rel="stylesheet" href="./css/common.css">
-	<link rel="stylesheet" href="./css/index.css">
+	<script type="module" src="./custom.js"></script>
+	<script defer type="module" src="./index.js"></script>
+	<link rel="stylesheet" type="text/css" href="./index.css">
 	<link rel="icon" type="image/x-icon" href="./favicon.ico">
 </head>
 <body>

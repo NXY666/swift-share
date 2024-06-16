@@ -37,6 +37,12 @@ class HTMLPageBarElement extends HTMLElement {
 				border-radius: 100px;
 				background-color: var(--primary-color-2);
 			}
+			
+			@media (prefers-color-scheme: dark) {
+				:host {
+					box-shadow: unset;
+				}
+			}
 		`;
 
 		this.slider = document.createElement('div');

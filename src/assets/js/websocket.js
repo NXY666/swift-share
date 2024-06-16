@@ -1,5 +1,4 @@
-
-class WebSocketClient {
+export class WebSocketClient {
 	#url;
 
 	#websocket;

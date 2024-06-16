@@ -1,3 +1,7 @@
+import './index.css';
+import {DownloadDialog, SelectDownloadDialog, SelectPlayDialog, UploadDialog} from './js/dialog.js';
+import {WebSocketClient} from "./js/websocket.js";
+
 function disableForm(form) {
 	const formId = form.id;
 	form.querySelectorAll('input, textarea, button').forEach((element) => {
@@ -248,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			// 弹窗
 			data.text && alert(data.text);
 			// 插入script
-			data.script && eval(data.script);
+			data.script && new Function(data.script)();
 		})
 		.catch(({message}) => {
 			alert(`biu：${message}`);
@@ -473,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	const dropConnectCode = document.getElementById('dropConnectCode');
 	const dropConnectForm = document.getElementById('dropConnectForm');
-	const dropSender = document.getElementById('dropSender')
+	const dropSender = document.getElementById('dropSender');
 	let dropSendWsClient;
 
 	function enableDropSend() {
