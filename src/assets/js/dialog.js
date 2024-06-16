@@ -1,3 +1,5 @@
+import {downloadConfigs} from "./download.js";
+
 class Dialog {
 	/**
 	 * 遮罩层

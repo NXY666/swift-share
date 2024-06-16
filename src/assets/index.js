@@ -1,6 +1,7 @@
 import './index.css';
-import {DownloadDialog, SelectDownloadDialog, SelectPlayDialog, UploadDialog} from './js/dialog.js';
-import {WebSocketClient} from "./js/websocket.js";
+import {api} from "./js/api.js";
+import {copyText, parseExtractCode} from "./js/string.js";
+import {downloadConfigs} from "./js/download.js";
 
 function disableForm(form) {
 	const formId = form.id;
@@ -20,222 +21,6 @@ function enableForm(form) {
 			delete element.dataset.disabledBy;
 		}
 	});
-}
-
-async function downloadConfigs(configs) {
-	const downloadDialog = new DownloadDialog(configs);
-	downloadDialog.open();
-
-	for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
-		const activeConfig = configs[activeConfigIndex];
-
-		// 说明下载完成，下载整个文件
-		const a = document.createElement('a');
-		a.href = completeUrl(activeConfig.downUrl);
-		a.download = activeConfig.name;
-		a.click();
-
-		downloadDialog.addFileProgress();
-		downloadDialog.addTotalProgress();
-	}
-}
-
-function parseBytes(bytes) {
-	if (bytes < 1024) {
-		return `${bytes} B`;
-	} else if (bytes < 1024 * 1024) {
-		return `${(bytes / 1024).toFixed(2)} KB`;
-	} else if (bytes < 1024 * 1024 * 1024) {
-		return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-	} else if (bytes < 1024 * 1024 * 1024 * 1024) {
-		return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-	} else {
-		return `${(bytes / 1024 / 1024 / 1024 / 1024).toFixed(2)} TB`;
-	}
-}
-
-function parseExtractCode(code) {
-	if (!code) {
-		return '';
-	}
-	return code.replace(/[.\\\/?#%\s]/g, '');
-}
-
-async function copyText(text) {
-	try {
-		await navigator.clipboard.writeText(text);
-	} catch {
-		const textArea = document.createElement("textarea");
-
-		textArea.style.position = 'fixed';
-		textArea.style.top = "0";
-		textArea.style.left = "0";
-
-		textArea.style.opacity = "0";
-
-		textArea.value = text;
-
-		document.body.appendChild(textArea);
-		textArea.focus();
-		textArea.select();
-
-		try {
-			// noinspection JSDeprecatedSymbols
-			document.execCommand('copy');
-		} catch {
-		} finally {
-			document.body.removeChild(textArea);
-		}
-	}
-}
-
-class api {
-	static #requestQueue = [];
-
-	static #requestingCount = 0;
-
-	static #slowRequestingCount = 0;
-
-	static #maxRequestingCount = 16;
-
-	static #maxSlowRequestingCount = 4;
-
-	static #processQueue = async () => {
-		if (this.#requestQueue.length > 0) {
-			for (let i = 0; i < this.#requestQueue.length; i++) {
-				const request = this.#requestQueue[i];
-				if (request.slowRequest ? this.#slowRequestingCount >= this.#maxSlowRequestingCount : this.#requestingCount >= this.#maxRequestingCount) {
-					continue;
-				}
-
-				this.#requestQueue.splice(i, 1);
-				if (request.slowRequest) {
-					this.#slowRequestingCount++;
-					await request.callback();
-					this.#slowRequestingCount--;
-				} else {
-					this.#requestingCount++;
-					await request.callback();
-					this.#requestingCount--;
-				}
-				setTimeout(this.#processQueue);
-				return;
-			}
-			console.debug("Request full.", `normal: (${this.#requestingCount}/${this.#maxRequestingCount})`, `slow: (${this.#slowRequestingCount}/${this.#maxSlowRequestingCount})`);
-		}
-	};
-
-	static #request(url, options, config) {
-		const {slowRequest, retryCount, bodyType} = config;
-		return new Promise(async (resolve, reject) => {
-			this.#requestQueue.push({
-				slowRequest,
-				pushTime: Date.now(),
-				callback: async () => {
-					await fetch(completeUrl(url), options)
-					.then(async response => ({
-						ok: response.ok, code: response.status,
-						body: await response[bodyType === "auto" ? "text" : bodyType]()
-					}))
-					.then(response => {
-						let body = response.body;
-						if (bodyType === "auto") {
-							try {
-								body = JSON.parse(body);
-							} catch {
-							}
-						}
-						if (response.ok) {
-							resolve({code: response.code, data: body});
-						} else if (!body) {
-							throw new Error(`HTTP code ${response.code} without body.`);
-						} else {
-							reject({code: response.code, message: body?.message ?? response.code});
-						}
-					})
-					.catch(error => {
-						if (error instanceof Error) {
-							console.error(error);
-							if (retryCount > 0) {
-								this.#request(url, options, {...config, retryCount: retryCount - 1})
-								.then(resolve)
-								.catch(reject);
-							} else {
-								reject({code: -1, message: error.toString()});
-							}
-						} else {
-							reject(error);
-						}
-					});
-				}
-			});
-			await this.#processQueue();
-		});
-	}
-
-	/**
-	 * 发送 GET 请求
-	 * @param {string} url 请求地址
-	 * @param {RequestInit} [options] 请求选项
-	 * @param {boolean} [slowRequest] 是否为慢速请求
-	 * @param {number} [retryCount] 重试次数
-	 * @param {string} [bodyType] 响应体类型
-	 * @return {Promise<{code: number, data: any}>} 响应数据
-	 * @throws {{code: number, message: string}} 响应错误
-	 */
-	static get(
-		url, options = {},
-		{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
-			slowRequest: false, retryCount: 3, bodyType: "auto"
-		}
-	) {
-		return this.#request(url, {
-			...options,
-			method: 'GET'
-		}, {slowRequest, retryCount, bodyType});
-	}
-
-	/**
-	 * 发送 POST 请求
-	 * @param {string} url 请求地址
-	 * @param {string|object} body 请求体
-	 * @param {object} [options] fetch 选项
-	 * @param {boolean} [slowRequest] 是否为慢速请求
-	 * @param {number} [retryCount] 重试次数
-	 * @param {string} [bodyType] 响应体类型
-	 * @return {Promise<{code: number, data: any}>} 响应数据
-	 * @throws {{code: number, message: string}} 响应错误
-	 */
-	static post(
-		url, body, options = {},
-		{slowRequest = false, retryCount = 3, bodyType = "auto"} = {
-			slowRequest: false, retryCount: 3, bodyType: "auto"
-		}
-	) {
-		if (!options.headers) {
-			options.headers = {};
-		}
-		if (body instanceof FormData) {
-			// do nothing
-		} else if (typeof body == 'object') {
-			try {
-				body = JSON.stringify(body);
-				options.headers['Content-Type'] = 'application/json';
-			} catch (e) {
-				console.error(e);
-			}
-		} else if (typeof body == 'string') {
-			options.headers['Content-Type'] = 'text/plain';
-		} else {
-			throw new Error('Unsupported body type.');
-		}
-
-		return this.#request(url, {
-			...options,
-			method: 'POST',
-			body
-		}, {slowRequest, retryCount, bodyType});
-	}
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -360,6 +145,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			const extractCode = data.code;
 
+			const {UploadDialog} = await import('./js/dialog.js');
 			const uploadDialog = new UploadDialog(extractCode, configs);
 			uploadDialog.open();
 
@@ -439,6 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
+				const {SelectDownloadDialog} = await import('./js/dialog.js');
 				new SelectDownloadDialog(configs).open();
 			}
 		})
@@ -461,11 +248,12 @@ document.addEventListener('DOMContentLoaded', function () {
 		disableForm(playFileForm);
 
 		api.get(`/extract/files/${extractionCode}`)
-		.then(({data}) => {
+		.then(async ({data}) => {
 			const {configs} = data;
 			if (configs.length === 1 && !configs[0].removed) {
 				playFileVideo.src = completeUrl(configs[0].playUrl);
 			} else {
+				const {SelectPlayDialog} = await import('./js/dialog.js');
 				new SelectPlayDialog(configs, (config) => {
 					playFileVideo.src = completeUrl(config.playUrl);
 				}).open();
@@ -523,9 +311,10 @@ document.addEventListener('DOMContentLoaded', function () {
 		disableForm(dropConnectForm);
 
 		api.get(`/drop/send/apply?code=${connectCode}`)
-		.then(({data}) => {
+		.then(async ({data}) => {
 			const {wsSendUrl} = data;
 
+			const {WebSocketClient} = await import('./js/websocket.js');
 			dropSendWsClient = new WebSocketClient(completeWsUrl(wsSendUrl));
 			dropSendWsClient.onOpen = () => {
 				enableForm(dropConnectForm);
@@ -601,6 +390,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			const extractCode = data.code;
 
+			const {UploadDialog} = await import('./js/dialog.js');
 			const uploadDialog = new UploadDialog(extractCode, configs, false);
 			uploadDialog.open();
 
@@ -699,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropRecvSwitchButton.disabled = true;
 
 		api.get('/drop/recv/apply')
-		.then(({data}) => {
+		.then(async ({data}) => {
 			const {code, wsRecvUrl} = data;
 
 			// 制作二维码
@@ -738,6 +528,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			dropCode.textContent = code.toUpperCase();
 
 			// 连接 WebSocket
+			const {WebSocketClient} = await import('./js/websocket.js');
 			dropRecvWsClient = new WebSocketClient(completeWsUrl(wsRecvUrl));
 			dropRecvWsClient.onMessage = (message) => {
 				const clone = dropRecvDataTemplate.content.cloneNode(true);
@@ -764,6 +555,7 @@ document.addEventListener('DOMContentLoaded', function () {
 							contentEl.textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
 							operateButton.textContent = '查看';
 							operateButton.addEventListener('click', async () => {
+								const {SelectDownloadDialog} = await import('./js/dialog.js');
 								new SelectDownloadDialog(data.configs).open();
 							});
 						} else {
