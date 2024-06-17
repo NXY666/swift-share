@@ -1,3 +1,5 @@
+import "core-js/stable";
+import "regenerator-runtime/runtime";
 import './index.css';
 import {api} from "./js/api.js";
 import {copyText, parseExtractCode} from "./js/string.js";

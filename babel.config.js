@@ -3,9 +3,15 @@ export default {
 		[
 			'@babel/preset-env',
 			{
-				targets: '> 0.01%, not dead',
+				targets: {
+					browsers: [
+						"supports es6-module",
+						"not dead"
+					]
+				},
+				loose: true,
 				useBuiltIns: 'entry',
-				corejs: 3
+				corejs: "3.27"
 			}
 		]
 	]

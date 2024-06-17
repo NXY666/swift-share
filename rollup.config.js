@@ -12,6 +12,8 @@ import fs from "fs";
 import babel from '@rollup/plugin-babel';
 import postcss from 'rollup-plugin-postcss';
 import postcssImport from 'postcss-import';
+import resolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 
 // 将 import.meta.url 转换为当前文件的绝对路径
 const __filename = fileURLToPath(import.meta.url);
@@ -32,6 +34,16 @@ export default defineConfig([{
 		sourcemap: isProd ? false : 'inline'
 	},
 	plugins: [
+		isProd && {
+			name: 'clear-dist',
+			buildStart() {
+				const distPath = path.resolve(__dirname, 'dist');
+				if (fs.existsSync(distPath)) {
+					fs.rmSync(distPath, {recursive: true, force: true});
+					console.info('cleared dist directory');
+				}
+			}
+		},
 		typescript({
 			compilerOptions: {
 				sourceMap: !isProd
@@ -59,16 +71,18 @@ export default defineConfig([{
 			name: 'generate-package-lock',
 			async generateBundle() {
 				// 把本项目中的 package.json 中的 dependencies 复制到 dist 目录的 package.json 中
-				const packageJson = (await import('./package.json', {assert: {type: 'json'}})).default;
-				const srcPackageJson = (await import('./src/package.json', {assert: {type: 'json'}})).default;
+				const packageJson = (await import('./package.json', {with: {type: 'json'}})).default;
+				const srcPackageJson = (await import('./src/package.json', {with: {type: 'json'}})).default;
 
 				['description', 'engines', 'repository', 'bugs', 'author', 'license', 'keywords', 'dependencies'].forEach(key => {
 					srcPackageJson[key] = packageJson[key];
 				});
 
-				await fs.promises.writeFile('dist/package.json', JSON.stringify(srcPackageJson, null, 2));
+				fs.writeFileSync('dist/package.json', JSON.stringify(srcPackageJson, null, 2));
 
 				execSync('npm install --package-lock-only', {cwd: 'dist'});
+
+				console.info('generated package-lock.json');
 			}
 		}
 	].filter(Boolean),
@@ -85,7 +99,7 @@ export default defineConfig([{
 	},
 	output: {
 		dir: 'dist/assets',
-		format: 'es',
+		format: 'esm',
 		sourcemap: isProd ? false : 'inline'
 	},
 	plugins: [
@@ -95,6 +109,8 @@ export default defineConfig([{
 				'src/assets/favicon.ico'
 			]
 		}),
+		resolve(),
+		commonjs(),
 		postcss({
 			plugins: [
 				postcssImport()
@@ -102,12 +118,14 @@ export default defineConfig([{
 			extract: true,
 			minimize: isProd
 		}),
-		isProd && babel({babelHelpers: 'bundled'}),
+		isProd && babel({
+			babelHelpers: 'bundled'
+		}),
 		isProd && terser(),
 		copy({
 			targets: [
 				{src: 'src/assets/index.html', dest: 'dist/assets'},
-				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
+				{src: 'src/assets/favicon.ico', dest: 'dist/assets'}
 			]
 		})
 	]
