@@ -357,6 +357,5 @@ export class DropCodeInfo extends CodeInfo {
 			this.#recvClient.close();
 		}
 		this.#sendClients.forEach(conn => conn.close());
-		this.#data.forEach(({codeInfo}) => codeInfo.remove());
 	}
 }
