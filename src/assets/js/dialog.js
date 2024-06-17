@@ -432,50 +432,53 @@ class TransferDialog extends Dialog {
 		this.title = title;
 		this.showCloseButton = false;
 		this.styles = `
-					.transfer-tip {
-						width: 100%;
-						height: 100%;
-						position: relative;
-						padding: 10px;
-						border-radius: 3px;
-						font-size: 14px;
-						background-color: var(--dialog-on-background-color);
-						border-left: 5px solid var(--primary-color-1);
-						margin-bottom: 5px;
-					}
-					.transfer-container {
-						width: 100%;
-						height: 100%;
-						display: flex;
-						flex-direction: column;
-						align-items: center;
-						justify-content: center;
-						gap: 5px;
-					}
-					.transfer-progress-label-container {
-						width: 100%;
-						display: flex;
-						align-items: center;
-						justify-content: space-between;
-						gap: 20px;
-						padding: 5px;
-					}
-					.transfer-progress-label {
-						text-overflow: ellipsis;
-						overflow: hidden;
-						white-space: nowrap;
-					}
-					.transfer-progress {
-						width: 100%;
-						height: 10px;
-						margin-bottom: 5px;
-					}
-					.transfer-cancel-button {
-						width: 100%;
-						height: 30px;
-						margin-top: 5px;
-					}
-				`;
+			.transfer-tip {
+				width: 100%;
+				height: 100%;
+				position: relative;
+				padding: 10px;
+				border-radius: 3px;
+				font-size: 14px;
+				background-color: var(--dialog-on-background-color);
+				border-left: 5px solid var(--primary-color-1);
+				margin-bottom: 5px;
+			}
+			.transfer-container {
+				width: 100%;
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 5px;
+			}
+			.transfer-progress-label-container {
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 20px;
+				padding: 5px;
+			}
+			.transfer-progress-label {
+				text-overflow: ellipsis;
+				overflow: hidden;
+				white-space: nowrap;
+			}
+			.transfer-progress-label + .transfer-progress-label {
+				flex: 0 0 auto;
+			}
+			.transfer-progress {
+				width: 100%;
+				height: 10px;
+				margin-bottom: 5px;
+			}
+			.transfer-cancel-button {
+				width: 100%;
+				height: 30px;
+				margin-top: 5px;
+			}
+		`;
 
 		this.#transferContainer.classList.add('transfer-container');
 		{
@@ -693,37 +696,38 @@ export class SelectDownloadDialog extends Dialog {
 
 		this.title = '从集合中下载文件';
 		this.styles = `
-					.dialog-checkbox-list {
-						margin: 0;
-						overflow-y: auto;
-						max-height: 300px;
-						padding: 5px;
-						list-style-type: none;
-						border-radius: 5px;
-						background-color: var(--dialog-on-background-color);
-						border: 1px solid var(--dialog-border-color);
-					}
-					.dialog-checkbox-list li label {
-						display: flex;
-						align-items: center;
-						overflow-wrap: anywhere;
-						padding: 10px;
-						border-radius: 5px;
-						gap: 10px;
-					}
-					.dialog-checkbox-list li label:hover {
-						background-color: var(--dialog-background-color);
-					}
-					.dialog-checkbox-list li label.disabled {
-						opacity: 0.5;
-						cursor: not-allowed;
-						background-color: transparent;
-					}
-					.dialog-button-group {
-						display: flex;
-						align-items: center;
-						width: 100%;
-					}`;
+			.dialog-checkbox-list {
+				margin: 0;
+				overflow-y: auto;
+				max-height: 300px;
+				padding: 5px;
+				list-style-type: none;
+				border-radius: 5px;
+				background-color: var(--dialog-on-background-color);
+				border: 1px solid var(--dialog-border-color);
+			}
+			.dialog-checkbox-list li label {
+				display: flex;
+				align-items: center;
+				overflow-wrap: anywhere;
+				padding: 10px;
+				border-radius: 5px;
+				gap: 10px;
+			}
+			.dialog-checkbox-list li label:hover {
+				background-color: var(--dialog-background-color);
+			}
+			.dialog-checkbox-list li label.disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				background-color: transparent;
+			}
+			.dialog-button-group {
+				display: flex;
+				align-items: center;
+				width: 100%;
+			}
+		`;
 
 		this.#checkboxList.classList.add('dialog-checkbox-list');
 		configs.forEach((downloadConfig, index) => {
@@ -820,32 +824,33 @@ export class SelectPlayDialog extends Dialog {
 
 		this.title = '从集合中播放媒体';
 		this.styles = `
-					.dialog-radio-list {
-						margin: 0;
-						overflow-y: auto;
-						max-height: 300px;
-						padding: 5px;
-						list-style-type: none;
-						border-radius: 5px;
-						background-color: var(--dialog-on-background-color);
-						border: 1px solid var(--dialog-border-color);
-					}
-					.dialog-radio-list li label {
-						display: flex;
-						align-items: center;
-						overflow-wrap: anywhere;
-						padding: 10px;
-						border-radius: 5px;
-						gap: 10px;
-					}
-					.dialog-radio-list li label:hover {
-						background-color: var(--dialog-background-color);
-					}
-					.dialog-radio-list li label.disabled {
-						opacity: 0.5;
-						cursor: not-allowed;
-						background-color: transparent;
-					}`;
+			.dialog-radio-list {
+				margin: 0;
+				overflow-y: auto;
+				max-height: 300px;
+				padding: 5px;
+				list-style-type: none;
+				border-radius: 5px;
+				background-color: var(--dialog-on-background-color);
+				border: 1px solid var(--dialog-border-color);
+			}
+			.dialog-radio-list li label {
+				display: flex;
+				align-items: center;
+				overflow-wrap: anywhere;
+				padding: 10px;
+				border-radius: 5px;
+				gap: 10px;
+			}
+			.dialog-radio-list li label:hover {
+				background-color: var(--dialog-background-color);
+			}
+			.dialog-radio-list li label.disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				background-color: transparent;
+			}
+		`;
 
 		this.#radioList.classList.add('dialog-radio-list');
 		configs.forEach((playConfig, index) => {
