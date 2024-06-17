@@ -567,6 +567,10 @@ class TransferDialog extends Dialog {
 					this.#filePercentLabel.innerText = '已取消';
 					this.#totalPercentLabel.innerText = '已取消';
 
+					if (!this.#fileProgress.hasAttribute('value')) {
+						this.#fileProgress.value = 0;
+					}
+
 					this.#cancelButton.disabled = false;
 					this.#cancelButton.innerText = '关闭';
 				} else {
@@ -778,7 +782,7 @@ export class SelectDownloadDialog extends Dialog {
 			this.#confirmButton.addEventListener('click', async () => {
 				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
 				if (selectedConfigs.length !== 0) {
-					await downloadConfigs(selectedConfigs);
+					downloadConfigs(selectedConfigs).then(() => {});
 				}
 				this.close();
 			});

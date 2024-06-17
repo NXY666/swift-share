@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import {File, FileStatus, ShareFile} from "./File";
-import {Api, Url} from "./Url";
+import {Api, Url} from "./Request";
 import {getConfig} from "@/modules/Config";
 import path from "path";
 import {clearTimerTimeout, setTimerTimeout} from "@/modules/Timer";

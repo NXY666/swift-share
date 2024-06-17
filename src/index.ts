@@ -6,7 +6,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
-import {Api, Url} from "@/modules/Url";
+import {Api, parseRange, Url} from "@/modules/Request";
 import mime from 'mime/lite';
 import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourceAbsolutePath} from "@/modules/Config";
 import {Command} from "commander";
@@ -446,14 +446,13 @@ app.get(Api.FETCH, (req, res) => {
 	console.info(`File fetched: ${req.query.id}`);
 
 	// range支持
-	const [rangeStartStr, rangeEndStr]: string[] = req.headers.range?.replace("bytes=", "").split("-") ?? ["", ""];
-	if (rangeStartStr || rangeEndStr) {
-		let rangeStart = parseInt(rangeStartStr) || 0;
-		let rangeEnd = parseInt(rangeEndStr) || file.size - 1;
+	const range = parseRange(req.headers.range, file.size, true);
+	if (range) {
+		const {start, end} = range;
 		res.status(206);
-		res.setHeader('Content-Length', rangeEnd - rangeStart + 1);
+		res.setHeader('Content-Length', end - start + 1);
 		res.setHeader('Accept-Ranges', 'bytes');
-		res.setHeader('Content-Range', `bytes ${rangeStart}-${rangeEnd}/${file.size}`);
+		res.setHeader('Content-Range', `bytes ${start}-${end}/${file.size}`);
 	} else {
 		res.setHeader('Content-Length', file.size);
 	}
