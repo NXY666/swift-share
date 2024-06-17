@@ -439,7 +439,7 @@ class TransferDialog extends Dialog {
 						padding: 10px;
 						border-radius: 3px;
 						font-size: 14px;
-						background-color: var(--dialog-background-color-reverse);
+						background-color: var(--dialog-on-background-color);
 						border-left: 5px solid var(--primary-color-1);
 						margin-bottom: 5px;
 					}
@@ -700,7 +700,7 @@ export class SelectDownloadDialog extends Dialog {
 						padding: 5px;
 						list-style-type: none;
 						border-radius: 5px;
-						background-color: var(--dialog-background-color-reverse);
+						background-color: var(--dialog-on-background-color);
 						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-checkbox-list li label {
@@ -827,7 +827,7 @@ export class SelectPlayDialog extends Dialog {
 						padding: 5px;
 						list-style-type: none;
 						border-radius: 5px;
-						background-color: var(--dialog-background-color-reverse);
+						background-color: var(--dialog-on-background-color);
 						border: 1px solid var(--dialog-border-color);
 					}
 					.dialog-radio-list li label {

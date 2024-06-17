@@ -30,7 +30,7 @@
 	max-width: 100%;
 	padding: 20px;
 	border-radius: 10px;
-	background-color: var(--background-color-1);
+	background-color: var(--background-color-2);
 	box-shadow: 0 2px 1px var(--primary-color-3);
 }
 
@@ -85,7 +85,7 @@
 	border: solid var(--form-border-color);
 	border-width: 1px 1px 0 1px;
 	border-radius: 5px 5px 0 0;
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-3);
 }
 
 #copyExtractedTextButton {
@@ -106,12 +106,12 @@
 
 #playFileVideo:not(:fullscreen) {
 	border: 1px solid var(--form-border-color);
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-3);
 }
 
 #dropSender {
 	display: flex;
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-1);
 	flex-direction: column;
 	margin-top: 20px;
 	gap: 20px;
@@ -170,7 +170,7 @@
 	padding: 10px;
 	border-left: 5px solid var(--primary-color-2);
 	border-radius: 3px;
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-3);
 }
 
 .drop-recv-data-list {
@@ -190,7 +190,7 @@
 	width: 100%;
 	padding: 10px 15px 10px 10px;
 	border-radius: 5px;
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-3);
 	gap: 10px;
 }
 

@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		api.get(`/extract/text/${extractionCode}`)
 		.then(({data}) => {
-			extractedText.style.backgroundColor = 'var(--background-color-2)';
+			extractedText.style.backgroundColor = 'var(--background-color-3)';
 			extractedText.style.color = 'var(--form-color)';
 			extractedText.textContent = `${data.text}`;
 		})

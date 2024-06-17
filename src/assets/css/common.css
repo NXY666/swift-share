@@ -17,21 +17,23 @@
 	--text-color-3: #C0C4CC;
 
 	--background-color-1: #FFFFFF;
-	--background-color-2: #F6F8FA;
+	--background-color-2: var(--background-color-1);
+	--background-color-3: #F6F8FA;
 
 	--border-color: #DCDFE6;
 	--border-hover-color: #C8C9CC;
 	--border-active-color: #CDD0D6;
+	--border-disabled-color: #ECF0F4;
 
 	--scrollbar-thumb-color: #DEDFE1;
 	--scrollbar-thumb-hover-color: #C8C9CC;
 
-	--dialog-header-background-color: var(--background-color-2);
+	--dialog-header-background-color: var(--background-color-3);
 	--dialog-header-color: var(--text-color-1);
 	--dialog-header-close-color: var(--text-color-1);
 	--dialog-header-close-hover-color: var(--primary-color-1);
-	--dialog-background-color: var(--background-color-1);
-	--dialog-background-color-reverse: var(--background-color-2);
+	--dialog-background-color: var(--background-color-2);
+	--dialog-on-background-color: var(--background-color-3);
 	--dialog-border-color: var(--border-color);
 
 	--progress-thumb-color: var(--primary-color-1);
@@ -42,10 +44,13 @@
 	--form-border-color: var(--border-color);
 	--form-border-hover-color: var(--border-hover-color);
 	--form-border-active-color: var(--border-active-color);
+	--form-border-disabled-color: var(--border-disabled-color);
 	--form-background-color: var(--background-color-1);
 	--form-background-error-color: #FFF1F1;
 	--form-background-hover-color: #F4F4F5;
 	--form-background-active-color: #DEDFE0;
+	--form-background-focus-color: var(--background-color-2);
+	--form-background-disabled-color: var(--background-color-2);
 	--form-box-shadow: 0 1px 1px #1F1F1F0A;
 	--form-box-shadow-active: inset 0 1px 1px #CDD0D6;
 
@@ -61,6 +66,7 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
+		/* 基础色 */
 		--color: white;
 
 		--primary-color-1: #A8C7FA;
@@ -77,12 +83,14 @@
 		--text-color-2: #808080;
 		--text-color-3: #4D4D4D;
 
+		--background-color-3: #010409;
 		--background-color-2: #0D1117;
 		--background-color-1: #161B22;
 
 		--border-color: #3C4043;
 		--border-hover-color: #8B949E;
 		--border-active-color: #6E7681;
+		--border-disabled-color: #1F252C;
 
 		--scrollbar-thumb-color: #242628;
 		--scrollbar-thumb-hover-color: #3A3D41;
@@ -92,8 +100,10 @@
 		--dialog-header-close-color: var(--text-color-1);
 		--dialog-header-close-hover-color: var(--primary-color-1);
 		--dialog-background-color: var(--background-color-2);
-		--dialog-background-color-reverse: var(--background-color-1);
-		--dialog-border-color: #3C4043;
+		--dialog-on-background-color: var(--background-color-1);
+		--dialog-border-color: var(--border-color);
+
+		--progress-thumb-color: var(--primary-color-1);
 
 		--form-input-color: var(--color);
 		--form-color: var(--text-color-1);
@@ -101,14 +111,15 @@
 		--form-border-color: var(--border-color);
 		--form-border-hover-color: var(--border-hover-color);
 		--form-border-active-color: var(--border-active-color);
+		--form-border-disabled-color: var(--border-disabled-color);
 		--form-background-color: var(--background-color-1);
 		--form-background-error-color: #200705;
 		--form-background-hover-color: #21262D;
 		--form-background-active-color: #30363D;
+		--form-background-focus-color: var(--background-color-2);
+		--form-background-disabled-color: var(--background-color-2);
 		--form-box-shadow: none;
 		--form-box-shadow-active: none;
-
-		--button-hover-color: #333333;
 	}
 }
 
@@ -124,7 +135,7 @@ html {
 body {
 	padding-bottom: 15px;
 	color: var(--text-color-1);
-	background-color: var(--background-color-2);
+	background-color: var(--background-color-3);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -169,7 +180,8 @@ button:active {
 
 button:disabled {
 	pointer-events: none;
-	opacity: 0.6;
+	border-color: var(--form-border-disabled-color);
+	background-color: var(--form-background-disabled-color);
 }
 
 input:not([type=checkbox]):not([type=radio]), textarea {
@@ -188,8 +200,15 @@ textarea:focus {
 	box-shadow: 0 0 0 1px var(--primary-color-1) inset;
 }
 
-input:not([type=checkbox]):not([type=radio]):disabled, textarea:disabled {
-	background-color: var(--background-color-2);
+input:not([type=checkbox]):not([type=radio]):focus,
+textarea:focus {
+	background-color: var(--form-background-focus-color);
+}
+
+input:not([type=checkbox]):not([type=radio]):disabled,
+textarea:disabled {
+	border-color: var(--form-border-disabled-color);
+	background-color: var(--form-background-disabled-color);
 }
 
 progress {
