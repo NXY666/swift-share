@@ -317,7 +317,7 @@ export class DropCodeInfo extends CodeInfo {
 		return Url.sign(urlObj.shortHref, CONFIG.STORE.FILE.UPLOAD_INTERVAL);
 	}
 
-	notifyRecv(type: 'text' | 'files', data: any) {
+	notifyRecv(type: 'text' | 'file' | 'files', data: any) {
 		this.#recvClient?.send(JSON.stringify({type, data}));
 	}
 
@@ -337,7 +337,18 @@ export class DropCodeInfo extends CodeInfo {
 			fileDownloadConfigs.push(downloadConfig);
 		}
 
-		this.notifyRecv('files', {configs: fileDownloadConfigs});
+		if (fileCodeInfo.files.length > 1) {
+			this.notifyRecv('files', {
+				code: fileCodeInfo.code,
+				firstFileName: fileCodeInfo.files[0].name,
+				fileCount: fileCodeInfo.files.length
+			});
+		} else {
+			this.notifyRecv('file', {
+				code: fileCodeInfo.code,
+				fileName: fileCodeInfo.files[0].name
+			});
+		}
 	}
 
 	remove() {

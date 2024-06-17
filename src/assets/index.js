@@ -549,22 +549,45 @@ document.addEventListener('DOMContentLoaded', function () {
 						});
 						break;
 					}
-					case 'files': {
+					case 'file': {
 						typeEl.textContent = "文件";
-						if (data.configs.length > 1) {
-							contentEl.textContent = `${data.configs[0].name} 等 ${data.configs.length} 个文件`;
-							operateButton.textContent = '查看';
-							operateButton.addEventListener('click', async () => {
+						contentEl.textContent = data.fileName;
+						operateButton.textContent = '下载';
+						operateButton.addEventListener('click', async () => {
+							operateButton.disabled = true;
+
+							api.get(`/extract/files/${data.code}`)
+							.then(async ({data}) => {
+								const {configs} = data;
+
+								if (configs[0].removed) {
+									throw new Error('文件已损坏，请重新上传。');
+								}
+
+								await downloadConfigs(configs);
+							})
+							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.finally(() => operateButton.disabled = false);
+						});
+						break;
+					}
+					case 'files': {
+						typeEl.textContent = "集合";
+						contentEl.textContent = `${data.firstFileName} 等 ${data.fileCount} 个文件`;
+						operateButton.textContent = '查看';
+						operateButton.addEventListener('click', async () => {
+							operateButton.disabled = true;
+
+							api.get(`/extract/files/${data.code}`)
+							.then(async ({data}) => {
+								const {configs} = data;
+
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
-								new SelectDownloadDialog(data.configs).open();
-							});
-						} else {
-							contentEl.textContent = data.configs[0].name;
-							operateButton.textContent = '下载';
-							operateButton.addEventListener('click', async () => {
-								await downloadConfigs(data.configs);
-							});
-						}
+								new SelectDownloadDialog(configs).open();
+							})
+							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.finally(() => operateButton.disabled = false);
+						});
 						break;
 					}
 				}
