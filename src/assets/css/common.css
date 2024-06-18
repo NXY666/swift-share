@@ -36,8 +36,6 @@
 	--dialog-on-background-color: var(--background-color-3);
 	--dialog-border-color: var(--border-color);
 
-	--progress-thumb-color: var(--primary-color-1);
-
 	--form-input-color: var(--color);
 	--form-color: var(--text-color-2);
 	--form-error-color: #D32F2F;
@@ -53,6 +51,10 @@
 	--form-background-disabled-color: var(--background-color-2);
 	--form-box-shadow: 0 1px 1px #1F1F1F0A;
 	--form-box-shadow-active: inset 0 1px 1px #CDD0D6;
+
+	--progress-thumb-color: var(--primary-color-1);
+	--progress-track-color: var(--background-color-3);
+	--progress-track-border-color: var(--form-border-color);
 
 	--short-transition-duration: 0.1s;
 	--base-transition-duration: 0.3s;
@@ -103,8 +105,6 @@
 		--dialog-on-background-color: var(--background-color-1);
 		--dialog-border-color: var(--border-color);
 
-		--progress-thumb-color: var(--primary-color-1);
-
 		--form-input-color: var(--color);
 		--form-color: var(--text-color-1);
 		--form-error-color: #F2B8B5;
@@ -120,6 +120,10 @@
 		--form-background-disabled-color: var(--background-color-2);
 		--form-box-shadow: none;
 		--form-box-shadow-active: none;
+
+		--progress-thumb-color: var(--primary-color-1);
+		--progress-track-color: var(--background-color-1);
+		--progress-track-border-color: var(--background-color-1);
 	}
 }
 
@@ -182,6 +186,7 @@ button:disabled {
 	pointer-events: none;
 	border-color: var(--form-border-disabled-color);
 	background-color: var(--form-background-disabled-color);
+	box-shadow: none;
 }
 
 input:not([type=checkbox]):not([type=radio]), textarea {
@@ -214,9 +219,9 @@ textarea:disabled {
 progress {
 	position: relative;
 	overflow: hidden;
-	border: var(--form-border-color) 1px solid;
+	border: var(--progress-track-border-color) 1px solid;
 	border-radius: 114514px;
-	background-color: var(--background-color-2);
+	background-color: var(--progress-track-color);
 }
 
 progress::-webkit-progress-bar {
