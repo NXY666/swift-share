@@ -119,6 +119,12 @@
 	border-radius: 5px;
 }
 
+@media (prefers-color-scheme: dark) {
+	#dropSender {
+		background-color: var(--background-color-3);
+	}
+}
+
 .drop-send-box {
 }
 

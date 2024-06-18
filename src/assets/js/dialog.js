@@ -706,6 +706,11 @@ export class SelectDownloadDialog extends Dialog {
 				background-color: var(--dialog-on-background-color);
 				border: 1px solid var(--dialog-border-color);
 			}
+			@media (prefers-color-scheme: dark) {
+				.dialog-checkbox-list {
+					border-color: transparent;
+				}
+			}
 			.dialog-checkbox-list li label {
 				display: flex;
 				align-items: center;
@@ -833,6 +838,11 @@ export class SelectPlayDialog extends Dialog {
 				border-radius: 5px;
 				background-color: var(--dialog-on-background-color);
 				border: 1px solid var(--dialog-border-color);
+			}
+			@media (prefers-color-scheme: dark) {
+				.dialog-radio-list {
+					border-color: transparent;
+				}
 			}
 			.dialog-radio-list li label {
 				display: flex;
