@@ -111,17 +111,17 @@
 
 #dropSender {
 	display: flex;
-	background-color: var(--background-color-1);
 	flex-direction: column;
 	margin-top: 20px;
-	gap: 20px;
 	padding: 20px;
 	border-radius: 5px;
+	background-color: var(--background-color-3);
+	gap: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
 	#dropSender {
-		background-color: var(--background-color-3);
+		background-color: var(--background-color-1);
 	}
 }
 
