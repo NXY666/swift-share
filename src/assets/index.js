@@ -594,8 +594,12 @@ document.addEventListener('DOMContentLoaded', function () {
 					}
 				}
 
-				dropRecvDataList.appendChild(clone);
-				dropRecvDataList.classList.remove("empty");
+				if (dropRecvDataList.classList.contains("empty")) {
+					dropRecvDataList.classList.remove("empty");
+					dropRecvDataList.appendChild(clone);
+				} else {
+					dropRecvDataList.insertBefore(clone, dropRecvDataList.firstChild);
+				}
 			};
 			dropRecvWsClient.onClose = () => {
 				disableRecv();
@@ -647,4 +651,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			history.replaceState(null, '', newUrl);
 		}
 	}
+});
+
+window.addEventListener('popstate', () => {
+	const pageBar = document.querySelector('page-bar');
+	pageBar.updateSlider();
 });

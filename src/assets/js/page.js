@@ -1,3 +1,5 @@
+import {defineKeyboardClickEvent} from "./element.js";
+
 document.pages = {};
 
 function onDOMReady(callback) {
@@ -184,6 +186,8 @@ class HTMLPageItemElement extends HTMLElement {
 
 	connectedCallback() {
 		this.tabIndex = 0;
+		this.setAttribute('role', 'button');
+		defineKeyboardClickEvent(this);
 	}
 }
 

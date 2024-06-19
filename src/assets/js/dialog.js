@@ -1,4 +1,5 @@
 import {downloadConfigs} from "./download.js";
+import {defineKeyboardClickEvent} from "./element.js";
 
 class Dialog {
 	/**
@@ -72,10 +73,17 @@ class Dialog {
 	#closeOnClickOverlay = false;
 
 	/**
+	 * 按 ESC 关闭
+	 */
+	#closeOnEsc = false;
+
+	/**
 	 * 显示关闭按钮
 	 * @type {boolean}
 	 */
 	#showCloseButton = true;
+
+	#closeDialogKeyboardEvent;
 
 	set title(title) {
 		this.#title = title;
@@ -97,6 +105,20 @@ class Dialog {
 		this.#closeOnClickOverlay = closeOnClickOverlay;
 	}
 
+	set closeOnEsc(closeOnEsc) {
+		this.#closeOnEsc = closeOnEsc;
+		if (closeOnEsc) {
+			document.addEventListener('keydown', this.#closeDialogKeyboardEvent = (e) => {
+				if (e.key === 'Escape') {
+					document.removeEventListener('keydown', this.#closeDialogKeyboardEvent);
+					this.close();
+				}
+			});
+		} else {
+			document.removeEventListener('keydown', this.#closeDialogKeyboardEvent);
+		}
+	}
+
 	set showCloseButton(showCloseButton) {
 		this.#showCloseButton = showCloseButton;
 	}
@@ -109,14 +131,6 @@ class Dialog {
 			return;
 		}
 		this.#hasOpened = true;
-		// 按esc关闭对话框
-		let closeDialogKeyboardEvent;
-		document.addEventListener('keydown', closeDialogKeyboardEvent = (e) => {
-			if (e.key === 'Escape') {
-				document.removeEventListener('keydown', closeDialogKeyboardEvent);
-				this.close();
-			}
-		});
 
 		this.#overlay.classList.add('dialog-overlay');
 		{
@@ -248,6 +262,7 @@ class Dialog {
 						closeButton.addEventListener('click', () => {
 							this.close();
 						});
+						defineKeyboardClickEvent(closeButton);
 						this.#headerContainer.appendChild(closeButton);
 					}
 				}
@@ -800,6 +815,9 @@ export class SelectDownloadDialog extends Dialog {
 
 		this.content = this.#checkboxList;
 		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
 	}
 }
 
@@ -897,5 +915,8 @@ export class SelectPlayDialog extends Dialog {
 
 		this.content = this.#radioList;
 		this.footer = this.#confirmButton;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
 	}
 }
