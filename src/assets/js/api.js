@@ -64,12 +64,13 @@ export class api {
 					})
 					.catch(error => {
 						if (error instanceof Error) {
-							console.error(error);
 							if (retryCount > 0) {
+								console.warn("Request", url, "failed, retrying...", error.stack);
 								this.#request(url, options, {...config, retryCount: retryCount - 1})
 								.then(resolve)
 								.catch(reject);
 							} else {
+								console.error("Request", url, "failed finally.", error.stack);
 								reject({code: -1, message: error.toString()});
 							}
 						} else {
