@@ -129,7 +129,7 @@ export function parseRange(range: string, size: number, allowNull: boolean = fal
 		if (allowNull) {
 			return null;
 		}
-		ranges = RangeParser(size, `bytes=0-${this.size - 1}`);
+		ranges = RangeParser(size, `bytes=0-${size - 1}`);
 	}
 	return ranges[0];
 }

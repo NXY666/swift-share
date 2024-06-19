@@ -280,6 +280,12 @@ export class SimpleFile extends File {
 	};
 
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
+		if (this.size === 0) {
+			const rpt = new PassThrough();
+			rpt.end();
+			return rpt;
+		}
+
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
 		const {start: startNum, end: endNum} = parseRange(range, this.size);
 
