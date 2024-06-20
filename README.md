@@ -10,50 +10,46 @@
 <details>
 <summary>网页截图</summary>
 <p align="center">
-  <img alt="网页截图（浅色）" src="https://github.com/NXY666/swift-share/assets/62371554/bfdf5f9e-e758-4543-82c8-b5abb8a21829" width="400"/>
-  <img alt="网页截图（深色）" src="https://github.com/NXY666/swift-share/assets/62371554/e40f7b7c-1de5-44f5-9556-da140ebde1ea" width="400"/>
+  <img alt="网页截图（文本）" src="https://github.com/NXY666/swift-share/assets/62371554/2ee44445-9bd6-4811-abcd-4c44f8bbde8d" width="400"/>
+  <img alt="网页截图（文件）" src="https://github.com/NXY666/swift-share/assets/62371554/be027f6f-95b6-44cb-81a6-12f3ccf5e991" width="400"/>
+  <img alt="网页截图（投送）" src="https://github.com/NXY666/swift-share/assets/62371554/a4f319c2-6f37-453b-86f8-0b2adcf611d6" width="400"/>
 </p>
 </details>
 
-## 功能特性
+## 🔥 功能
 
-### 传递文本
+* 💬 **文本直传。** 零散文本无需保存为文件，支持直接传递文本信息。
+* 🗒️ **文件传输。** 提供单提取码多文件上传支持。智能上传，边传边下。
+* 📨 **实时投送。** 手机扫码连接设备，即使是电视也能稳定接收。
 
-> 零散文本无需保存为文件，可直接传递。
+## ✨ 亮点
 
-### 传输文件
+### 🔀 边传边下
 
-> 支持多文件传输，下载前可指定需要下载的文件。
+> 上传未完成也能立即下载，传了多少就能下载多少。
 
-* 大文件使用多线程分片上传，小文件直接上传。
-* 文件过期后不会立刻清除，因为可能存在未过期的链接。
+### ▶️ 在线播放
 
-### 持久共享
+> 支持使用提取码直接在线播放媒体文件，无需下载。
+
+* 该功能支持边下边播。文件未上传完成前，媒体文件需支持流媒体才能正常播放。
+* 非边下边播状态下，非流媒体文件也能正常播放。
+
+### 💼 持久共享
 
 > 支持设置一个常驻的共享目录，只需将文件放入该目录，即可通过快传传输。
 
 * 如果共享目录所指向的路径不存在，则不会生成提取码。
 
-### 边传边下
+### 🌠 夜间模式
 
-> 上传未完成也能立即下载，传了多少就能下载多少。
+> 当系统处于夜间模式时，快传也会自动切换到夜间模式。
 
-### 在线播放
-
-> 支持使用提取码在线播放视频和音频，无需下载。
-
-* 该功能支持边下边播。文件未上传完成前，媒体文件需支持流媒体才能正常播放。
-* 非边下边播状态下，非流媒体文件也能正常播放。
-
-### 深色模式
-
-> 当系统处于深色模式时，快传也会自动切换到深色模式。
-
-### 自定义配置
+### ⚙️ 灵活配置
 
 > 支持自定义端口、提取码长度、过期时间等多项配置。
 
-## 使用方法
+## 👀 使用方法
 
 ### 安装
 
@@ -79,6 +75,56 @@ swift-share
 npm uninstall -g swift-share
 ```
 
+### 反向代理
+
+> 可使用 `Nginx` 等反向代理工具将快传部署到子目录。
+
+> 以下是一个简单的 `Nginx` 配置示例。
+
+```nginx
+# /etc/nginx/nginx.conf
+
+http {
+    ...
+
+    # WebSocket
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+}
+```
+
+```nginx
+# /etc/nginx/sites-available/default
+
+server {
+    listen 80; # IPv4 端口
+    listen [::]:80; # IPv6 端口
+    
+    client_max_body_size 100M; # 提升上传文件大小限制
+    
+    location /swift {
+        proxy_pass http://localhost:3000/; # 本地端口
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /swift/ {
+        proxy_pass http://localhost:3000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "$connection_upgrade";
+    }
+}
+```
+
 ### 配置
 
 #### 编辑
@@ -93,7 +139,7 @@ swift-share --edit-config
 swift-share --reset-config
 ```
 
-## Biu~ 命令
+## ♾️ Biu~ 命令
 
 > 快传没有独立的管理页面，仅支持简易的命令。
 
@@ -116,7 +162,7 @@ swift-share --reset-config
 | `ClearAllCode` | `/clearallcode` | 清除所有提取码 |
 | `OpenConsole`  | `/openconsole`  | 启用虚拟控制台 |
 
-## 注意事项
+## ⚠️ 注意事项
 
 * 快传未设计任何保护机制，**不建议**在公网环境下部署使用。
 * 关闭快传后，已上传的文件将**自动删除**，共享文件夹中的文件不受影响。
