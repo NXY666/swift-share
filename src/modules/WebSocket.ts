@@ -58,6 +58,8 @@ export class Client extends EventEmitter {
 
 		// 加入连接池
 		WebSocketPool.addClient(this);
+
+		console.debug('[Client]', 'Client', this.type, 'connected:', this.id);
 	}
 
 	get data() {
@@ -120,8 +122,7 @@ export class Client extends EventEmitter {
 
 		this.emit('close', this, code, reason);
 
-		// 输出关闭的连接信息
-		console.log(`Connection closed with code ${code} and reason: ${reason}`);
+		console.debug('[Client]', 'Client', this.type, 'disconnected:', this.id, `(${code} ${reason || 'No reason'})`);
 	}
 }
 

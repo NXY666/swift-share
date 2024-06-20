@@ -291,13 +291,19 @@ export class DropCodeInfo extends CodeInfo {
 
 		this.#recvClient = client;
 
-		client.on('close', () => this.remove());
+		client.on('close', () => {
+			console.info('Drop receiver disconnected:', this.code);
+
+			this.remove();
+		});
 	}
 
 	senderConnect(client: Client) {
 		this.#sendClients.push(client);
 
 		client.on('close', () => {
+			console.info('Drop sender disconnected:', this.code);
+
 			const index = this.#sendClients.indexOf(client);
 			if (index !== -1) {
 				this.#sendClients.splice(index, 1);

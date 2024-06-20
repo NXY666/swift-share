@@ -128,12 +128,8 @@ export class api {
 		if (body instanceof FormData) {
 			// do nothing
 		} else if (typeof body == 'object') {
-			try {
-				body = JSON.stringify(body);
-				options.headers['Content-Type'] = 'application/json';
-			} catch (e) {
-				console.error(e);
-			}
+			body = JSON.stringify(body);
+			options.headers['Content-Type'] = 'application/json';
 		} else if (typeof body == 'string') {
 			options.headers['Content-Type'] = 'text/plain';
 		} else {

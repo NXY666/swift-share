@@ -398,11 +398,11 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 	const codeInfo = CodeStore.getCodeInfo(extractionCode);
 
 	if (!codeInfo) {
-		console.error(`File not found or has expired: ${extractionCode}`);
+		console.error('File not found or has expired:', extractionCode);
 		res.status(404).json({message: '提取码不存在或已过期。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
-		console.error(`File has expired: ${extractionCode}`);
+		console.error('File has expired:', extractionCode);
 		const expDate = new Date(codeInfo.expireTime);
 		const datetime = `${expDate.getFullYear()}.${(expDate.getMonth() + 1).toString().padStart(2, '0')}.${expDate.getDate().toString().padStart(2, '0')} ${expDate.getHours().toString().padStart(2, '0')}:${expDate.getMinutes().toString().padStart(2, '0')}:${expDate.getSeconds().toString().padStart(2, '0')}`;
 		res.status(404).json({message: `提取码已于 ${datetime} 过期。`});
@@ -410,7 +410,7 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 	}
 
 	if (codeInfo instanceof FileCodeInfo || codeInfo instanceof ShareCodeInfo) {
-		console.info(`File extracted: ${extractionCode}`);
+		console.info('File extracted:', extractionCode);
 		// 生成下载配置
 		const fileDownloadConfigs = [];
 		for (const file of codeInfo.files) {
@@ -419,7 +419,7 @@ app.get(Api.EXTRACT_FILES, (req, res) => {
 		}
 		res.json({configs: fileDownloadConfigs});
 	} else {
-		console.error(`Specified code is not a file: ${extractionCode}`);
+		console.error('Specified code is not a file:', extractionCode);
 		res.status(400).json({message: '指定的提取码类型不是文件。'});
 	}
 });
@@ -431,19 +431,19 @@ app.get(Api.FETCH, (req, res) => {
 	const file = File.findFileById(id as string);
 
 	if (!req.signed) {
-		console.error(`Invalid signature.`);
+		console.error('Invalid signature.');
 		res.status(403).send("请求不够安全。");
 		return;
 	} else if (!file) {
-		console.error(`File not found: ${id}`);
+		console.error('File not found:', id);
 		res.status(404).send("文件不存在或已过期。");
 		return;
 	} else if (file.status === FileStatus.REMOVED) {
-		console.error(`File removed: ${id}`);
+		console.error('File removed:', id);
 		res.status(404).send("文件已被删除。");
 		return;
 	}
-	console.info(`File fetched: ${req.query.id}`);
+	console.info('File fetched:', id);
 
 	// range支持
 	const range = parseRange(req.headers.range, file.size, true);
@@ -476,7 +476,7 @@ app.get(Api.FETCH, (req, res) => {
 		downloadStream.destroy(new Error("Connection closed."));
 	});
 	downloadStream.on('error', () => {
-		console.error(`Failed to download file: ${id}`);
+		console.error('Failed to download file:', id);
 		res.end();
 	});
 	downloadStream.pipe(res);
@@ -497,22 +497,21 @@ app.get(Api.DROP_SEND_APPLY, (_req, res) => {
 	const codeInfo = CodeStore.getCodeInfo(code as string);
 
 	if (!codeInfo) {
-		console.error(`Code not found: ${code}`);
+		console.error('Code not found:', code);
 		res.status(404).json({message: '连接码不存在。'});
 		return;
 	} else if (codeInfo.hasExpired()) {
-		console.error(`Code has expired: ${code}`);
+		console.error('Code has expired:', code);
 		res.status(404).json({message: '连接码已过期。'});
 		return;
 	} else if (!(codeInfo instanceof DropCodeInfo)) {
-		console.error(`Specified code is not a drop: ${code}`);
+		console.error('Specified code is not a drop:', code);
 		res.status(404).json({message: '连接码不存在。'});
 		return;
 	}
 
 	res.json({wsSendUrl: codeInfo.getSignedWsSendUrl()});
 });
-
 
 const server = http.createServer(app);
 
@@ -539,20 +538,21 @@ wss.on('connection', (ws, req) => {
 			const codeInfo = CodeStore.getCodeInfo(code);
 
 			if (!codeInfo) {
-				console.error(`Code not found or has expired: ${code}`);
+				console.error('Code not found:', code);
 				ws.close(4001, "连接码不存在或已过期。");
 				return;
 			} else if (codeInfo.hasExpired()) {
-				console.error(`Code has expired: ${code}`);
-				ws.close(4001, "连接码已过期。");
+				console.error('Code has expired:', code);
+				ws.close(4001, "连接码不存在或已过期。");
 				return;
 			}
 
 			if (codeInfo instanceof DropCodeInfo) {
+				console.info('Drop receiver connected:', code);
 				const client = new Client('drop', code, ws);
 				codeInfo.receiverConnect(client);
 			} else {
-				console.error(`Specified code is not a drop: ${code}`);
+				console.error('Specified code is not a drop:', code);
 				ws.close(4001, "连接码不存在或已过期。");
 			}
 			break;
@@ -569,20 +569,21 @@ wss.on('connection', (ws, req) => {
 			const codeInfo = CodeStore.getCodeInfo(code);
 
 			if (!codeInfo) {
-				console.error(`Code not found or has expired: ${code}`);
+				console.error('Code not found:', code);
 				ws.close(4001, "连接码不存在或已过期。");
 				return;
 			} else if (codeInfo.hasExpired()) {
-				console.error(`Code has expired: ${code}`);
-				ws.close(4001, "连接码已过期。");
+				console.error('Code has expired:', code);
+				ws.close(4001, "连接码不存在或已过期。");
 				return;
 			}
 
 			if (codeInfo instanceof DropCodeInfo) {
+				console.info('Drop sender connected:', code);
 				const client = new Client('drop', code, ws);
 				codeInfo.senderConnect(client);
 			} else {
-				console.error(`Specified code is not a drop: ${code}`);
+				console.error('Specified code is not a drop:', code);
 				ws.close(4001, "连接码不存在或已过期。");
 			}
 			break;
@@ -603,7 +604,7 @@ process.on("SIGINT", () => {
 	try {
 		fs.rmSync(FileAbsolutePath, {recursive: true});
 	} catch (e) {
-		console.error(`Failed to delete directory: ${FileAbsolutePath}`);
+		console.error('Failed to delete directory:', FileAbsolutePath, 'Error:', e.stack);
 	}
 	process.exit(0);
 });
