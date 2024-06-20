@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import RangeParser from "range-parser";
 
 class URL2 extends URL {
 	static #base = new URL('http://localhost/');
@@ -115,6 +116,24 @@ export class Url {
 	}
 }
 
+export function parseRange(range: string, size: number, allowNull: boolean = false): { start: number, end: number } | null {
+	if (typeof range !== 'string') {
+		if (allowNull) {
+			return null;
+		} else {
+			range = '';
+		}
+	}
+	let ranges = RangeParser(size, range, {combine: true});
+	if (ranges === -2 || ranges === -1 || ranges.length !== 1) {
+		if (allowNull) {
+			return null;
+		}
+		ranges = RangeParser(size, `bytes=0-${size - 1}`);
+	}
+	return ranges[0];
+}
+
 export const Api = {
 	API: "/api",
 
@@ -129,5 +148,11 @@ export const Api = {
 
 	EXTRACT_FILES: "/extract/files/:code",
 
-	FETCH: "/fetch"
+	FETCH: "/fetch",
+
+	DROP_RECV_APPLY: "/drop/recv/apply",
+	DROP_SEND_APPLY: "/drop/send/apply",
+
+	WS_DROP_RECV: "/ws/recv",
+	WS_DROP_SEND: "/ws/send",
 };

@@ -1,10 +1,9 @@
 import crypto from "crypto";
 import fs from "fs";
-import {Api, Url} from "./Url";
+import {Api, parseRange, Url} from "./Request";
 import {MergeablePassThrough} from "./Stream";
 import EventEmitter from "events";
 import {PassThrough} from "stream";
-import RangeParser from "range-parser";
 import {getConfig} from "@/modules/Config";
 import {setTimerTimeout} from "@/modules/Timer";
 import {DownloadConfig, UploadConfig} from "@/types/FileType";
@@ -281,22 +280,14 @@ export class SimpleFile extends File {
 	};
 
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
+		if (this.size === 0) {
+			const rpt = new PassThrough();
+			rpt.end();
+			return rpt;
+		}
+
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
-		let ranges = RangeParser(this.size, range, {combine: true});
-		// 提供的值不合法，使用默认值+文件大小
-
-		if (!Array.isArray(ranges) || ranges.length !== 1) {
-			ranges = RangeParser(this.size, `bytes=0-${this.size - 1}`, {combine: true});
-		}
-
-		// 无法解析的范围，返回空流
-		if (!Array.isArray(ranges)) {
-			const pt = new PassThrough();
-			pt.end();
-			return pt;
-		}
-
-		const {start: startNum, end: endNum} = ranges[0];
+		const {start: startNum, end: endNum} = parseRange(range, this.size);
 
 		if (this.status === FileStatus.UPLOADED) {
 			return fs.createReadStream(this.#path, {start: startNum, end: endNum});
@@ -413,11 +404,7 @@ export class MultipartFile extends File {
 
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
-		let ranges = RangeParser(this.size, range, {combine: true});
-		if (ranges === -2 || ranges === -1 || ranges.length !== 1) {
-			ranges = RangeParser(this.size, `bytes=0-${this.size - 1}`, {combine: true});
-		}
-		const {start: startNum, end: endNum} = ranges[0];
+		const {start: startNum, end: endNum} = parseRange(range, this.size);
 
 		const rpt = new MergeablePassThrough();
 
@@ -522,21 +509,7 @@ export class ShareFile extends File {
 
 	rangeDownloadStream(range: string = `bytes=0-${this.size - 1}`) {
 		// range = 'bytes=0-100' 也可能是 'bytes=0-' 或 'bytes=-100'
-		let ranges = RangeParser(this.size, range, {combine: true});
-		// 提供的值不合法，使用默认值+文件大小
-
-		if (!Array.isArray(ranges) || ranges.length !== 1) {
-			ranges = RangeParser(this.size, `bytes=0-${this.size - 1}`, {combine: true});
-		}
-
-		// 无法解析的范围，返回空流
-		if (!Array.isArray(ranges)) {
-			const pt = new PassThrough();
-			pt.end();
-			return pt;
-		}
-
-		const {start: startNum, end: endNum} = ranges[0];
+		const {start: startNum, end: endNum} = parseRange(range, this.size);
 
 		if (this.status === FileStatus.UPLOADED) {
 			return fs.createReadStream(this.#path, {start: startNum, end: endNum});
