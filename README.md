@@ -7,20 +7,26 @@
 [![GitHub](https://img.shields.io/github/license/NXY666/swift-share?style=flat-square)](https://github.com/NXY666/swift-share/blob/master/LICENSE)
 ![GitHub](https://img.shields.io/github/repo-size/NXY666/swift-share?style=flat-square)
 
+## 🔥 功能
+
 <details>
-<summary>网页截图</summary>
+<summary>💬 <b>文本直传。</b>零散文本无需保存为文件，支持直接传递文本信息。</summary>
 <p align="center">
   <img alt="网页截图（文本）" src="https://github.com/NXY666/swift-share/assets/62371554/2ee44445-9bd6-4811-abcd-4c44f8bbde8d" width="400"/>
+</p>
+</details>
+<details>
+<summary>🗒️ <b>文件传输。</b>提供单提取码多文件上传支持。智能上传，边传边下。</summary>
+<p align="center">
   <img alt="网页截图（文件）" src="https://github.com/NXY666/swift-share/assets/62371554/be027f6f-95b6-44cb-81a6-12f3ccf5e991" width="400"/>
+</p>
+</details>
+<details>
+<summary>📨 <b>实时投送。</b>手机扫码连接设备，即使是电视也能稳定接收。</summary>
+<p align="center">
   <img alt="网页截图（投送）" src="https://github.com/NXY666/swift-share/assets/62371554/a4f319c2-6f37-453b-86f8-0b2adcf611d6" width="400"/>
 </p>
 </details>
-
-## 🔥 功能
-
-* 💬 **文本直传。** 零散文本无需保存为文件，支持直接传递文本信息。
-* 🗒️ **文件传输。** 提供单提取码多文件上传支持。智能上传，边传边下。
-* 📨 **实时投送。** 手机扫码连接设备，即使是电视也能稳定接收。
 
 ## ✨ 亮点
 
