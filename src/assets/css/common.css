@@ -137,6 +137,7 @@ html {
 }
 
 body {
+	min-width: 400px;
 	padding-bottom: 15px;
 	color: var(--text-color-1);
 	background-color: var(--background-color-3);
@@ -295,4 +296,14 @@ progress:not([value])::after {
 		left: 100%;
 		width: 70%;
 	}
+}
+
+video::cue(.line1) {
+	font-size: 100%;
+	line-height: 1;
+}
+
+video::cue(.line2) {
+	font-size: 75%;
+	line-height: 1;
 }

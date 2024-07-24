@@ -17,7 +17,6 @@
 .box {
 	display: flex;
 	justify-content: center;
-	min-width: 400px;
 	padding: 0 20px;
 }
 
