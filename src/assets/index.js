@@ -239,6 +239,32 @@ document.addEventListener('DOMContentLoaded', function () {
 	const playFileForm = document.getElementById('playFileForm');
 	const playFileVideo = document.getElementById('playFileVideo');
 
+	let subExtractInst = null, videoTrackStation;
+
+	async function playConfig(config) {
+		const {VideoTrackStation} = await import('./js/subtitle/videoTrackStation.js');
+		const {SubtitleExtractor} = await import('./js/subtitle/subtitleExtractor.js');
+
+		if (!videoTrackStation) {
+			videoTrackStation = new VideoTrackStation(playFileVideo);
+		}
+
+		subExtractInst = null;
+
+		if (videoTrackStation.reset()) {
+			await videoTrackStation.flush();
+		}
+
+		const playName = config.name, playUrl = completeUrl(config.playUrl);
+
+		playFileVideo.src = playUrl;
+
+		if (playName.endsWith('.mkv') || playName.endsWith('.webm')) {
+			subExtractInst = await SubtitleExtractor.fromUrl(videoTrackStation, playUrl);
+			playFileVideo.load();
+		}
+	}
+
 	playFileForm.addEventListener('submit', (e) => {
 		e.preventDefault();
 
@@ -252,17 +278,23 @@ document.addEventListener('DOMContentLoaded', function () {
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
+
 			if (configs.length === 1 && !configs[0].removed) {
-				playFileVideo.src = completeUrl(configs[0].playUrl);
+				await playConfig(configs[0]);
 			} else {
 				const {SelectPlayDialog} = await import('./js/dialog.js');
-				new SelectPlayDialog(configs, (config) => {
-					playFileVideo.src = completeUrl(config.playUrl);
-				}).open();
+				new SelectPlayDialog(configs, (config) => playConfig(config)).open();
 			}
 		})
 		.catch(({message}) => alert(`文件提取失败：${message}`))
 		.finally(() => enableForm(playFileForm));
+	});
+
+	playFileVideo.addEventListener('timeupdate', () => subExtractInst?.refresh());
+
+	playFileVideo.textTracks.addEventListener('change', () => {
+		const index = Array.from(playFileVideo.textTracks).findIndex(n => n.mode === 'showing');
+		videoTrackStation.onTrackChange(index);
 	});
 
 	const dropConnectCode = document.getElementById('dropConnectCode');
