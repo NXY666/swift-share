@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			const extractCode = data.code;
 
 			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(extractCode, configs);
+			const uploadDialog = new UploadDialog(configs, extractCode);
 			uploadDialog.open();
 
 			let activeAbortController = null;
@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			const extractCode = data.code;
 
 			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(extractCode, configs, false);
+			const uploadDialog = new UploadDialog(configs, extractCode, false);
 			uploadDialog.open();
 
 			let activeAbortController = null;

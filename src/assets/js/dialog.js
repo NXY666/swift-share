@@ -1,7 +1,116 @@
 import {downloadConfigs} from "./download.js";
 import {defineKeyboardClickEvent} from "./element.js";
+import {copyText} from "./string.js";
 
+/**
+ * @abstract
+ */
 class Dialog {
+	static defaultTitle = '对话框';
+
+	static defaultStyles = `
+		.dialog-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			user-select: none;
+			animation: overlay-appear var(--base-transition-duration);
+		}
+		@keyframes overlay-appear {
+			0% {
+				opacity: 0;
+			}
+			100% {
+				opacity: 1;
+			}
+		}
+		@keyframes overlay-disappear {
+			0% {
+				opacity: 1;
+			}
+			100% {
+				opacity: 0;
+			}
+		}
+		.dialog-container {
+			width: 500px;
+			max-width: calc(100% - 40px);
+			font-size: 14px;
+			position: fixed;
+			z-index: 114514;
+			top: 0;
+			margin: 10vh auto;
+			max-height: 80vh;
+			left: 50%;
+			transform: translateX(-50%);
+			animation: dialog-appear var(--base-transition-duration);
+			border: 1px solid var(--dialog-border-color);
+			border-radius: 5px;
+			background-color: var(--dialog-background-color);
+			box-shadow: 0 0 18px rgba(0,0,0,.3);
+		}
+		@keyframes dialog-appear {
+			0% {
+				transform: translateX(-50%) scale(0.8);
+				opacity: 0;
+			}
+			100% {
+				transform: translateX(-50%) scale(1);
+				opacity: 1;
+			}
+		}
+		@keyframes dialog-disappear {
+			0% {
+				transform: translateX(-50%) scale(1);
+				opacity: 1;
+			}
+			100% {
+				transform: translateX(-50%) scale(0.8);
+				opacity: 0;
+			}
+		}
+		.dialog-header {
+			padding: 16px;
+			border-bottom: 1px solid var(--dialog-border-color);
+			border-top-left-radius: 5px;
+			border-top-right-radius: 5px;
+			background-color: var(--dialog-header-background-color);
+			display: flex;
+			align-items: center;
+		}
+		.dialog-header .dialog-title {
+		    margin: 0px;
+		    overflow: hidden;
+		    text-overflow: ellipsis;
+		    white-space: nowrap;
+	    }
+		.dialog-close-button {
+			flex: 0 0 auto;
+			margin-left: auto;
+			cursor: pointer;
+			color: var(--dialog-header-close-color);
+		}
+		.dialog-close-button:hover {
+			color: var(--dialog-header-close-hover-color);
+		}
+		.dialog-body {
+			padding: 16px;
+			max-height: 60vh;
+			overflow: auto;
+		}
+		.dialog-footer {
+			padding: 0 16px 16px;
+			display: flex;
+			align-items: center;
+		}
+		.dialog-footer button {
+			height: 30px;
+		}
+	`;
+
 	/**
 	 * 遮罩层
 	 * @type {HTMLDivElement}
@@ -43,12 +152,6 @@ class Dialog {
 	#hasClosed = false;
 
 	/**
-	 * 标题
-	 * @type {string}
-	 */
-	#title = '';
-
-	/**
 	 * 内容
 	 * @type {string|HTMLDivElement}
 	 */
@@ -59,12 +162,6 @@ class Dialog {
 	 * @type {?HTMLDivElement}
 	 */
 	#footer = null;
-
-	/**
-	 * 样式
-	 * @type {string}
-	 */
-	#styles = '';
 
 	/**
 	 * 点击遮罩层关闭
@@ -85,8 +182,26 @@ class Dialog {
 
 	#closeDialogKeyboardEvent;
 
-	set title(title) {
-		this.#title = title;
+	get title() {
+		return this.constructor.defaultTitle;
+	}
+
+	get styles() {
+		return this.constructor.defaultStyles;
+	}
+
+	get allStyles() {
+		let result = '';
+		let current = Reflect.getPrototypeOf(this);
+
+		while (current) {
+			if (Reflect.has(current, 'styles')) {
+				result += Reflect.get(current, 'styles');
+			}
+			current = Reflect.getPrototypeOf(current);
+		}
+
+		return result;
 	}
 
 	set content(content) {
@@ -95,10 +210,6 @@ class Dialog {
 
 	set footer(footer) {
 		this.#footer = footer;
-	}
-
-	set styles(styles) {
-		this.#styles = styles;
 	}
 
 	set closeOnClickOverlay(closeOnClickOverlay) {
@@ -134,102 +245,7 @@ class Dialog {
 
 		this.#overlay.classList.add('dialog-overlay');
 		{
-			this.#style.textContent = `
-						.dialog-overlay {
-							position: fixed;
-							top: 0;
-							left: 0;
-							width: 100%;
-							height: 100%;
-							background-color: rgba(0, 0, 0, 0.5);
-							user-select: none;
-							animation: overlay-appear var(--base-transition-duration);
-						}
-						@keyframes overlay-appear {
-							0% {
-								opacity: 0;
-							}
-							100% {
-								opacity: 1;
-							}
-						}
-						@keyframes overlay-disappear {
-							0% {
-								opacity: 1;
-							}
-							100% {
-								opacity: 0;
-							}
-						}
-						.dialog-container {
-							width: 500px;
-							max-width: calc(100% - 40px);
-							font-size: 14px;
-							position: fixed;
-							z-index: 114514;
-							top: 0;
-							margin: 10vh auto;
-							max-height: 80vh;
-							left: 50%;
-							transform: translateX(-50%);
-							animation: dialog-appear var(--base-transition-duration);
-							border: 1px solid var(--dialog-border-color);
-							border-radius: 5px;
-							background-color: var(--dialog-background-color);
-							box-shadow: 0 0 18px rgba(0,0,0,.3);
-						}
-						@keyframes dialog-appear {
-							0% {
-								transform: translateX(-50%) scale(0.8);
-								opacity: 0;
-							}
-							100% {
-								transform: translateX(-50%) scale(1);
-								opacity: 1;
-							}
-						}
-						@keyframes dialog-disappear {
-							0% {
-								transform: translateX(-50%) scale(1);
-								opacity: 1;
-							}
-							100% {
-								transform: translateX(-50%) scale(0.8);
-								opacity: 0;
-							}
-						}
-						.dialog-header {
-							padding: 16px;
-							border-bottom: 1px solid var(--dialog-border-color);
-							border-top-left-radius: 5px;
-							border-top-right-radius: 5px;
-							background-color: var(--dialog-header-background-color);
-							display: flex;
-							align-items: center;
-						}
-						.dialog-close-button {
-							margin-left: auto;
-							cursor: pointer;
-							color: var(--dialog-header-close-color);
-						}
-						.dialog-close-button:hover {
-							color: var(--dialog-header-close-hover-color);
-						}
-						.dialog-body {
-							padding: 16px;
-							max-height: 60vh;
-							overflow: auto;
-						}
-						.dialog-footer {
-							padding: 0 16px 16px;
-							display: flex;
-							align-items: center;
-						}
-						.dialog-footer button {
-							height: 30px;
-						}
-						${this.#styles}
-				`;
+			this.#style.textContent = this.allStyles;
 			this.#overlay.appendChild(this.#style);
 
 			this.#dialog.classList.add('dialog-container');
@@ -241,7 +257,7 @@ class Dialog {
 					{
 						const titleText = document.createElement('h3');
 						titleText.style.margin = '0';
-						titleText.textContent = this.#title;
+						titleText.textContent = this.title;
 						this.#headerContainer.appendChild(titleText);
 					}
 
@@ -317,6 +333,55 @@ class Dialog {
 }
 
 class TransferDialog extends Dialog {
+	static defaultStyles = `
+		.transfer-tip {
+			width: 100%;
+			height: 100%;
+			position: relative;
+			padding: 10px;
+			border-radius: 3px;
+			font-size: 14px;
+			background-color: var(--dialog-on-background-color);
+			border-left: 5px solid var(--primary-color-1);
+			margin-bottom: 5px;
+		}
+		.transfer-container {
+			width: 100%;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 5px;
+		}
+		.transfer-progress-label-container {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 20px;
+			padding: 5px;
+		}
+		.transfer-progress-label {
+			text-overflow: ellipsis;
+			overflow: hidden;
+			white-space: nowrap;
+		}
+		.transfer-progress-label + .transfer-progress-label {
+			flex: 0 0 auto;
+		}
+		.transfer-progress {
+			width: 100%;
+			height: 10px;
+			margin-bottom: 5px;
+		}
+		.transfer-cancel-button {
+			width: 100%;
+			height: 30px;
+			margin-top: 5px;
+		}
+	`;
+
 	/**
 	 * 传输对话框容器
 	 * @type {HTMLDivElement}
@@ -372,12 +437,6 @@ class TransferDialog extends Dialog {
 	#totalPercentLabel = document.createElement('span');
 
 	/**
-	 * 取消按钮
-	 * @type {HTMLButtonElement}
-	 */
-	#cancelButton = document.createElement('button');
-
-	/**
 	 * @typedef {{name: string, max: number, value: number | null, start: number}[]} TransferConfigs
 	 * @property {number?} max - 文件片段总数
 	 */
@@ -385,6 +444,12 @@ class TransferDialog extends Dialog {
 	/**
 	 * @typedef {{name: string, max?: number}[]} TransferConfigsInit
 	 */
+
+	/**
+	 * 取消按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#cancelButton = document.createElement('button');
 
 	/**
 	 * 传输配置
@@ -408,12 +473,12 @@ class TransferDialog extends Dialog {
 
 	/**
 	 * 构造函数
-	 * @param {string} title 标题
-	 * @param {string?} tip 提示
 	 * @param {TransferConfigsInit} configs
-	 * @param {boolean} allowCancel 是否允许取消
+	 * @param {string} [tipContent] 提示内容
+	 * @param {(tipElement: HTMLElement) => void} [tipHandler] 提示处理器
+	 * @param {boolean} [allowCancel] 是否允许取消
 	 */
-	constructor({title, tip, configs, allowCancel = false}) {
+	constructor({configs, tipContent, tipHandler, allowCancel = false}) {
 		super();
 
 		let count = 0;
@@ -444,63 +509,17 @@ class TransferDialog extends Dialog {
 		const abortController = allowCancel ? new AbortController() : null;
 		this.#signal = abortController?.signal;
 
-		this.title = title;
 		this.showCloseButton = false;
-		this.styles = `
-			.transfer-tip {
-				width: 100%;
-				height: 100%;
-				position: relative;
-				padding: 10px;
-				border-radius: 3px;
-				font-size: 14px;
-				background-color: var(--dialog-on-background-color);
-				border-left: 5px solid var(--primary-color-1);
-				margin-bottom: 5px;
-			}
-			.transfer-container {
-				width: 100%;
-				height: 100%;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				gap: 5px;
-			}
-			.transfer-progress-label-container {
-				width: 100%;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				gap: 20px;
-				padding: 5px;
-			}
-			.transfer-progress-label {
-				text-overflow: ellipsis;
-				overflow: hidden;
-				white-space: nowrap;
-			}
-			.transfer-progress-label + .transfer-progress-label {
-				flex: 0 0 auto;
-			}
-			.transfer-progress {
-				width: 100%;
-				height: 10px;
-				margin-bottom: 5px;
-			}
-			.transfer-cancel-button {
-				width: 100%;
-				height: 30px;
-				margin-top: 5px;
-			}
-		`;
 
 		this.#transferContainer.classList.add('transfer-container');
 		{
-			if (tip) {
+			if (tipContent) {
 				const tipElement = document.createElement('div');
-				tipElement.innerText = tip;
 				tipElement.classList.add('transfer-tip');
+				tipElement.innerHTML = tipContent;
+				if (tipHandler) {
+					tipHandler(tipElement);
+				}
 				this.#transferContainer.appendChild(tipElement);
 			}
 
@@ -642,10 +661,22 @@ class TransferDialog extends Dialog {
 }
 
 export class UploadDialog extends TransferDialog {
-	constructor(extractCode, configs, showTip = true) {
+	static defaultTitle = '上传文件';
+
+	/**
+	 * 构造函数
+	 * @param {TransferConfigsInit} configs
+	 * @param {string} [extractCode] 提取码
+	 * @param {boolean} [showTip] 是否显示提示
+	 */
+	constructor(configs, extractCode, showTip = true) {
+		extractCode = extractCode.toUpperCase();
 		super({
-			title: '上传文件',
-			tip: showTip ? `请凭【${extractCode.toUpperCase()}】提取文件。` : '',
+			tipContent: showTip ? `请凭<button class="link" id="code">【${extractCode}】</button>提取文件。<button class="link" id="link" style="float: right;">复制链接</button>` : '',
+			tipHandler: (tipElement) => {
+				tipElement.querySelector("#code").addEventListener('click', () => copyText(extractCode));
+				tipElement.querySelector("#link").addEventListener('click', () => copyText(completeUrl(`#FILE-${extractCode}`)));
+			},
 			configs: configs.map(config => ({
 				name: config.name,
 				max: config.parts[0].index !== -1 ? config.parts.length : null
@@ -656,9 +687,10 @@ export class UploadDialog extends TransferDialog {
 }
 
 export class DownloadDialog extends TransferDialog {
+	static defaultTitle = '下载文件';
+
 	constructor(configs) {
 		super({
-			title: '下载文件',
 			configs: configs.map(config => ({
 				name: config.name,
 				max: null
@@ -668,6 +700,47 @@ export class DownloadDialog extends TransferDialog {
 }
 
 export class SelectDownloadDialog extends Dialog {
+	static defaultTitle = '从集合中下载文件';
+
+	static defaultStyles = `
+		.dialog-checkbox-list {
+			margin: 0;
+			overflow-y: auto;
+			max-height: 300px;
+			padding: 5px;
+			list-style-type: none;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		@media (prefers-color-scheme: dark) {
+			.dialog-checkbox-list {
+				border-color: transparent;
+			}
+		}
+		.dialog-checkbox-list li label {
+			display: flex;
+			align-items: center;
+			overflow-wrap: anywhere;
+			padding: 10px;
+			border-radius: 5px;
+			gap: 10px;
+		}
+		.dialog-checkbox-list li label:hover {
+			background-color: var(--dialog-background-color);
+		}
+		.dialog-checkbox-list li label.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background-color: transparent;
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
 	/**
 	 * 复选框列表
 	 * @type {HTMLUListElement}
@@ -708,46 +781,6 @@ export class SelectDownloadDialog extends Dialog {
 		super();
 
 		this.#configs = configs;
-
-		this.title = '从集合中下载文件';
-		this.styles = `
-			.dialog-checkbox-list {
-				margin: 0;
-				overflow-y: auto;
-				max-height: 300px;
-				padding: 5px;
-				list-style-type: none;
-				border-radius: 5px;
-				background-color: var(--dialog-on-background-color);
-				border: 1px solid var(--dialog-border-color);
-			}
-			@media (prefers-color-scheme: dark) {
-				.dialog-checkbox-list {
-					border-color: transparent;
-				}
-			}
-			.dialog-checkbox-list li label {
-				display: flex;
-				align-items: center;
-				overflow-wrap: anywhere;
-				padding: 10px;
-				border-radius: 5px;
-				gap: 10px;
-			}
-			.dialog-checkbox-list li label:hover {
-				background-color: var(--dialog-background-color);
-			}
-			.dialog-checkbox-list li label.disabled {
-				opacity: 0.5;
-				cursor: not-allowed;
-				background-color: transparent;
-			}
-			.dialog-button-group {
-				display: flex;
-				align-items: center;
-				width: 100%;
-			}
-		`;
 
 		this.#checkboxList.classList.add('dialog-checkbox-list');
 		configs.forEach((downloadConfig, index) => {
@@ -822,6 +855,42 @@ export class SelectDownloadDialog extends Dialog {
 }
 
 export class SelectPlayDialog extends Dialog {
+	static defaultTitle = '从集合中播放媒体';
+
+	static defaultStyles = `
+		.dialog-radio-list {
+			margin: 0;
+			overflow-y: auto;
+			max-height: 300px;
+			padding: 5px;
+			list-style-type: none;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		@media (prefers-color-scheme: dark) {
+			.dialog-radio-list {
+				border-color: transparent;
+			}
+		}
+		.dialog-radio-list li label {
+			display: flex;
+			align-items: center;
+			overflow-wrap: anywhere;
+			padding: 10px;
+			border-radius: 5px;
+			gap: 10px;
+		}
+		.dialog-radio-list li label:hover {
+			background-color: var(--dialog-background-color);
+		}
+		.dialog-radio-list li label.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background-color: transparent;
+		}
+	`;
+
 	/**
 	 * 单选框列表
 	 * @type {HTMLUListElement}
@@ -844,41 +913,6 @@ export class SelectPlayDialog extends Dialog {
 		super();
 
 		this.#configs = configs;
-
-		this.title = '从集合中播放媒体';
-		this.styles = `
-			.dialog-radio-list {
-				margin: 0;
-				overflow-y: auto;
-				max-height: 300px;
-				padding: 5px;
-				list-style-type: none;
-				border-radius: 5px;
-				background-color: var(--dialog-on-background-color);
-				border: 1px solid var(--dialog-border-color);
-			}
-			@media (prefers-color-scheme: dark) {
-				.dialog-radio-list {
-					border-color: transparent;
-				}
-			}
-			.dialog-radio-list li label {
-				display: flex;
-				align-items: center;
-				overflow-wrap: anywhere;
-				padding: 10px;
-				border-radius: 5px;
-				gap: 10px;
-			}
-			.dialog-radio-list li label:hover {
-				background-color: var(--dialog-background-color);
-			}
-			.dialog-radio-list li label.disabled {
-				opacity: 0.5;
-				cursor: not-allowed;
-				background-color: transparent;
-			}
-		`;
 
 		this.#radioList.classList.add('dialog-radio-list');
 		configs.forEach((playConfig, index) => {

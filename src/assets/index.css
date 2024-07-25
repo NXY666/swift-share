@@ -92,6 +92,10 @@
 	border-radius: 0 0 5px 5px;
 }
 
+#uploadFileInput {
+	width: 0;
+}
+
 #playFileVideoContainer {
 	position: relative;
 	margin-top: 15px;

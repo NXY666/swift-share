@@ -190,6 +190,27 @@ button:disabled {
 	box-shadow: none;
 }
 
+button.link {
+	height: auto;
+	padding: 0;
+	color: var(--primary-color-1);
+	border: none;
+	background-color: transparent;
+	box-shadow: none;
+}
+
+button.link:hover {
+	color: var(--primary-color-2);
+}
+
+button.link:active {
+	color: var(--primary-color-3);
+}
+
+button.link:disabled {
+	color: var(--text-color-3);
+}
+
 input:not([type=checkbox]):not([type=radio]), textarea {
 	font-family: system-ui, 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, sans-serif;
 	padding: 5px 10px;
