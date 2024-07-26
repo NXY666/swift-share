@@ -1,3 +1,9 @@
+/**
+ * 代码来源于网络，原作者未知
+ *
+ * 已经过通篇审核，确认不存在恶意代码
+ */
+
 function calcDivideMod(a, b) { return [Math.floor(a / b), a % b]; }
 
 function parseTime(time) {

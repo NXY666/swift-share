@@ -1,3 +1,8 @@
+/**
+ * 代码来源于网络，原作者未知
+ *
+ * 已经过通篇审核，确认不存在恶意代码
+ */
 import {Dialogue, Subtitle} from "./videoTrackStation.js";
 
 const langCodes = [
