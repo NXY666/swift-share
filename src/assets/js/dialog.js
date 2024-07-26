@@ -1,4 +1,3 @@
-import {downloadConfigs} from "./download.js";
 import {defineKeyboardClickEvent} from "./element.js";
 import {copyText} from "./string.js";
 
@@ -777,7 +776,7 @@ export class SelectDownloadDialog extends Dialog {
 	 */
 	#configs = [];
 
-	constructor(configs) {
+	constructor(configs, callback) {
 		super();
 
 		this.#configs = configs;
@@ -839,7 +838,7 @@ export class SelectDownloadDialog extends Dialog {
 			this.#confirmButton.addEventListener('click', async () => {
 				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
 				if (selectedConfigs.length !== 0) {
-					downloadConfigs(selectedConfigs).then(() => {});
+					callback(selectedConfigs);
 				}
 				this.close();
 			});
