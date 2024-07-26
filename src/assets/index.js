@@ -3,11 +3,10 @@ import "regenerator-runtime/runtime";
 import './index.css';
 import {api} from "./js/api.js";
 import {copyText, parseExtractCode} from "./js/string.js";
-import {downloadConfigs} from "./js/download.js";
 
 function disableForm(form) {
 	const formId = form.id;
-	form.querySelectorAll('input, textarea, button').forEach((element) => {
+	form.querySelectorAll('input, textarea, button').forEach(element => {
 		if (element.disabled === false) {
 			element.dataset.disabledBy = formId;
 			element.disabled = true;
@@ -17,7 +16,7 @@ function disableForm(form) {
 
 function enableForm(form) {
 	const formId = form.id;
-	form.querySelectorAll('input, textarea, button').forEach((element) => {
+	form.querySelectorAll('input, textarea, button').forEach(element => {
 		if (element.dataset.disabledBy === formId) {
 			element.disabled = false;
 			delete element.dataset.disabledBy;
@@ -55,12 +54,12 @@ document.addEventListener('DOMContentLoaded', function () {
 	let uploadTextInput = document.getElementById('uploadTextInput');
 	let uploadTextForm = document.getElementById('uploadTextForm');
 
-	uploadTextInput.addEventListener('keydown', (e) => {
+	uploadTextInput.addEventListener('keydown', e => {
 		if (e.ctrlKey && e.key === 'Enter') {
 			uploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	uploadTextForm.addEventListener('submit', (e) => {
+	uploadTextForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const text = uploadTextInput.value;
@@ -81,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const extractedText = document.getElementById('extractedText');
 	const copyExtractedTextButton = document.getElementById('copyExtractedTextButton');
 
-	extractTextForm.addEventListener("submit", (e) => {
+	extractTextForm.addEventListener("submit", e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(extractTextCode.value);
@@ -116,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const uploadFileInput = document.getElementById('uploadFileInput');
 	const uploadFileForm = document.getElementById('uploadFileForm');
 
-	uploadFileForm.addEventListener('submit', (e) => {
+	uploadFileForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const blobFiles = uploadFileInput.files;
@@ -128,10 +127,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		let checkpointTimeout = null;
 		api.post('/upload/files/apply', {
-			files: (Array.from(blobFiles).map(file => ({
+			files: Array.from(blobFiles).map(file => ({
 				name: file.name,
 				size: file.size
-			})))
+			}))
 		})
 		.then(async ({data}) => {
 			const {configs, checkpointUrl} = data;
@@ -148,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			const extractCode = data.code;
 
 			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(extractCode, configs);
+			const uploadDialog = new UploadDialog(configs, extractCode);
 			uploadDialog.open();
 
 			let activeAbortController = null;
@@ -211,7 +210,39 @@ document.addEventListener('DOMContentLoaded', function () {
 	const extractFileCode = document.getElementById('extractFileCode');
 	const extractFileForm = document.getElementById('extractFileForm');
 
-	extractFileForm.addEventListener('submit', (e) => {
+	async function downloadConfigs(configs) {
+		const {DownloadDialog} = await import("./js/dialog.js");
+		const downloadDialog = new DownloadDialog(configs);
+		downloadDialog.open();
+
+		const failedConfigs = [];
+
+		for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
+			const activeConfig = configs[activeConfigIndex];
+
+			try {
+				// 请求文件的第一个字，请求到了说明可以开始下载
+				await api.get(activeConfig.downUrl, {headers: {"Range": `bytes=0-0`}});
+
+				// 说明下载完成，下载整个文件
+				const a = document.createElement('a');
+				a.href = completeUrl(activeConfig.downUrl);
+				a.download = activeConfig.name;
+				a.click();
+			} catch {
+				failedConfigs.push(activeConfig);
+			}
+
+			downloadDialog.addFileProgress();
+			downloadDialog.addTotalProgress();
+		}
+
+		if (failedConfigs.length > 0) {
+			alert(`以下文件未能下载：\n${failedConfigs.map(config => config.name).join('\n')}`);
+		}
+	}
+
+	extractFileForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(extractFileCode.value);
@@ -224,11 +255,11 @@ document.addEventListener('DOMContentLoaded', function () {
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
-			if (configs.length === 1 && !configs[0].removed) {
+			if (e.isTrusted && configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
 				const {SelectDownloadDialog} = await import('./js/dialog.js');
-				new SelectDownloadDialog(configs).open();
+				new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 			}
 		})
 		.catch(({message}) => alert(`文件提取失败：${message}`))
@@ -239,7 +270,33 @@ document.addEventListener('DOMContentLoaded', function () {
 	const playFileForm = document.getElementById('playFileForm');
 	const playFileVideo = document.getElementById('playFileVideo');
 
-	playFileForm.addEventListener('submit', (e) => {
+	async function playConfig(config) {
+		const {VideoTrackStation} = await import('./js/subtitle/videoTrackStation.js');
+		const {SubtitleExtractor} = await import('./js/subtitle/subtitleExtractor.js');
+
+		if (!videoTrackStation) {
+			videoTrackStation = new VideoTrackStation(playFileVideo);
+		}
+
+		subExtractInst = null;
+
+		if (videoTrackStation.reset()) {
+			await videoTrackStation.flush();
+		}
+
+		const playName = config.name, playUrl = completeUrl(config.playUrl);
+
+		playFileVideo.src = playUrl;
+
+		if (playName.endsWith('.mkv') || playName.endsWith('.webm')) {
+			subExtractInst = await SubtitleExtractor.fromUrl(videoTrackStation, playUrl);
+			playFileVideo.load();
+		}
+	}
+
+	let subExtractInst = null, videoTrackStation;
+
+	playFileForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(playFileCode.value);
@@ -252,17 +309,23 @@ document.addEventListener('DOMContentLoaded', function () {
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
+
 			if (configs.length === 1 && !configs[0].removed) {
-				playFileVideo.src = completeUrl(configs[0].playUrl);
+				await playConfig(configs[0]);
 			} else {
 				const {SelectPlayDialog} = await import('./js/dialog.js');
-				new SelectPlayDialog(configs, (config) => {
-					playFileVideo.src = completeUrl(config.playUrl);
-				}).open();
+				new SelectPlayDialog(configs, config => playConfig(config)).open();
 			}
 		})
 		.catch(({message}) => alert(`文件提取失败：${message}`))
 		.finally(() => enableForm(playFileForm));
+	});
+
+	playFileVideo.addEventListener('timeupdate', () => subExtractInst?.refresh());
+
+	playFileVideo.textTracks.addEventListener('change', () => {
+		const index = Array.from(playFileVideo.textTracks).findIndex(n => n.mode === 'showing');
+		videoTrackStation.onTrackChange(index);
 	});
 
 	const dropConnectCode = document.getElementById('dropConnectCode');
@@ -296,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	disableDropSend();
 
-	dropConnectForm.addEventListener('submit', (e) => {
+	dropConnectForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		if (dropConnectForm.dataset.enabled === 'true') {
@@ -337,12 +400,12 @@ document.addEventListener('DOMContentLoaded', function () {
 	const dropUploadTextInput = document.getElementById('dropUploadTextInput');
 	const dropUploadTextForm = document.getElementById('dropUploadTextForm');
 
-	dropUploadTextInput.addEventListener('keydown', (e) => {
+	dropUploadTextInput.addEventListener('keydown', e => {
 		if (e.ctrlKey && e.key === 'Enter') {
 			dropUploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	dropUploadTextForm.addEventListener('submit', (e) => {
+	dropUploadTextForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const text = dropUploadTextInput.value;
@@ -361,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const dropUploadFileInput = document.getElementById('dropUploadFileInput');
 	const dropUploadFileForm = document.getElementById('dropUploadFileForm');
 
-	dropUploadFileForm.addEventListener('submit', (e) => {
+	dropUploadFileForm.addEventListener('submit', e => {
 		e.preventDefault();
 
 		const blobFiles = dropUploadFileInput.files;
@@ -373,10 +436,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		let checkpointTimeout = null;
 		api.post('/upload/files/apply?drop=' + dropConnectCode.value, {
-			files: (Array.from(blobFiles).map(file => ({
+			files: Array.from(blobFiles).map(file => ({
 				name: file.name,
 				size: file.size
-			})))
+			}))
 		})
 		.then(async ({data}) => {
 			const {configs, checkpointUrl} = data;
@@ -393,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			const extractCode = data.code;
 
 			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(extractCode, configs, false);
+			const uploadDialog = new UploadDialog(configs, extractCode, false);
 			uploadDialog.open();
 
 			let activeAbortController = null;
@@ -456,6 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	const dropRecvSwitchButton = document.getElementById('dropRecvSwitchButton');
 	const dropRecvHelper = document.getElementById('dropRecvHelper');
+	const dropCodeButton = document.getElementById('dropCodeButton');
 	const dropCode = document.getElementById('dropCode');
 	const dropQrCode = document.getElementById('dropQrCode');
 	const dropRecvDataList = document.getElementById('dropRecvDataList');
@@ -532,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			// 连接 WebSocket
 			const {WebSocketClient} = await import('./js/websocket.js');
 			dropRecvWsClient = new WebSocketClient(completeWsUrl(wsRecvUrl));
-			dropRecvWsClient.onMessage = (message) => {
+			dropRecvWsClient.onMessage = message => {
 				const clone = dropRecvDataTemplate.content.cloneNode(true);
 
 				const {type, data} = JSON.parse(message);
@@ -585,7 +649,7 @@ document.addEventListener('DOMContentLoaded', function () {
 								const {configs} = data;
 
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
-								new SelectDownloadDialog(configs).open();
+								new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 							})
 							.catch(({message}) => alert(`文件提取失败：${message}`))
 							.finally(() => operateButton.disabled = false);
@@ -611,6 +675,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		.catch(({message}) => alert(`启动失败：${message}`))
 		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
+
+	dropCodeButton.addEventListener('click', async () => await copyText(dropCode.textContent));
 
 	disableRecv();
 

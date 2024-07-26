@@ -602,7 +602,7 @@ server.listen(port, () => {
 process.on("SIGINT", () => {
 	console.info("Server is shutting down...");
 	try {
-		fs.rmSync(FileAbsolutePath, {recursive: true});
+		fs.rmSync(FileAbsolutePath, {recursive: true, force: true});
 	} catch (e) {
 		console.error('Failed to delete directory:', FileAbsolutePath, 'Error:', e.stack);
 	}

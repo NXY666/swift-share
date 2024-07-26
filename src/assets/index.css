@@ -17,7 +17,6 @@
 .box {
 	display: flex;
 	justify-content: center;
-	min-width: 400px;
 	padding: 0 20px;
 }
 
@@ -93,6 +92,10 @@
 	border-radius: 0 0 5px 5px;
 }
 
+#uploadFileInput {
+	width: 0;
+}
+
 #playFileVideoContainer {
 	position: relative;
 	margin-top: 15px;
@@ -132,6 +135,10 @@
 	margin-top: 0;
 }
 
+#dropUploadFileInput {
+	width: 0;
+}
+
 #dropRecvSwitchButton {
 	width: 100%;
 }
@@ -158,6 +165,10 @@
 	border-radius: 5px;
 	background-color: #F6F8FA;
 	gap: 10px;
+}
+
+#dropCode {
+	transition: none;
 }
 
 .drop-recv-method-list {

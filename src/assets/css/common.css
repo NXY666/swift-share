@@ -137,6 +137,7 @@ html {
 }
 
 body {
+	min-width: 400px;
 	padding-bottom: 15px;
 	color: var(--text-color-1);
 	background-color: var(--background-color-3);
@@ -187,6 +188,27 @@ button:disabled {
 	border-color: var(--form-border-disabled-color);
 	background-color: var(--form-background-disabled-color);
 	box-shadow: none;
+}
+
+button.link {
+	height: auto;
+	padding: 0;
+	color: var(--primary-color-1);
+	border: none;
+	background-color: transparent;
+	box-shadow: none;
+}
+
+button.link:hover {
+	color: var(--primary-color-2);
+}
+
+button.link:active {
+	color: var(--primary-color-3);
+}
+
+button.link:disabled {
+	color: var(--text-color-3);
 }
 
 input:not([type=checkbox]):not([type=radio]), textarea {
@@ -295,4 +317,14 @@ progress:not([value])::after {
 		left: 100%;
 		width: 70%;
 	}
+}
+
+video::cue(.line1) {
+	font-size: 100%;
+	line-height: 1;
+}
+
+video::cue(.line2) {
+	font-size: 75%;
+	line-height: 1;
 }
