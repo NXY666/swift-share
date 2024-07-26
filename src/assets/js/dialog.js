@@ -255,7 +255,7 @@ class Dialog {
 					this.#headerContainer.classList.add('dialog-header');
 					{
 						const titleText = document.createElement('h3');
-						titleText.style.margin = '0';
+						titleText.classList.add('dialog-title');
 						titleText.textContent = this.title;
 						this.#headerContainer.appendChild(titleText);
 					}
