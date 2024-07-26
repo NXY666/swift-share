@@ -135,6 +135,10 @@
 	margin-top: 0;
 }
 
+#dropUploadFileInput {
+	width: 0;
+}
+
 #dropRecvSwitchButton {
 	width: 100%;
 }
@@ -161,6 +165,10 @@
 	border-radius: 5px;
 	background-color: #F6F8FA;
 	gap: 10px;
+}
+
+#dropCode {
+	transition: none;
 }
 
 .drop-recv-method-list {

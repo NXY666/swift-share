@@ -4,8 +4,8 @@
 
 [![npm](https://img.shields.io/npm/v/swift-share?style=flat-square)](https://www.npmjs.com/package/swift-share)
 [![npm](https://img.shields.io/npm/dt/swift-share?style=flat-square)](https://www.npmjs.com/package/swift-share)
+[![npm](https://img.shields.io/npm/unpacked-size/swift-share?style=flat-square)](https://www.npmjs.com/package/swift-share)
 [![GitHub](https://img.shields.io/github/license/NXY666/swift-share?style=flat-square)](https://github.com/NXY666/swift-share/blob/master/LICENSE)
-![GitHub](https://img.shields.io/github/repo-size/NXY666/swift-share?style=flat-square)
 
 ## 🔥 功能
 

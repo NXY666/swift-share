@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
-			if (configs.length === 1 && !configs[0].removed) {
+			if (e.isTrusted && configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
 				const {SelectDownloadDialog} = await import('./js/dialog.js');
@@ -488,6 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	const dropRecvSwitchButton = document.getElementById('dropRecvSwitchButton');
 	const dropRecvHelper = document.getElementById('dropRecvHelper');
+	const dropCodeButton = document.getElementById('dropCodeButton');
 	const dropCode = document.getElementById('dropCode');
 	const dropQrCode = document.getElementById('dropQrCode');
 	const dropRecvDataList = document.getElementById('dropRecvDataList');
@@ -643,6 +644,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		.catch(({message}) => alert(`启动失败：${message}`))
 		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
+
+	dropCodeButton.addEventListener('click', async () => await copyText(dropCode.textContent));
 
 	disableRecv();
 

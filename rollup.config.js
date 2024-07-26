@@ -125,7 +125,8 @@ export default defineConfig([{
 		copy({
 			targets: [
 				{src: 'src/assets/index.html', dest: 'dist/assets'},
-				{src: 'src/assets/favicon.ico', dest: 'dist/assets'}
+				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
+				{src: 'README.md', dest: 'dist'}
 			]
 		})
 	]
