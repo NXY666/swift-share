@@ -3,6 +3,7 @@ import "regenerator-runtime/runtime";
 import './index.css';
 import {api} from "./js/api.js";
 import {copyText, parseExtractCode} from "./js/string.js";
+import {downloadConfigs, uploadFiles} from "./js/transfer.js";
 
 function disableForm(form) {
 	const formId = form.id;
@@ -125,122 +126,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(uploadFileForm);
 
-		let checkpointTimeout = null;
-		api.post('/upload/files/apply', {
-			files: Array.from(blobFiles).map(file => ({
-				name: file.name,
-				size: file.size
-			}))
-		})
-		.then(async ({data}) => {
-			const {configs, checkpointUrl} = data;
-
-			// 每隔15秒检查一次
-			checkpointTimeout = setTimeout(function checkpoint() {
-				api.get(checkpointUrl).finally(() => {
-					if (checkpointTimeout != null) {
-						checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
-					}
-				});
-			});
-
-			const extractCode = data.code;
-
-			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(configs, extractCode);
-			uploadDialog.open();
-
-			let activeAbortController = null;
-			uploadDialog.signal.addEventListener('abort', () => {
-				activeAbortController?.abort("上传已取消");
-			});
-
-			const failedConfigs = [];
-			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
-				if (uploadDialog.signal.aborted) {
-					failedConfigs.push(...configs.slice(activeConfigIndex));
-					break;
-				}
-
-				const activeConfig = configs[activeConfigIndex];
-				const blobFile = blobFiles[activeConfigIndex];
-
-				await new Promise((resolve, reject) => {
-					activeAbortController = new AbortController();
-					const uploadFilePromises = [];
-					for (const uploadConfig of activeConfig.parts) {
-						const formData = new FormData();
-						formData.append('id', activeConfig.id);
-						formData.append('key', activeConfig.key);
-						formData.append('index', uploadConfig.index);
-						// -1 表示整个文件
-						formData.append('part', uploadConfig.index === -1 ? blobFile : blobFile.slice(...uploadConfig.range));
-						uploadFilePromises.push(api.post("/upload/files", formData, {signal: activeAbortController.signal}, {slowRequest: true}).finally(() => {
-							uploadDialog.addFileProgress();
-						}));
-					}
-					Promise.all(uploadFilePromises)
-					.then(() => resolve())
-					.catch(() => {
-						// 终止未完成的上传
-						try {
-							activeAbortController.abort("文件上传失败");
-						} catch {}
-						reject();
-					});
-				}).catch(() => {
-					failedConfigs.push(activeConfig);
-				}).finally(() => {
-					uploadDialog.addTotalProgress();
-				});
-			}
-
-			if (failedConfigs.length > 0) {
-				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
-			}
-		})
+		uploadFiles(blobFiles)
 		.catch(({message}) => alert(message))
-		.finally(() => {
-			enableForm(uploadFileForm);
-			clearTimeout(checkpointTimeout);
-			checkpointTimeout = null;
-		});
+		.finally(() => enableForm(uploadFileForm));
 	});
 
 	const extractFileCode = document.getElementById('extractFileCode');
 	const extractFileForm = document.getElementById('extractFileForm');
-
-	async function downloadConfigs(configs) {
-		const {DownloadDialog} = await import("./js/dialog.js");
-		const downloadDialog = new DownloadDialog(configs);
-		downloadDialog.open();
-
-		const failedConfigs = [];
-
-		for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
-			const activeConfig = configs[activeConfigIndex];
-
-			try {
-				// 请求文件的第一个字，请求到了说明可以开始下载
-				await api.get(activeConfig.downUrl, {headers: {"Range": `bytes=0-0`}});
-
-				// 说明下载完成，下载整个文件
-				const a = document.createElement('a');
-				a.href = completeUrl(activeConfig.downUrl);
-				a.download = activeConfig.name;
-				a.click();
-			} catch {
-				failedConfigs.push(activeConfig);
-			}
-
-			downloadDialog.addFileProgress();
-			downloadDialog.addTotalProgress();
-		}
-
-		if (failedConfigs.length > 0) {
-			alert(`以下文件未能下载：\n${failedConfigs.map(config => config.name).join('\n')}`);
-		}
-	}
 
 	extractFileForm.addEventListener('submit', e => {
 		e.preventDefault();
@@ -567,8 +459,9 @@ document.addEventListener('DOMContentLoaded', function () {
 					qr.addData(text, mode);
 					qr.make();
 
-					return qr.createTableTag(3, 0)
-					.replaceAll('background-color: #ffffff;', '');
+					return qr.createTableTag(4, 0)
+					.replaceAll('background-color: #ffffff;', '')
+					.replaceAll(' border-width: 0px; border-style: none; border-collapse: collapse; padding: 0px; margin: 0px; width: 4px; height: 4px; ', '');
 				}
 
 				function parseHTML(htmlString) {
@@ -582,6 +475,16 @@ document.addEventListener('DOMContentLoaded', function () {
 				const qrCodeUrl = new URL(`#DROP-${code}`, location).toString();
 				const dropQrCodeTable = parseHTML(createQrcode(qrCodeUrl, '0', 'H', 'Byte', 'UTF-8'));
 				dropQrCodeTable.id = 'dropQrCodeTable';
+
+				const resizeObserver = new ResizeObserver(entries => {
+					for (let entry of entries) {
+						const width = entry.contentRect.width;
+						dropQrCodeTable.style.height = `${width}px`;
+					}
+				});
+				resizeObserver.observe(dropQrCodeTable);
+				console.log(dropQrCodeTable);
+
 				dropQrCode.appendChild(dropQrCodeTable);
 
 				const qrCodeTip = document.createElement('span');

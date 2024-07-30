@@ -137,7 +137,7 @@ html {
 }
 
 body {
-	min-width: 400px;
+	min-width: 300px;
 	padding-bottom: 15px;
 	color: var(--text-color-1);
 	background-color: var(--background-color-3);

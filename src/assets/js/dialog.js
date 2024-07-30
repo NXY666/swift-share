@@ -698,6 +698,155 @@ export class DownloadDialog extends TransferDialog {
 	}
 }
 
+export class SelectUploadDialog extends Dialog {
+	static defaultTitle = '准备上传';
+
+	static defaultStyles = `
+		.dialog-checkbox-list {
+			margin: 0;
+			overflow-y: auto;
+			max-height: 300px;
+			padding: 5px;
+			list-style-type: none;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		@media (prefers-color-scheme: dark) {
+			.dialog-checkbox-list {
+				border-color: transparent;
+			}
+		}
+		.dialog-checkbox-list li label {
+			display: flex;
+			align-items: center;
+			overflow-wrap: anywhere;
+			padding: 10px;
+			border-radius: 5px;
+			gap: 10px;
+		}
+		.dialog-checkbox-list li label:hover {
+			background-color: var(--dialog-background-color);
+		}
+		.dialog-checkbox-list li label.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background-color: transparent;
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 复选框列表
+	 * @type {HTMLUListElement}
+	 */
+	#checkboxList = document.createElement('ul');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 全选标签
+	 * @type {HTMLLabelElement}
+	 */
+	#selectAllLabel = document.createElement('label');
+
+	/**
+	 * 全选复选框
+	 * @type {HTMLInputElement}
+	 */
+	#selectAllCheckbox = document.createElement('input');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 上传文件
+	 * @type {any[]}
+	 */
+	#files = [];
+
+	constructor(files, callback) {
+		super();
+
+		this.#files = files;
+
+		this.#checkboxList.classList.add('dialog-checkbox-list');
+		files.forEach((file, index) => {
+			const checkboxListItem = document.createElement('li');
+			const checkboxLabel = document.createElement('label');
+			const checkbox = document.createElement('input');
+
+			checkbox.type = 'checkbox';
+			checkbox.value = index;
+			checkbox.checked = true;
+			checkbox.addEventListener('change', () => {
+				// 更新全选框状态
+				const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+				this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked);
+				this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+			});
+
+			checkboxLabel.title = file.name;
+			checkboxLabel.appendChild(checkbox);
+			checkboxLabel.appendChild(document.createTextNode(` ${file.name}`));
+
+			checkboxListItem.appendChild(checkboxLabel);
+
+			this.#checkboxList.appendChild(checkboxListItem);
+		});
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#selectAllLabel.style.display = 'flex';
+			this.#selectAllLabel.style.alignItems = 'center';
+			this.#selectAllLabel.style.gap = '5px';
+			{
+				this.#selectAllCheckbox.type = 'checkbox';
+				this.#selectAllCheckbox.checked = true; // 默认全选
+				this.#selectAllCheckbox.addEventListener('change', () => {
+					// 全选或取消全选
+					this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
+						checkbox.checked = this.#selectAllCheckbox.checked;
+					});
+				});
+				this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
+
+				// 全选文字
+				this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+			}
+			this.#buttonGroup.appendChild(this.#selectAllLabel);
+
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#files[checkbox.value]);
+				if (selectedConfigs.length !== 0) {
+					callback(selectedConfigs);
+				}
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#checkboxList;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
 export class SelectDownloadDialog extends Dialog {
 	static defaultTitle = '从集合中下载文件';
 

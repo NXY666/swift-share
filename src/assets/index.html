@@ -3,15 +3,20 @@
 <head>
 	<title>快传</title>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=no">
+	<meta name="viewport" content="width=device-width, initial-scale=0.9, user-scalable=no">
 	<meta name="description" content="快传，传递文本、传输文件、持久共享及在线播放。支持多线程上传、边传边下等特色功能。">
 	<meta name="keywords" content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放">
+	<!-- 外部库 -->
 	<script defer src="https://fastly.jsdelivr.net/npm/qrcode-generator@1.4.4"></script>
+	<!-- WPA -->
+	<link rel="manifest" href="./app.webmanifest"/>
+	<!-- 自定义元素 -->
 	<style>
 		*:not(:defined) {
 			display: none !important;
 		}
 	</style>
+	<!-- 动态base -->
 	<script>
 		const base = window.location.pathname.replace(/\/$/, '');
 
@@ -61,8 +66,10 @@
 			observer.observe(document, config);
 		}
 	</script>
-	<script type="module" src="./custom.js"></script>
+	<!-- 脚本 -->
+	<script type="module" src="./preload.js"></script>
 	<script type="module" src="./index.js"></script>
+	<!-- 样式 -->
 	<link rel="stylesheet" type="text/css" href="./index.css">
 	<link rel="icon" type="image/x-icon" href="./favicon.ico">
 </head>
@@ -183,11 +190,12 @@
 					<div class="drop-recv-method-list">
 						<div class="drop-recv-method">
 							<b>连接方法１：</b><br>
-							扫描左侧二维码快速连接。
+							<span>扫描左侧二维码快速连接。</span>
 						</div>
 						<div class="drop-recv-method">
 							<b>连接方法２：</b><br>
-							凭连接码<button id="dropCodeButton" class="link">【<span id="dropCode"></span>】</button>手动连接。
+							<span>凭连接码<button id="dropCodeButton" class="link">【<span
+									id="dropCode"></span>】</button>手动连接。</span>
 						</div>
 					</div>
 				</div>
