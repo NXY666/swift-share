@@ -112,10 +112,7 @@ export default defineConfig([{
 				'src/assets/index.html',
 				'src/assets/favicon.ico',
 				'src/assets/app.webmanifest',
-				'src/assets/pwa-48x48.png',
-				'src/assets/pwa-96x96.png',
-				'src/assets/pwa-192x192.png',
-				'src/assets/pwa-768x768.png'
+				'src/assets/png'
 			]
 		}),
 		resolve(),
@@ -136,10 +133,7 @@ export default defineConfig([{
 				{src: 'src/assets/index.html', dest: 'dist/assets'},
 				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
 				{src: 'src/assets/app.webmanifest', dest: 'dist/assets'},
-				{src: 'src/assets/pwa-48x48.png', dest: 'dist/assets'},
-				{src: 'src/assets/pwa-96x96.png', dest: 'dist/assets'},
-				{src: 'src/assets/pwa-192x192.png', dest: 'dist/assets'},
-				{src: 'src/assets/pwa-768x768.png', dest: 'dist/assets'},
+				{src: 'src/assets/png', dest: 'dist/assets'},
 				{src: 'README.md', dest: 'dist'}
 			]
 		})

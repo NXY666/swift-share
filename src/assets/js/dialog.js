@@ -699,7 +699,7 @@ export class DownloadDialog extends TransferDialog {
 }
 
 export class SelectUploadDialog extends Dialog {
-	static defaultTitle = '准备上传';
+	static defaultTitle = '确认上传文件';
 
 	static defaultStyles = `
 		.dialog-checkbox-list {

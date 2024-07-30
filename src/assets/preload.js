@@ -40,7 +40,8 @@ if ('serviceWorker' in navigator) {
 
 				const {SelectUploadDialog} = await import("./js/dialog.js");
 				const dialog = new SelectUploadDialog(shareFiles, (files) => {
-					uploadFiles(files).catch(({message}) => alert(message));
+					uploadFiles(files)
+					.catch(({message}) => alert(message));
 				});
 				dialog.open();
 			} else if (typeof shareTargets === "number") {
