@@ -15,9 +15,7 @@ let cacheId = 0;
 function addCache(cacheContent) {
 	const id = cacheId++;
 	cache[id] = cacheContent;
-	setTimeout(() => {
-		delete cache[id];
-	}, 1000 * 60 * 5);
+	setTimeout(() => delete cache[id], 2 * 60 * 1000);
 	return id;
 }
 
@@ -75,14 +73,11 @@ self.addEventListener('fetch', event => {
 			const files = formData.getAll('file');
 			if (files.length !== 0) {
 				// 跳转到/，并带上id参数
-				return Response.redirect('/?share=' + encodeURIComponent(JSON.stringify(files.map((file) => {
-					const id = addCache(file);
-					return {
-						id,
-						name: file.name,
-						size: file.size
-					};
-				}))), 303);
+				return Response.redirect('/?share=' + encodeURIComponent(JSON.stringify(files.map((file) => ({
+					id: addCache(file),
+					name: file.name,
+					size: file.size
+				})))), 303);
 			}
 
 			const text = formData.get('url') ?? formData.get('text') ?? formData.get('title');
@@ -109,15 +104,16 @@ self.addEventListener('fetch', event => {
 					});
 				} else {
 					return new Response('内容可能有问题。', {
-						status: 404
+						status: 500, headers: {'Content-Type': "text/plain"}
 					});
 				}
 			} else {
-				return new Response('内容不存在。', {status: 404});
+				return new Response('内容不存在。', {
+					status: 404, headers: {'Content-Type': "text/plain"}
+				});
 			}
 		})());
 	} else {
-		console.log('fetch', event.request.url);
 		// 使用缓存
 		event.respondWith(fetch(event.request));
 	}

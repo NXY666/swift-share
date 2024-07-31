@@ -288,7 +288,7 @@ class Dialog {
 				{
 					if (typeof this.#content === 'string') {
 						this.#bodyContainer.textContent = this.#content;
-					} else {
+					} else if (this.#content instanceof Node) {
 						this.#bodyContainer.appendChild(this.#content);
 					}
 				}
@@ -698,6 +698,79 @@ export class DownloadDialog extends TransferDialog {
 	}
 }
 
+export class ConfirmUploadTextDialog extends Dialog {
+	static defaultTitle = '上传文本';
+
+	static defaultStyles = `
+		.dialog-upload-text-pre {
+			overflow: auto;
+			min-height: 150px;
+			max-height: 300px;
+			margin: 0;
+			padding: 10px;
+			text-align: left;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 上传文本框
+	 * @type {HTMLPreElement}
+	 */
+	#uploadTextPre = document.createElement('pre');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 上传文本
+	 * @type {string}
+	 */
+	#text = "";
+
+	constructor(text, callback) {
+		super();
+
+		this.#text = text;
+
+		this.#uploadTextPre.classList.add('dialog-upload-text-pre');
+		this.#uploadTextPre.textContent = text;
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				callback();
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#uploadTextPre;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
 export class SelectUploadDialog extends Dialog {
 	static defaultTitle = '上传文件';
 
@@ -787,7 +860,7 @@ export class SelectUploadDialog extends Dialog {
 			const checkboxLabel = document.createElement('label');
 			const checkbox = document.createElement('input');
 			const fileContentSpan = document.createElement('span');
-			const fileSizeSpan = document.createElement('span');
+			const fileSizeSpan = document.createElement('div');
 
 			{
 				checkboxLabel.title = file.name;
@@ -807,11 +880,7 @@ export class SelectUploadDialog extends Dialog {
 					{
 						fileSizeSpan.textContent = parseBytes(file.size);
 						fileSizeSpan.style.fontSize = '80%';
-						fileSizeSpan.style.padding = '0.1em 0.2em';
-						fileSizeSpan.style.borderRadius = '0.2em';
-						fileSizeSpan.style.backgroundColor = 'var(--dialog-background-color)';
 						fileSizeSpan.style.color = 'var(--text-color-2)';
-						fileSizeSpan.style.marginLeft = '5px';
 						fileContentSpan.appendChild(fileSizeSpan);
 					}
 					checkboxLabel.appendChild(fileContentSpan);
@@ -1116,4 +1185,55 @@ export class SelectPlayDialog extends Dialog {
 		this.closeOnClickOverlay = true;
 		this.closeOnEsc = true;
 	}
+}
+
+class AlertDialog extends Dialog {
+	static defaultTitle = '提示';
+
+	static defaultStyles = `
+		.dialog-alert {
+			padding: 10px;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+		}
+	`;
+
+	/**
+	 * 提示标题
+	 * @type {string}
+	 */
+	#alertTitle;
+
+	/**
+	 * 提示内容
+	 * @type {string}
+	 */
+	#alertContent;
+
+	/**
+	 * 构造函数
+	 * @param {string} title
+	 * @param {string} content
+	 */
+	constructor(title, content) {
+		super();
+
+		this.#alertTitle = title;
+
+		this.#alertContent = content;
+
+		this.content = this.#alertContent;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+
+	get title() {
+		return this.#alertTitle;
+	}
+}
+
+export function showAlertDialog(title, content) {
+	const alertDialog = new AlertDialog(title, content);
+	alertDialog.open();
 }

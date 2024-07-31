@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			uploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	uploadTextForm.addEventListener('submit', e => {
+	uploadTextForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const text = uploadTextInput.value;
@@ -70,9 +70,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(uploadTextForm);
 
+		const {showAlertDialog} = await import('./js/dialog.js');
+
 		api.post("/upload/text", text)
-		.then(({data}) => alert(`文本上传成功。请凭【${data.code.toUpperCase()}】提取文本。`))
-		.catch(({message}) => alert(message))
+		.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
+		.catch(({message}) => showAlertDialog('上传失败', message))
 		.finally(() => enableForm(uploadTextForm));
 	});
 
@@ -93,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		api.get(`/extract/text/${extractionCode}`)
 		.then(({data}) => {
-			extractedText.style.backgroundColor = 'var(--background-color-3)';
+			extractedText.style.backgroundColor = 'var(--background-color-2)';
 			extractedText.style.color = 'var(--form-color)';
 			extractedText.textContent = `${data.text}`;
 		})
