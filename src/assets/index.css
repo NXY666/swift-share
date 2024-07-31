@@ -45,6 +45,7 @@
 
 .input-form > input {
 	flex: 6;
+	min-width: 170px;
 	height: 35px;
 }
 
@@ -93,10 +94,6 @@
 #copyExtractedTextButton {
 	width: 100%;
 	border-radius: 0 0 5px 5px;
-}
-
-#uploadFileInput {
-	min-width: 170px;
 }
 
 #playFileVideoContainer {

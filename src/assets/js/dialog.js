@@ -1,5 +1,5 @@
 import {defineKeyboardClickEvent} from "./element.js";
-import {copyText} from "./string.js";
+import {copyText, parseBytes} from "./string.js";
 
 /**
  * @abstract
@@ -699,7 +699,7 @@ export class DownloadDialog extends TransferDialog {
 }
 
 export class SelectUploadDialog extends Dialog {
-	static defaultTitle = '确认上传文件';
+	static defaultTitle = '上传文件';
 
 	static defaultStyles = `
 		.dialog-checkbox-list {
@@ -786,23 +786,38 @@ export class SelectUploadDialog extends Dialog {
 			const checkboxListItem = document.createElement('li');
 			const checkboxLabel = document.createElement('label');
 			const checkbox = document.createElement('input');
+			const fileContentSpan = document.createElement('span');
+			const fileSizeSpan = document.createElement('span');
 
-			checkbox.type = 'checkbox';
-			checkbox.value = index;
-			checkbox.checked = true;
-			checkbox.addEventListener('change', () => {
-				// 更新全选框状态
-				const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
-				this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked);
-				this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
-			});
+			{
+				checkboxLabel.title = file.name;
+				{
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.checked = true;
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+					});
+					checkboxLabel.appendChild(checkbox);
 
-			checkboxLabel.title = file.name;
-			checkboxLabel.appendChild(checkbox);
-			checkboxLabel.appendChild(document.createTextNode(` ${file.name}`));
-
-			checkboxListItem.appendChild(checkboxLabel);
-
+					fileContentSpan.textContent = file.name;
+					{
+						fileSizeSpan.textContent = parseBytes(file.size);
+						fileSizeSpan.style.fontSize = '80%';
+						fileSizeSpan.style.padding = '0.1em 0.2em';
+						fileSizeSpan.style.borderRadius = '0.2em';
+						fileSizeSpan.style.backgroundColor = 'var(--dialog-background-color)';
+						fileSizeSpan.style.color = 'var(--text-color-2)';
+						fileSizeSpan.style.marginLeft = '5px';
+						fileContentSpan.appendChild(fileSizeSpan);
+					}
+					checkboxLabel.appendChild(fileContentSpan);
+				}
+				checkboxListItem.appendChild(checkboxLabel);
+			}
 			this.#checkboxList.appendChild(checkboxListItem);
 		});
 
