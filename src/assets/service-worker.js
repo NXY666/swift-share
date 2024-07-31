@@ -107,6 +107,10 @@ self.addEventListener('fetch', event => {
 					return new Response(content, {
 						status: 200, headers: {'Content-Type': "text/plain"}
 					});
+				} else {
+					return new Response('内容可能有问题。', {
+						status: 404
+					});
 				}
 			} else {
 				return new Response('内容不存在。', {status: 404});

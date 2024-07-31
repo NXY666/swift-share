@@ -36,7 +36,9 @@ if ('serviceWorker' in navigator) {
 					return new File([blob], target.name, {size: target.size});
 				});
 
-				const shareFiles = await Promise.all(shareFilePromises);
+				const shareFiles = await Promise.allSettled(shareFilePromises)
+				.then(results => results.filter(({status}) => status === "fulfilled")
+				.map(({value}) => value));
 
 				const {SelectUploadDialog} = await import("./js/dialog.js");
 				const dialog = new SelectUploadDialog(shareFiles, (files) => {
