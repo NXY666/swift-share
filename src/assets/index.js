@@ -426,11 +426,13 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (failedConfigs.length > 0) {
 				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
 			}
+
+			dropUploadFileForm.reset();
 		})
 		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => {
-			dropUploadFileForm.reset();
 			enableForm(dropUploadFileForm);
+
 			clearTimeout(checkpointTimeout);
 			checkpointTimeout = null;
 		});
