@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		api.get(`/extract/text/${extractionCode}`)
 		.then(({data}) => {
-			extractedText.style.backgroundColor = 'var(--background-color-2)';
+			extractedText.style.backgroundColor = 'var(--background-color-3)';
 			extractedText.style.color = 'var(--form-color)';
 			extractedText.textContent = `${data.text}`;
 		})
@@ -128,8 +128,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(uploadFileForm);
 
+		const {showAlertDialog} = import('./js/dialog.js');
+
 		uploadFiles(blobFiles)
-		.catch(({message}) => alert(message))
+		.catch(({message}) => showAlertDialog('上传失败', message))
 		.finally(() => enableForm(uploadFileForm));
 	});
 
@@ -146,6 +148,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(extractFileForm);
 
+		const {showAlertDialog} = import('./js/dialog.js');
+
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
@@ -156,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 			}
 		})
-		.catch(({message}) => alert(`文件提取失败：${message}`))
+		.catch(({message}) => showAlertDialog('提取失败', message))
 		.finally(() => enableForm(extractFileForm));
 	});
 
@@ -200,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(playFileForm);
 
+		const {showAlertDialog} = import('./js/dialog.js');
+
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
 			const {configs} = data;
@@ -211,7 +217,13 @@ document.addEventListener('DOMContentLoaded', function () {
 				new SelectPlayDialog(configs, config => playConfig(config)).open();
 			}
 		})
-		.catch(({message}) => alert(`文件提取失败：${message}`))
+		.catch(reason => {
+			if (reason.name === 'TypeError') {
+				showAlertDialog('提取失败', '网络异常，请检查网络连接。');
+			} else {
+				showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
+			}
+		})
 		.finally(() => enableForm(playFileForm));
 	});
 
@@ -269,6 +281,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(dropConnectForm);
 
+		const {showAlertDialog} = import('./js/dialog.js');
+
 		api.get(`/drop/send/apply?code=${connectCode}`)
 		.then(async ({data}) => {
 			const {wsSendUrl} = data;
@@ -285,9 +299,13 @@ document.addEventListener('DOMContentLoaded', function () {
 			};
 			dropSendWsClient.open();
 		})
-		.catch(({message}) => {
+		.catch(reason => {
+			if (reason.name === 'TypeError') {
+				showAlertDialog('连接失败', '网络异常，请检查网络连接。');
+			} else {
+				showAlertDialog('连接失败', `未知错误，请联系开发者。（${reason.message}）`);
+			}
 			enableForm(dropConnectForm);
-			alert(`连接失败：${message}`);
 		});
 	});
 
@@ -309,9 +327,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		disableForm(dropUploadTextForm);
 
+		const {showAlertDialog} = import('./js/dialog.js');
+
 		api.post("/upload/text?drop=" + dropConnectCode.value, text)
 		.then(() => dropUploadTextForm.reset())
-		.catch(({message}) => alert(message))
+		.catch(reason => {
+			if (reason.name === 'TypeError') {
+				showAlertDialog('上传失败', '网络异常，请检查网络连接。');
+			} else {
+				showAlertDialog('上传失败', `未知错误，请联系开发者。（${reason.message}）`);
+			}
+		})
 		.finally(() => enableForm(dropUploadTextForm));
 	});
 
@@ -327,6 +353,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 
 		disableForm(dropUploadFileForm);
+
+		const {showAlertDialog} = import('./js/dialog.js');
 
 		let checkpointTimeout = null;
 		api.post('/upload/files/apply?drop=' + dropConnectCode.value, {
@@ -402,7 +430,13 @@ document.addEventListener('DOMContentLoaded', function () {
 				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
 			}
 		})
-		.catch(({message}) => alert(message))
+		.catch(reason => {
+			if (reason.name === 'TypeError') {
+				showAlertDialog('上传失败', '网络异常，请检查网络连接。');
+			} else {
+				showAlertDialog('上传失败', `未知错误，请联系开发者。（${reason.message}）`);
+			}
+		})
 		.finally(() => {
 			dropUploadFileForm.reset();
 			enableForm(dropUploadFileForm);
@@ -447,6 +481,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 
 		dropRecvSwitchButton.disabled = true;
+
+		const {showAlertDialog} = import('./js/dialog.js');
 
 		api.get('/drop/recv/apply')
 		.then(async ({data}) => {
@@ -537,7 +573,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
 								await downloadConfigs(configs);
 							})
-							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.catch(reason => {
+								if (reason.name === 'TypeError') {
+									showAlertDialog('提取失败', '网络异常，请检查网络连接。');
+								} else if (reason.name === 'Error') {
+									showAlertDialog('提取失败', reason.message);
+								} else {
+									showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
+								}
+							})
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
@@ -556,7 +600,15 @@ document.addEventListener('DOMContentLoaded', function () {
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
 								new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 							})
-							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.catch(reason => {
+								if (reason.name === 'TypeError') {
+									showAlertDialog('提取失败', '网络异常，请检查网络连接。');
+								} else if (reason.name === 'Error') {
+									showAlertDialog('提取失败', reason.message);
+								} else {
+									showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
+								}
+							})
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
@@ -577,7 +629,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			enableRecv();
 		})
-		.catch(({message}) => alert(`启动失败：${message}`))
+		.catch(reason => {
+			if (reason.name === 'TypeError') {
+				showAlertDialog('初始化失败', '网络异常，请检查网络连接。');
+			} else {
+				showAlertDialog('初始化失败', `未知错误，请联系开发者。（${reason.message}）`);
+			}
+		})
 		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
 
