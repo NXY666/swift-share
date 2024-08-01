@@ -25,6 +25,20 @@ function enableForm(form) {
 	});
 }
 
+function commonErrorReasonHandler(reason) {
+	let message;
+
+	if (reason.code === -1 && reason.message === "TypeError: Failed to fetch") {
+		message = `网络异常，请检查网络连接。`;
+	} else if (reason instanceof Error || reason.code === -1) {
+		message = `未知错误，请联系开发者。（${reason.message}）`;
+	} else {
+		message = reason.message;
+	}
+
+	return message;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
 	function sendBiu() {
 		const reqMsg = prompt('您遇到了什么问题？')?.trim();
@@ -68,13 +82,13 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(uploadTextForm);
-
 		const {showAlertDialog} = await import('./js/dialog.js');
+
+		disableForm(uploadTextForm);
 
 		api.post("/upload/text", text)
 		.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
-		.catch(({message}) => showAlertDialog('上传失败', message))
+		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(uploadTextForm));
 	});
 
@@ -97,12 +111,12 @@ document.addEventListener('DOMContentLoaded', function () {
 		.then(({data}) => {
 			extractedText.style.backgroundColor = 'var(--background-color-3)';
 			extractedText.style.color = 'var(--form-color)';
-			extractedText.textContent = `${data.text}`;
+			extractedText.textContent = data.text;
 		})
-		.catch(({message}) => {
+		.catch(reason => {
 			extractedText.style.backgroundColor = 'var(--form-background-error-color)';
 			extractedText.style.color = 'var(--form-error-color)';
-			extractedText.textContent = message;
+			extractedText.textContent = commonErrorReasonHandler(reason);
 		})
 		.finally(() => enableForm(extractTextForm));
 	});
@@ -118,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const uploadFileInput = document.getElementById('uploadFileInput');
 	const uploadFileForm = document.getElementById('uploadFileForm');
 
-	uploadFileForm.addEventListener('submit', e => {
+	uploadFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const blobFiles = uploadFileInput.files;
@@ -126,19 +140,19 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
+		const {showAlertDialog} = await import('./js/dialog.js');
+
 		disableForm(uploadFileForm);
 
-		const {showAlertDialog} = import('./js/dialog.js');
-
 		uploadFiles(blobFiles)
-		.catch(({message}) => showAlertDialog('上传失败', message))
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(uploadFileForm));
 	});
 
 	const extractFileCode = document.getElementById('extractFileCode');
 	const extractFileForm = document.getElementById('extractFileForm');
 
-	extractFileForm.addEventListener('submit', e => {
+	extractFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(extractFileCode.value);
@@ -146,9 +160,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(extractFileForm);
+		const {showAlertDialog, SelectDownloadDialog} = await import('./js/dialog.js');
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		disableForm(extractFileForm);
 
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
@@ -156,11 +170,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (e.isTrusted && configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
-				const {SelectDownloadDialog} = await import('./js/dialog.js');
 				new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 			}
 		})
-		.catch(({message}) => showAlertDialog('提取失败', message))
+		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(extractFileForm));
 	});
 
@@ -194,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	let subExtractInst = null, videoTrackStation;
 
-	playFileForm.addEventListener('submit', e => {
+	playFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(playFileCode.value);
@@ -202,9 +215,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(playFileForm);
+		const {showAlertDialog, SelectPlayDialog} = await import('./js/dialog.js');
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		disableForm(playFileForm);
 
 		api.get(`/extract/files/${extractionCode}`)
 		.then(async ({data}) => {
@@ -213,17 +226,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (configs.length === 1 && !configs[0].removed) {
 				await playConfig(configs[0]);
 			} else {
-				const {SelectPlayDialog} = await import('./js/dialog.js');
 				new SelectPlayDialog(configs, config => playConfig(config)).open();
 			}
 		})
-		.catch(reason => {
-			if (reason.name === 'TypeError') {
-				showAlertDialog('提取失败', '网络异常，请检查网络连接。');
-			} else {
-				showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
-			}
-		})
+		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(playFileForm));
 	});
 
@@ -265,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	disableDropSend();
 
-	dropConnectForm.addEventListener('submit', e => {
+	dropConnectForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		if (dropConnectForm.dataset.enabled === 'true') {
@@ -279,9 +285,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(dropConnectForm);
+		const {showAlertDialog} = await import('./js/dialog.js');
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		disableForm(dropConnectForm);
 
 		api.get(`/drop/send/apply?code=${connectCode}`)
 		.then(async ({data}) => {
@@ -300,11 +306,8 @@ document.addEventListener('DOMContentLoaded', function () {
 			dropSendWsClient.open();
 		})
 		.catch(reason => {
-			if (reason.name === 'TypeError') {
-				showAlertDialog('连接失败', '网络异常，请检查网络连接。');
-			} else {
-				showAlertDialog('连接失败', `未知错误，请联系开发者。（${reason.message}）`);
-			}
+			showAlertDialog('连接失败', commonErrorReasonHandler(reason));
+
 			enableForm(dropConnectForm);
 		});
 	});
@@ -317,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			dropUploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	dropUploadTextForm.addEventListener('submit', e => {
+	dropUploadTextForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const text = dropUploadTextInput.value;
@@ -325,26 +328,20 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(dropUploadTextForm);
+		const {showAlertDialog} = await import('./js/dialog.js');
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		disableForm(dropUploadTextForm);
 
 		api.post("/upload/text?drop=" + dropConnectCode.value, text)
 		.then(() => dropUploadTextForm.reset())
-		.catch(reason => {
-			if (reason.name === 'TypeError') {
-				showAlertDialog('上传失败', '网络异常，请检查网络连接。');
-			} else {
-				showAlertDialog('上传失败', `未知错误，请联系开发者。（${reason.message}）`);
-			}
-		})
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(dropUploadTextForm));
 	});
 
 	const dropUploadFileInput = document.getElementById('dropUploadFileInput');
 	const dropUploadFileForm = document.getElementById('dropUploadFileForm');
 
-	dropUploadFileForm.addEventListener('submit', e => {
+	dropUploadFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const blobFiles = dropUploadFileInput.files;
@@ -352,9 +349,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		disableForm(dropUploadFileForm);
+		const {showAlertDialog} = await import('./js/dialog.js');
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		disableForm(dropUploadFileForm);
 
 		let checkpointTimeout = null;
 		api.post('/upload/files/apply?drop=' + dropConnectCode.value, {
@@ -430,13 +427,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
 			}
 		})
-		.catch(reason => {
-			if (reason.name === 'TypeError') {
-				showAlertDialog('上传失败', '网络异常，请检查网络连接。');
-			} else {
-				showAlertDialog('上传失败', `未知错误，请联系开发者。（${reason.message}）`);
-			}
-		})
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => {
 			dropUploadFileForm.reset();
 			enableForm(dropUploadFileForm);
@@ -472,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropRecvHelper.style.display = 'none';
 	}
 
-	dropRecvSwitchButton.addEventListener('click', () => {
+	dropRecvSwitchButton.addEventListener('click', async () => {
 		if (dropRecvSwitchButton.dataset.enabled === 'true') {
 			dropRecvWsClient.close();
 
@@ -482,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		dropRecvSwitchButton.disabled = true;
 
-		const {showAlertDialog} = import('./js/dialog.js');
+		const {showAlertDialog} = await import('./js/dialog.js');
 
 		api.get('/drop/recv/apply')
 		.then(async ({data}) => {
@@ -521,7 +512,6 @@ document.addEventListener('DOMContentLoaded', function () {
 					}
 				});
 				resizeObserver.observe(dropQrCodeTable);
-				console.log(dropQrCodeTable);
 
 				dropQrCode.appendChild(dropQrCodeTable);
 
@@ -573,15 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 								await downloadConfigs(configs);
 							})
-							.catch(reason => {
-								if (reason.name === 'TypeError') {
-									showAlertDialog('提取失败', '网络异常，请检查网络连接。');
-								} else if (reason.name === 'Error') {
-									showAlertDialog('提取失败', reason.message);
-								} else {
-									showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
-								}
-							})
+							.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
@@ -600,15 +582,7 @@ document.addEventListener('DOMContentLoaded', function () {
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
 								new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 							})
-							.catch(reason => {
-								if (reason.name === 'TypeError') {
-									showAlertDialog('提取失败', '网络异常，请检查网络连接。');
-								} else if (reason.name === 'Error') {
-									showAlertDialog('提取失败', reason.message);
-								} else {
-									showAlertDialog('提取失败', `未知错误，请联系开发者。（${reason.message}）`);
-								}
-							})
+							.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
@@ -629,13 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			enableRecv();
 		})
-		.catch(reason => {
-			if (reason.name === 'TypeError') {
-				showAlertDialog('初始化失败', '网络异常，请检查网络连接。');
-			} else {
-				showAlertDialog('初始化失败', `未知错误，请联系开发者。（${reason.message}）`);
-			}
-		})
+		.catch(reason => showAlertDialog('初始化失败', commonErrorReasonHandler(reason)))
 		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
 

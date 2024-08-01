@@ -4,6 +4,20 @@ import './js/page.js';
 import {uploadFiles} from "./js/transfer.js";
 import {api} from "./js/api.js";
 
+function commonErrorReasonHandler(reason) {
+	let message;
+
+	if (reason.code === -1 && reason.message === "TypeError: Failed to fetch") {
+		message = `网络异常，请检查网络连接。`;
+	} else if (reason instanceof Error || reason.code === -1) {
+		message = `未知错误，请联系开发者。（${reason.message}）`;
+	} else {
+		message = reason.message;
+	}
+
+	return message;
+}
+
 if ('serviceWorker' in navigator) {
 	navigator.serviceWorker.register('/service-worker.js', {type: 'module'})
 	.then(registration => {
@@ -46,7 +60,7 @@ if ('serviceWorker' in navigator) {
 
 			if (shareFiles.length !== 0) {
 				const dialog = new SelectUploadDialog(shareFiles, (files) => {
-					uploadFiles(files).catch(({message}) => showAlertDialog('上传失败', message));
+					uploadFiles(files).catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 				});
 				dialog.open();
 			} else {
@@ -61,7 +75,7 @@ if ('serviceWorker' in navigator) {
 				const dialog = new ConfirmUploadTextDialog(text, () => {
 					api.post("/upload/text", text)
 					.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
-					.catch(({message}) => showAlertDialog('上传失败', message));
+					.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 				});
 				dialog.open();
 			} else {
@@ -91,14 +105,14 @@ if (navigator.clipboard) {
 					const dialog = new ConfirmUploadTextDialog(text, () => {
 						api.post("/upload/text", text)
 						.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
-						.catch(({message}) => showAlertDialog('上传失败', message));
+						.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 					});
 					dialog.open();
 				} else if (clipboardItem.types.includes('image/png')) {
 					const blob = await clipboardItem.getType('image/png');
 					const file = new File([blob], 'image.png', {type: 'image/png'});
 					const dialog = new SelectUploadDialog([file], (files) => {
-						uploadFiles(files).catch(({message}) => showAlertDialog('上传失败', message));
+						uploadFiles(files).catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 					});
 					dialog.open();
 				}
