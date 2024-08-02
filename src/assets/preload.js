@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
 			.map(({value}) => value));
 
 			if (shareFiles.length !== 0) {
-				const dialog = new SelectUploadDialog(shareFiles, (files) => {
+				const dialog = new SelectUploadDialog(shareFiles, files => {
 					uploadFiles(files).catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 				});
 				dialog.open();
@@ -92,7 +92,7 @@ if (navigator.clipboard) {
 
 		const isInputElement = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
-		const {showAlertDialog, ConfirmUploadTextDialog, SelectUploadDialog} = await import("./js/dialog.js");
+		const {showAlertDialog, ConfirmUploadTextDialog, ConfirmUploadImageDialog} = await import("./js/dialog.js");
 
 		if (!isInputElement || activeElement.readOnly || activeElement.disabled) {
 			try {
@@ -110,9 +110,10 @@ if (navigator.clipboard) {
 					dialog.open();
 				} else if (clipboardItem.types.includes('image/png')) {
 					const blob = await clipboardItem.getType('image/png');
-					const file = new File([blob], 'image.png', {type: 'image/png'});
-					const dialog = new SelectUploadDialog([file], (files) => {
-						uploadFiles(files).catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
+					const blobUrl = URL.createObjectURL(blob);
+					const dialog = new ConfirmUploadImageDialog(blobUrl, () => {
+						uploadFiles([new File([blob], 'image.png', {type: 'image/png'})])
+						.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 					});
 					dialog.open();
 				}

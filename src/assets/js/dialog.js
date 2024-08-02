@@ -1,5 +1,7 @@
 import {defineKeyboardClickEvent} from "./element.js";
 import {copyText, parseBytes} from "./string.js";
+import PhotoSwipeLightbox from "photoswipe/lightbox";
+import 'photoswipe/style.css';
 
 /**
  * @abstract
@@ -702,10 +704,10 @@ export class ConfirmUploadTextDialog extends Dialog {
 	static defaultTitle = '上传文本';
 
 	static defaultStyles = `
-		.dialog-upload-text-pre {
+		.dialog-text-pre {
 			overflow: auto;
-			min-height: 150px;
-			max-height: 300px;
+			min-height: 100px;
+			max-height: 250px;
 			margin: 0;
 			padding: 10px;
 			text-align: left;
@@ -721,10 +723,10 @@ export class ConfirmUploadTextDialog extends Dialog {
 	`;
 
 	/**
-	 * 上传文本框
+	 * 文本框
 	 * @type {HTMLPreElement}
 	 */
-	#uploadTextPre = document.createElement('pre');
+	#textPre = document.createElement('pre');
 
 	/**
 	 * 按钮组
@@ -749,8 +751,8 @@ export class ConfirmUploadTextDialog extends Dialog {
 
 		this.#text = text;
 
-		this.#uploadTextPre.classList.add('dialog-upload-text-pre');
-		this.#uploadTextPre.textContent = text;
+		this.#textPre.classList.add('dialog-text-pre');
+		this.#textPre.textContent = text;
 
 		this.#buttonGroup.classList.add('dialog-button-group');
 		{
@@ -763,7 +765,105 @@ export class ConfirmUploadTextDialog extends Dialog {
 			this.#buttonGroup.appendChild(this.#confirmButton);
 		}
 
-		this.content = this.#uploadTextPre;
+		this.content = this.#textPre;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
+export class ConfirmUploadImageDialog extends Dialog {
+	static defaultTitle = '上传图片';
+
+	static defaultStyles = `
+		.dialog-image-container {
+		    display: block;
+            font-size: 0;
+            cursor: zoom-in;
+		}
+		.dialog-image {
+			width: 100%;
+			min-height: 100px;
+			max-height: 250px;
+			object-fit: cover;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 图片容器
+	 * @type {HTMLAnchorElement}
+	 */
+	#imageContainer = document.createElement('a');
+
+	/**
+	 * 预览图片
+	 * @type {HTMLImageElement}
+	 */
+	#image = document.createElement('img');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 图片地址
+	 * @type {string}
+	 */
+	#src = "";
+
+	constructor(src, callback) {
+		super();
+
+		this.#src = src;
+
+		this.#imageContainer.classList.add('dialog-image-container');
+		{
+			this.#image.src = src;
+			this.#image.classList.add('dialog-image');
+			this.#image.addEventListener('load', () => {
+				this.#imageContainer.setAttribute('data-pswp-width', this.#image.naturalWidth.toString());
+				this.#imageContainer.setAttribute('data-pswp-height', this.#image.naturalHeight.toString());
+
+				const lightbox = new PhotoSwipeLightbox({
+					gallery: this.#imageContainer,
+					pswpModule: () => import('photoswipe')
+				});
+				lightbox.init();
+			});
+			this.#imageContainer.appendChild(this.#image);
+		}
+		this.#imageContainer.setAttribute('data-cropped', 'true');
+		this.#imageContainer.setAttribute('data-pswp-src', src);
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				callback();
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#imageContainer;
 		this.footer = this.#buttonGroup;
 
 		this.closeOnClickOverlay = true;
