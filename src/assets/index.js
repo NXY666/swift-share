@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		api.post("/upload/text", text)
 		.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
-		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(uploadTextForm));
 	});
 
