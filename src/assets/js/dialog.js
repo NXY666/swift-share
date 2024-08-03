@@ -715,6 +715,9 @@ export class ConfirmUploadTextDialog extends Dialog {
 			background-color: var(--dialog-on-background-color);
 			border: 1px solid var(--dialog-border-color);
 		}
+		.dialog-text-pre.auto-wrap {
+			white-space: pre-wrap;
+		}
 		.dialog-button-group {
 			display: flex;
 			align-items: center;
@@ -735,6 +738,18 @@ export class ConfirmUploadTextDialog extends Dialog {
 	#buttonGroup = document.createElement('div');
 
 	/**
+	 * 自动换行标签
+	 * @type {HTMLLabelElement}
+	 */
+	#autoWrapLabel = document.createElement('label');
+
+	/**
+	 * 自动换行复选框
+	 * @type {HTMLInputElement}
+	 */
+	#autoWrapCheckbox = document.createElement('input');
+
+	/**
 	 * 确认按钮
 	 * @type {HTMLButtonElement}
 	 */
@@ -751,11 +766,28 @@ export class ConfirmUploadTextDialog extends Dialog {
 
 		this.#text = text;
 
-		this.#textPre.classList.add('dialog-text-pre');
+		this.#textPre.classList.add('dialog-text-pre', 'auto-wrap');
 		this.#textPre.textContent = text;
 
 		this.#buttonGroup.classList.add('dialog-button-group');
 		{
+			this.#autoWrapLabel.style.display = 'flex';
+			this.#autoWrapLabel.style.alignItems = 'center';
+			this.#autoWrapLabel.style.gap = '5px';
+			{
+				this.#autoWrapCheckbox.type = 'checkbox';
+				this.#autoWrapCheckbox.id = 'auto-wrap';
+				this.#autoWrapCheckbox.checked = true;
+				this.#autoWrapCheckbox.addEventListener('change', () => {
+					this.#textPre.classList.toggle('auto-wrap');
+				});
+				this.#autoWrapLabel.appendChild(this.#autoWrapCheckbox);
+
+				this.#autoWrapLabel.appendChild(document.createTextNode('自动换行'));
+			}
+			this.#autoWrapLabel.htmlFor = 'auto-wrap';
+			this.#buttonGroup.appendChild(this.#autoWrapLabel);
+
 			this.#confirmButton.textContent = '上传';
 			this.#confirmButton.style.marginLeft = 'auto';
 			this.#confirmButton.addEventListener('click', async () => {
