@@ -154,16 +154,22 @@ server {
 
 ### 配置
 
-#### 编辑
+#### 编辑配置
 
 ```shell
 swift-share --edit-config
 ```
 
-#### 重置
+#### 重置配置
 
 ```shell
 swift-share --reset-config
+```
+
+#### 清除数据
+
+```shell
+swift-share --clear
 ```
 
 ## ♾️ Biu~ 命令
