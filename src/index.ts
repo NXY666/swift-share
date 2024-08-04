@@ -19,7 +19,7 @@ import {Client} from "@/modules/WebSocket";
 // 路径检查和初始化
 if (fs.existsSync(FileAbsolutePath)) {
 	try {
-		fs.rmSync(FileAbsolutePath, {recursive: true});
+		fs.rmSync(FileAbsolutePath, {recursive: true, force: true});
 	} catch (e) {
 		console.error('Failed to remove directory:', FileAbsolutePath);
 	}
@@ -108,8 +108,9 @@ function openEditor(path: string) {
 }
 
 const options = new Command()
-	.option('--edit-config', 'Edit config file')
-	.option('--reset-config', 'Reset config file')
+	.option('-ec', '--edit-config', 'edit config file')
+	.option('-rc', '--reset-config', 'reset config file')
+	.option('-c', '--clear', 'clear all data')
 	.parse(process.argv)
 	.opts();
 if (options.resetConfig) {
@@ -119,6 +120,10 @@ if (options.resetConfig) {
 } else if (options.editConfig) {
 	console.info('Opening config file...');
 	openEditor(ConfigAbsolutePath);
+	process.exit(0);
+} else if (options.clear) {
+	fs.rmSync(FileAbsolutePath, {recursive: true, force: true});
+	console.info('All data has been cleared.');
 	process.exit(0);
 }
 
