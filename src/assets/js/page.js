@@ -134,6 +134,8 @@ class HTMLPageBarElement extends HTMLElement {
 			const itemPageId = item.getAttribute('for');
 
 			document.pages[itemPageId].style.display = 'block';
+
+			document.title = `快传 - ${item.textContent}`;
 		}
 	}
 }
