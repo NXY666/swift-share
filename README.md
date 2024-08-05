@@ -128,6 +128,9 @@ http {
 server {
     listen 80; # IPv4 端口
     listen [::]:80; # IPv6 端口
+
+    # 使用 HTTP/2 协议（可选）
+    # http2 on; 
     
     client_max_body_size 100M; # 提升上传文件大小限制
     
@@ -139,13 +142,13 @@ server {
     }
 
     location /swift/ {
-        proxy_pass http://localhost:3000/;
+        proxy_pass http://localhost:3000/; # 本地端口
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
 
         # WebSocket
-        proxy_http_version 1.1; # 设置为 2 亦可
+        proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "$connection_upgrade";
     }
