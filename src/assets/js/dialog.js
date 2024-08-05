@@ -1151,27 +1151,38 @@ export class SelectDownloadDialog extends Dialog {
 			const checkboxListItem = document.createElement('li');
 			const checkboxLabel = document.createElement('label');
 			const checkbox = document.createElement('input');
+			const fileContentSpan = document.createElement('span');
+			const fileSizeSpan = document.createElement('div');
 			if (downloadConfig.removed) {
 				checkboxLabel.classList.add('disabled');
 			}
 
-			checkbox.type = 'checkbox';
-			checkbox.value = index;
-			checkbox.disabled = downloadConfig.removed;
-			checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
-			checkbox.addEventListener('change', () => {
-				// 更新全选框状态
-				const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
-				this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
-				this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
-			});
+			{
+				{
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.disabled = downloadConfig.removed;
+					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+					});
+					checkboxLabel.appendChild(checkbox);
 
-			checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;
-			checkboxLabel.appendChild(checkbox);
-			checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
-
-			checkboxListItem.appendChild(checkboxLabel);
-
+					fileContentSpan.textContent = downloadConfig.name;
+					{
+						fileSizeSpan.textContent = parseBytes(downloadConfig.size);
+						fileSizeSpan.style.fontSize = '80%';
+						fileSizeSpan.style.color = 'var(--text-color-2)';
+						fileContentSpan.appendChild(fileSizeSpan);
+					}
+					checkboxLabel.appendChild(fileContentSpan);
+				}
+				checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;
+				checkboxListItem.appendChild(checkboxLabel);
+			}
 			this.#checkboxList.appendChild(checkboxListItem);
 		});
 

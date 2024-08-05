@@ -530,13 +530,14 @@ document.addEventListener('DOMContentLoaded', function () {
 			const {WebSocketClient} = await import('./js/websocket.js');
 			dropRecvWsClient = new WebSocketClient(completeWsUrl(wsRecvUrl));
 			dropRecvWsClient.onMessage = message => {
-				const clone = dropRecvDataTemplate.content.cloneNode(true);
+				const cloneFragment = dropRecvDataTemplate.content.cloneNode(true);
+				const element = cloneFragment.firstElementChild;
 
 				const {type, data} = JSON.parse(message);
 
-				const typeEl = clone.querySelector('.type');
-				const contentEl = clone.querySelector('.content');
-				const operateButton = clone.querySelector('.operate-button');
+				const typeEl = element.querySelector('.type');
+				const contentEl = element.querySelector('.content');
+				const operateButton = element.querySelector('.operate-button');
 
 				switch (type) {
 					case 'text': {
@@ -591,12 +592,13 @@ document.addEventListener('DOMContentLoaded', function () {
 					}
 				}
 
-				if (dropRecvDataList.classList.contains("empty")) {
-					dropRecvDataList.classList.remove("empty");
-					dropRecvDataList.appendChild(clone);
-				} else {
-					dropRecvDataList.insertBefore(clone, dropRecvDataList.firstChild);
+				if (dropRecvDataList.classList.contains('empty')) {
+					dropRecvDataList.classList.remove('empty');
 				}
+
+				dropRecvDataList.firstElementChild.insertAdjacentElement('afterend', element);
+
+				element.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 			};
 			dropRecvWsClient.onClose = () => {
 				disableRecv();
