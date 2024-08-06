@@ -215,6 +215,23 @@ app.use((req, _res, next) => {
 	next();
 });
 
+app.use("/opensearch.xml", (req, res) => {
+	const base = `${req.protocol}://${req.get('host')}`;
+	res.send(`
+		<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+			<ShortName>文件提取</ShortName>
+			<Description>从快传中快捷提取文件。</Description>
+			<InputEncoding>UTF-8</InputEncoding>
+			<Image width="24" height="24" type="image/png">${base}/png/app-24x24.png</Image>
+			<Image width="32" height="32" type="image/png">${base}/png/app-32x32.png</Image>
+			<Image width="48" height="48" type="image/png">${base}/png/app-48x48.png</Image>
+			<Image width="64" height="64" type="image/png">${base}/png/app-64x64.png</Image>
+			<Url type="text/html" template="${base}#FILE-{searchTerms}"/>
+			<Url type="application/opensearchdescription+xml" rel="self" template="${base}/opensearch.xml"/>
+		</OpenSearchDescription>
+	`);
+});
+
 // biu~
 app.post(Api.BIU, (req, res) => {
 	let matched = true, consoleText: string, scriptText: string;
