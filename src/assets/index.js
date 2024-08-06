@@ -473,9 +473,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		dropRecvSwitchButton.disabled = true;
-
 		const {showAlertDialog} = await import('./js/dialog.js');
+
+		dropRecvSwitchButton.disabled = true;
 
 		api.get('/drop/recv/apply')
 		.then(async ({data}) => {

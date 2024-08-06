@@ -1,3 +1,6 @@
+import "core-js/stable";
+import "regenerator-runtime/runtime";
+
 console.log('Service Worker！');
 
 const cacheName = 'pwa-cache-v1';
@@ -38,13 +41,13 @@ async function refreshCache() {
 
 // 安装 Service Worker 并缓存文件
 self.addEventListener('install', event => {
-	console.log('Service Worker 安装成功！');
+	console.log('Service Worker Installed!');
 	event.waitUntil(refreshCache());
 });
 
 // 激活 Service Worker 并清理过期缓存
 self.addEventListener('activate', event => {
-	console.log('Service Worker 激活成功！');
+	console.log('Service Worker Activated!');
 	const cacheWhitelist = [cacheName];
 	event.waitUntil(caches.keys().then(cacheNames => Promise.all(cacheNames.map(cache => {
 		if (cacheWhitelist.indexOf(cache) === -1) {
