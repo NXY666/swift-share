@@ -8,7 +8,14 @@ import fs from "fs";
 import {spawnSync, StdioOptions} from "child_process";
 import {Api, parseRange, Url} from "@/modules/Request";
 import mime from 'mime/lite';
-import {ConfigAbsolutePath, FileAbsolutePath, getConfig, resetConfig, ResourceAbsolutePath} from "@/modules/Config";
+import {
+	ConfigAbsolutePath,
+	DataDirPath,
+	FileAbsolutePath,
+	getConfig,
+	resetConfig,
+	ResourceAbsolutePath
+} from "@/modules/Config";
 import {Command} from "commander";
 import {CodeStore, DropCodeInfo, FileCodeInfo, ShareCodeInfo, TextCodeInfo} from "@/modules/Code";
 import {File, FileStatus, MultipartFile, SimpleFile} from "@/modules/File";
@@ -108,9 +115,9 @@ function openEditor(path: string) {
 }
 
 const options = new Command()
-	.option('-ec', '--edit-config', 'edit config file')
-	.option('-rc', '--reset-config', 'reset config file')
-	.option('-c', '--clear', 'clear all data')
+	.option('-ec, --edit-config', 'edit config file')
+	.option('-rc, --reset-config', 'reset config file')
+	.option('-c, --clear', 'clear all data')
 	.parse(process.argv)
 	.opts();
 if (options.resetConfig) {
@@ -122,7 +129,7 @@ if (options.resetConfig) {
 	openEditor(ConfigAbsolutePath);
 	process.exit(0);
 } else if (options.clear) {
-	fs.rmSync(FileAbsolutePath, {recursive: true, force: true});
+	fs.rmSync(DataDirPath, {recursive: true, force: true});
 	console.info('All data has been cleared.');
 	process.exit(0);
 }
