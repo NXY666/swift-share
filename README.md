@@ -25,7 +25,7 @@
 <details>
 <summary>📨 <b>实时投送。</b>手机扫码连接设备，即使是电视也能稳定接收。</summary>
 <p align="center">
-  <img alt="网页截图（投送）" src="https://github.com/NXY666/swift-share/assets/62371554/a4f319c2-6f37-453b-86f8-0b2adcf611d6" width="400"/>
+  <img alt="网页截图（投送）" src="https://github.com/user-attachments/assets/0b1b34fa-c2a1-476e-a606-178ba5a13819" width="400"/>
 </p>
 </details>
 
@@ -39,7 +39,7 @@
 
 ### 🛜 快捷传输
 
-#### 方法1：剪贴板上传
+#### 方法1：粘贴上传
 
 > 使用粘贴快捷键一键上传剪贴板中的文本或图片。
 
@@ -53,6 +53,12 @@
 * 安卓设备请使用 Chrome 浏览器，并确保 Google Play 商店在安装 PWA 应用时可用且网络环境支持访问谷歌服务。
 * 华为（鸿蒙）设备安装**原生** GMS 后亦可使用，HarmonyOS NEXT 无法使用。
 * Windows 设备建议使用 Edge 浏览器。
+
+### 方法3：搜索提取
+
+> 在搜索框中输入提取码，即可快速查找并下载文件。
+
+* 在浏览器设置的“搜索引擎”中找到“文件提取”条目，启用后可直接在地址栏中快速提取文件。
 
 ### ▶️ 在线播放
 
