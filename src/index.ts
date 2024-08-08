@@ -222,17 +222,21 @@ app.use((req, _res, next) => {
 		basePath: null
 	};
 
-	// http / https
-	urlInfo.protocol = (req.get('X-Forwarded-Proto') || req.protocol);
-
 	if (req.get("origin")) {
 		const {protocol, host} = new URL(req.get("origin"));
-		urlInfo.protocol = protocol.replace(/:$/, "");
+		// https: / http:
+		urlInfo.protocol = protocol;
+		// host:port
 		urlInfo.host = host;
 	} else {
+		// http / https
+		urlInfo.protocol = (req.get('X-Forwarded-Proto') || req.protocol);
 		// host:port
 		urlInfo.host = req.get('host');
 	}
+
+	// 格式化 protocol
+	urlInfo.protocol = urlInfo.protocol.replace(/:$/, "");
 
 	// 路径
 	urlInfo.path = req.originalUrl;

@@ -130,8 +130,8 @@ http {
 在 `sites-available` 目录下的配置文件中添加以下配置，将快传部署到 `/swift` 子路径。
 
 * 必须包含 `host` 标头。格式为 `example.com:3000` 。
-* 当使用 https 时，必须包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` ，不能包含冒号。
-* 当部署在子路径时，必须包含 `X-Forwarded-Path` 标头。
+* 当使用 https 时，必须包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` 。
+* 当部署在子路径时，必须包含 `X-Forwarded-Path` 标头，格式为 `/example` 。
 * 当部署在根目录时，`X-Forwarded-Path` 标头必须移除或置空。
 
 ```nginx
