@@ -88,12 +88,16 @@ export default defineConfig([{
 	].filter(Boolean),
 	external: [
 		// nodejs内建模块
-		'url', 'path', 'child_process', 'http', 'crypto', 'events', 'stream', 'fs',
+		'url', 'path', 'child_process', 'http', 'crypto', 'events', 'stream', 'fs', 'readline',
 		// 第三方模块
 		'express', 'body-parser', 'multer', 'range-parser', 'mime/lite', 'commander', 'chokidar', 'tinyqueue', 'ws'
 	] // 外部依赖，不会被打包
 }, {
-	input: ['src/assets/index.js', 'src/assets/custom.js'],
+	input: [
+		'src/assets/index.js',
+		'src/assets/preload.js',
+		'src/assets/service-worker.js'
+	],
 	watch: {
 		include: ['src/assets/**']
 	},
@@ -105,8 +109,9 @@ export default defineConfig([{
 	plugins: [
 		!isProd && watchAssets({
 			assets: [
-				'src/assets/index.html',
-				'src/assets/favicon.ico'
+				'src/assets/favicon.ico',
+				'src/assets/tmpl',
+				'src/assets/png'
 			]
 		}),
 		resolve(),
@@ -124,8 +129,9 @@ export default defineConfig([{
 		isProd && terser(),
 		copy({
 			targets: [
-				{src: 'src/assets/index.html', dest: 'dist/assets'},
 				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
+				{src: 'src/assets/tmpl', dest: 'dist/assets'},
+				{src: 'src/assets/png', dest: 'dist/assets'},
 				{src: 'README.md', dest: 'dist'}
 			]
 		})

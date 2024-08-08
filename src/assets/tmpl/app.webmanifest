@@ -1,0 +1,57 @@
+{
+    "lang": "zh-CN",
+    "name": "快传",
+	"short_name": "快传",
+	"description": "轻量级文本、文件传输工具。简单、快捷、一目了然。",
+	"scope": "${basePath}/",
+	"icons": [
+		{
+			"src": "${basePath}/png/app-24x24.png",
+			"sizes": "24x24",
+			"type": "image/png"
+        },
+        {
+            "src": "${basePath}/png/app-32x32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "${basePath}/png/app-48x48.png",
+            "sizes": "48x48",
+            "type": "image/png"
+        },
+        {
+            "src": "${basePath}/png/app-64x64.png",
+            "sizes": "64x64",
+            "type": "image/png"
+        },
+        {
+            "src": "${basePath}/png/app-256x256.png",
+            "sizes": "256x256",
+            "type": "image/png"
+        },
+        {
+            "src": "${basePath}/png/app-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+	],
+	"start_url": "${basePath}/",
+	"display": "standalone",
+	"share_target": {
+		"action": "${basePath}/system-share",
+		"method": "POST",
+		"enctype": "multipart/form-data",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url",
+			"files": [
+				{
+					"name": "file",
+					"accept": ["*/*"]
+				}
+			]
+		}
+	}
+}

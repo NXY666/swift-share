@@ -1,3 +1,5 @@
+import {completeUrl} from "./url.js";
+
 export class api {
 	static #requestQueue = [];
 

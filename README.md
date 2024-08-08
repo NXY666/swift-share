@@ -9,6 +9,7 @@
 
 ## 🔥 功能
 
+<!--suppress HtmlDeprecatedAttribute -->
 <details>
 <summary>💬 <b>文本直传。</b>零散文本无需保存为文件，支持直接传递文本信息。</summary>
 <p align="center">
@@ -24,7 +25,7 @@
 <details>
 <summary>📨 <b>实时投送。</b>手机扫码连接设备，即使是电视也能稳定接收。</summary>
 <p align="center">
-  <img alt="网页截图（投送）" src="https://github.com/NXY666/swift-share/assets/62371554/a4f319c2-6f37-453b-86f8-0b2adcf611d6" width="400"/>
+  <img alt="网页截图（投送）" src="https://github.com/user-attachments/assets/0b1b34fa-c2a1-476e-a606-178ba5a13819" width="400"/>
 </p>
 </details>
 
@@ -32,12 +33,38 @@
 
 ### 🔀 边传边下
 
-> 上传未完成也能立即下载，传了多少就能下载多少。
+> 开始上传即可立即下载，传了多少就能下载多少。
+
+* 可根据实际网络情况，在配置中自定义文件分片大小，优化传输体验。
+
+### 🛜 快捷传输
+
+#### 方法1：粘贴上传
+
+> 使用粘贴快捷键一键上传剪贴板中的文本或图片。
+
+* 受安全策略限制，非文本和图片类型的剪贴板内容无法上传。
+
+#### 方法2：系统分享
+
+> 将快传安装为 PWA 应用，通过系统分享上传文本和文件。
+
+* 目前该方法支持安卓和 Windows 系统。
+* 安卓设备请使用 Chrome 浏览器，并确保 Google Play 商店在安装 PWA 应用时可用且网络环境支持访问谷歌服务。
+* 华为（鸿蒙）设备安装**原生** GMS 后亦可使用，HarmonyOS NEXT 无法使用。
+* Windows 设备建议使用 Edge 浏览器。
+
+### 方法3：搜索提取
+
+> 在搜索框中输入提取码，即可快速查找并下载文件。
+
+* 在浏览器设置的“搜索引擎”中找到“文件提取”条目，启用后可直接在地址栏中快速提取文件。
 
 ### ▶️ 在线播放
 
 > 支持使用提取码直接在线播放媒体文件，无需下载。
 
+* 支持读取视频文件中的软字幕。**注意，这会消耗您更多的流量。**
 * 该功能支持边下边播。文件未上传完成前，媒体文件需支持流媒体才能正常播放。
 * 非边下边播状态下，非流媒体文件也能正常播放。
 
@@ -83,9 +110,13 @@ npm uninstall -g swift-share
 
 ### 反向代理
 
-> 可使用 `Nginx` 等反向代理工具将快传部署到子目录。
+> 可使用 `Nginx` 等反向代理 Web 服务器将快传部署到子目录。
 
-> 以下是一个简单的 `Nginx` 配置示例。
+> 请根据下面的配置示例进行配置，错误的配置可能导致快传部分功能失效。
+
+#### Nginx
+
+在 `nginx.conf` 的 http 块中追加以下配置，使得 HTTP 协议可被升级为 WebSocket 协议。
 
 ```nginx
 # /etc/nginx/nginx.conf
@@ -96,10 +127,18 @@ http {
     # WebSocket
     map $http_upgrade $connection_upgrade {
         default upgrade;
-        '' close;
+        # 非 WebSocket 关闭连接（可选）
+        # '' close;
     }
 }
 ```
+
+在 `sites-available` 目录下的配置文件中添加以下配置，将快传部署到 `/swift` 子路径。
+
+* 必须包含 `host` 标头。格式为 `example.com:3000` 。
+* 当使用 https 时，必须包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` 。
+* 当部署在子路径时，必须包含 `X-Forwarded-Path` 标头，格式为 `/example` 。
+* 当部署在根目录时，`X-Forwarded-Path` 标头必须移除或置空。
 
 ```nginx
 # /etc/nginx/sites-available/default
@@ -107,21 +146,26 @@ http {
 server {
     listen 80; # IPv4 端口
     listen [::]:80; # IPv6 端口
+
+    # 使用 HTTP/2 协议（可选）
+    # http2 on; 
     
     client_max_body_size 100M; # 提升上传文件大小限制
     
     location /swift {
         proxy_pass http://localhost:3000/; # 本地端口
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Path /swift; # 子目录
     }
 
     location /swift/ {
-        proxy_pass http://localhost:3000/;
-        proxy_set_header Host $host;
+        proxy_pass http://localhost:3000/; # 本地端口
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Path /swift; # 子目录
 
         # WebSocket
         proxy_http_version 1.1;
@@ -133,16 +177,22 @@ server {
 
 ### 配置
 
-#### 编辑
+#### 编辑配置
 
 ```shell
 swift-share --edit-config
 ```
 
-#### 重置
+#### 重置配置
 
 ```shell
 swift-share --reset-config
+```
+
+#### 清除数据
+
+```shell
+swift-share --clear
 ```
 
 ## ♾️ Biu~ 命令
