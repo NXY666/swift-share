@@ -242,8 +242,6 @@ app.use((req, _res, next) => {
 	urlInfo.path = req.originalUrl;
 	urlInfo.basePath = req.get('X-Forwarded-Path')?.replace(/\/$/, "") || "";
 
-	console.log(2, urlInfo);
-
 	// 验证URL
 	req.signed = Url.check(new URL(urlInfo.path, `${urlInfo.protocol}://${urlInfo.host}${urlInfo.path}`));
 
