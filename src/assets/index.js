@@ -4,6 +4,7 @@ import './index.css';
 import {api} from "./js/api.js";
 import {copyText, parseExtractCode} from "./js/string.js";
 import {downloadConfigs, uploadFiles} from "./js/transfer.js";
+import {completeUrl, completeWsUrl} from "./js/url.js";
 
 function disableForm(form) {
 	const formId = form.id;

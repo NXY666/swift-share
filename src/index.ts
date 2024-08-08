@@ -161,7 +161,7 @@ const storage = multer.diskStorage({
 		req.once('aborted', () => {
 			const fullFilePath = path.join(FileAbsolutePath, fileName);
 			file.stream.on('end', () => {
-				fs.unlink(fullFilePath, (err) => {
+				fs.unlink(fullFilePath, err => {
 					if (err) {
 						console.error('Failed to delete aborted file:', fullFilePath, 'Error:', err.message);
 					} else {
@@ -185,51 +185,106 @@ app.use(bodyParser.json({limit: Infinity}));
 // 设置静态资源目录
 app.use(express.static(ResourceAbsolutePath));
 
-// 为Request添加signed属性
+// 为 Request 添加额外属性
 declare global {
 	namespace Express {
 		// noinspection JSUnusedGlobalSymbols
 		interface Request {
-			signed?: boolean;
+			signed: boolean;
+			urlInfo: {
+				protocol: string | null;
+				host: string | null;
+				path: string | null;
+				basePath: string | null;
+			};
 		}
 	}
 }
 
+function renderTemplate(template: string, data: { [x: string]: any; }) {
+	// 使用正则表达式匹配占位符，并替换为相应的变量值
+	return template.replace(/\$\{(\w+)}/g, (match, key) => {
+		// 如果 data 对象中存在对应的键，则返回其值，否则返回空字符串
+		if (data[key] !== undefined) {
+			return data[key];
+		} else {
+			console.warn(`No value found for key: ${key}`);
+			return '';
+		}
+	});
+}
+
 app.use((req, _res, next) => {
-	// 获取协议
-	const protocol = req.protocol;
+	const urlInfo = {
+		protocol: null,
+		host: null,
+		path: null,
+		basePath: null
+	};
 
-	// 获取主机名
-	const host = req.get('host');
+	// http / https
+	urlInfo.protocol = (req.get('X-Forwarded-Proto') || req.protocol);
 
-	// 获取路径和查询参数
-	const originalUrl = req.originalUrl;
+	if (req.get("origin")) {
+		const {protocol, host} = new URL(req.get("origin"));
+		urlInfo.protocol = protocol.replace(/:$/, "");
+		urlInfo.host = host;
+	} else {
+		// host:port
+		urlInfo.host = req.get('host');
+	}
 
-	// 构建完整的URL
-	const fullUrl = `${protocol}://${host}${originalUrl}`;
+	// 路径
+	urlInfo.path = req.originalUrl;
+	urlInfo.basePath = req.get('X-Forwarded-Path')?.replace(/\/$/, "") || "";
+
+	console.log(2, urlInfo);
 
 	// 验证URL
-	req.signed = Url.check(fullUrl);
+	req.signed = Url.check(new URL(urlInfo.path, `${urlInfo.protocol}://${urlInfo.host}${urlInfo.path}`));
+
+	req.urlInfo = urlInfo;
 
 	// 调用下一个中间件或路由处理器
 	next();
 });
 
-app.use("/opensearch.xml", (req, res) => {
-	const base = `${req.protocol}://${req.get('host')}`;
-	res.send(`
-		<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
-			<ShortName>文件提取</ShortName>
-			<Description>从快传中快捷提取文件。</Description>
-			<InputEncoding>UTF-8</InputEncoding>
-			<Image width="24" height="24" type="image/png">${base}/png/app-24x24.png</Image>
-			<Image width="32" height="32" type="image/png">${base}/png/app-32x32.png</Image>
-			<Image width="48" height="48" type="image/png">${base}/png/app-48x48.png</Image>
-			<Image width="64" height="64" type="image/png">${base}/png/app-64x64.png</Image>
-			<Url type="text/html" template="${base}#FILE-{searchTerms}"/>
-			<Url type="application/opensearchdescription+xml" rel="self" template="${base}/opensearch.xml"/>
-		</OpenSearchDescription>
-	`);
+[
+	{
+		file: "/osd.xml",
+		type: "application/opensearchdescription+xml",
+		handler: (req: any, _res: any) => ({
+			absoluteBasePath: `${req.urlInfo.protocol}://${req.urlInfo.host}${req.urlInfo.basePath}`,
+		})
+	},
+	{
+		file: "/app.webmanifest",
+		type: "application/manifest+json",
+		handler: (req: any, _res: any) => ({
+			basePath: req.urlInfo.basePath
+		})
+	},
+	{
+		file: "/",
+		type: "text/html",
+		handler: (req: any, _res: any) => ({
+			basePath: req.urlInfo.basePath
+		})
+	}
+].forEach(({file, type, handler}) => {
+	app.get(file, async (req, res) => {
+		if (file === "/") {
+			file = "index.html";
+		}
+
+		const source = await fs.promises.readFile(path.join(ResourceAbsolutePath, "tmpl", file), 'utf8');
+
+		if (type) {
+			res.type(type);
+		}
+
+		res.send(renderTemplate(source, handler(req, res)));
+	});
 });
 
 // biu~
@@ -638,6 +693,6 @@ process.on("SIGINT", () => {
 	process.exit(0);
 });
 
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
 	console.error(err.stack);
 });

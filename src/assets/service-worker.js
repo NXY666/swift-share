@@ -28,7 +28,7 @@ function popCache(id) {
 	return cacheContent;
 }
 
-async function refreshCache() {
+async function refreshCache(baseURL) {
 	const cacheNames = await caches.keys();
 	for (const cacheName of cacheNames) {
 		await caches.delete(cacheName);
@@ -36,13 +36,14 @@ async function refreshCache() {
 
 	// 更新缓存
 	const cache = await caches.open(cacheName);
-	await cache.addAll(cacheFileList);
+	await cache.addAll(cacheFileList.map(url => baseURL + url));
 }
 
 // 安装 Service Worker 并缓存文件
 self.addEventListener('install', event => {
 	console.log('Service Worker Installed!');
-	event.waitUntil(refreshCache());
+	const baseURL = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+	event.waitUntil(refreshCache(baseURL));
 });
 
 // 激活 Service Worker 并清理过期缓存

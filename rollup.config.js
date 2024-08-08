@@ -109,9 +109,8 @@ export default defineConfig([{
 	plugins: [
 		!isProd && watchAssets({
 			assets: [
-				'src/assets/index.html',
 				'src/assets/favicon.ico',
-				'src/assets/app.webmanifest',
+				'src/assets/tmpl',
 				'src/assets/png'
 			]
 		}),
@@ -130,9 +129,8 @@ export default defineConfig([{
 		isProd && terser(),
 		copy({
 			targets: [
-				{src: 'src/assets/index.html', dest: 'dist/assets'},
 				{src: 'src/assets/favicon.ico', dest: 'dist/assets'},
-				{src: 'src/assets/app.webmanifest', dest: 'dist/assets'},
+				{src: 'src/assets/tmpl', dest: 'dist/assets'},
 				{src: 'src/assets/png', dest: 'dist/assets'},
 				{src: 'README.md', dest: 'dist'}
 			]

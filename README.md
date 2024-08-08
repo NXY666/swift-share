@@ -104,9 +104,13 @@ npm uninstall -g swift-share
 
 ### 反向代理
 
-> 可使用 `Nginx` 等反向代理工具将快传部署到子目录。
+> 可使用 `Nginx` 等反向代理 Web 服务器将快传部署到子目录。
 
-> 以下是一个简单的 `Nginx` 配置示例。
+> 请根据下面的配置示例进行配置，错误的配置可能导致快传部分功能失效。
+
+#### Nginx
+
+在 `nginx.conf` 的 http 块中追加以下配置，使得 HTTP 协议可被升级为 WebSocket 协议。
 
 ```nginx
 # /etc/nginx/nginx.conf
@@ -117,10 +121,18 @@ http {
     # WebSocket
     map $http_upgrade $connection_upgrade {
         default upgrade;
-        '' close;
+        # 非 WebSocket 关闭连接（可选）
+        # '' close;
     }
 }
 ```
+
+在 `sites-available` 目录下的配置文件中添加以下配置，将快传部署到 `/swift` 子路径。
+
+* 必须包含 `host` 标头。格式为 `example.com:3000` 。
+* 当使用 https 时，必须包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` ，不能包含冒号。
+* 当部署在子路径时，必须包含 `X-Forwarded-Path` 标头。
+* 当部署在根目录时，`X-Forwarded-Path` 标头必须移除或置空。
 
 ```nginx
 # /etc/nginx/sites-available/default
@@ -136,16 +148,18 @@ server {
     
     location /swift {
         proxy_pass http://localhost:3000/; # 本地端口
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Path /swift; # 子目录
     }
 
     location /swift/ {
         proxy_pass http://localhost:3000/; # 本地端口
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Path /swift; # 子目录
 
         # WebSocket
         proxy_http_version 1.1;

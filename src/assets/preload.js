@@ -3,6 +3,7 @@ import "regenerator-runtime/runtime";
 import './js/page.js';
 import {uploadFiles} from "./js/transfer.js";
 import {api} from "./js/api.js";
+import {completeUrl} from "./js/url.js";
 
 function commonErrorReasonHandler(reason) {
 	let message;
@@ -19,7 +20,7 @@ function commonErrorReasonHandler(reason) {
 }
 
 if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('/service-worker.js', {type: 'module'})
+	navigator.serviceWorker.register(completeUrl('/service-worker.js'), {type: 'module'})
 	.then(registration => {
 		console.log('Service Worker registered with scope:', registration.scope);
 	})

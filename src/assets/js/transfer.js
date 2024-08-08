@@ -1,4 +1,5 @@
 import {api} from "./api.js";
+import {completeUrl} from "./url.js";
 
 export async function downloadConfigs(configs) {
 	const {DownloadDialog} = await import("./dialog.js");

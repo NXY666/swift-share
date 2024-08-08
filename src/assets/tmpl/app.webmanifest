@@ -3,43 +3,43 @@
     "name": "快传",
 	"short_name": "快传",
 	"description": "轻量级文本、文件传输工具。简单、快捷、一目了然。",
-	"scope": "/",
+	"scope": "${basePath}/",
 	"icons": [
 		{
-			"src": "/png/app-24x24.png",
+			"src": "${basePath}/png/app-24x24.png",
 			"sizes": "24x24",
 			"type": "image/png"
         },
         {
-            "src": "/png/app-32x32.png",
+            "src": "${basePath}/png/app-32x32.png",
             "sizes": "32x32",
             "type": "image/png"
         },
         {
-            "src": "/png/app-48x48.png",
+            "src": "${basePath}/png/app-48x48.png",
             "sizes": "48x48",
             "type": "image/png"
         },
         {
-            "src": "/png/app-64x64.png",
+            "src": "${basePath}/png/app-64x64.png",
             "sizes": "64x64",
             "type": "image/png"
         },
         {
-            "src": "/png/app-256x256.png",
+            "src": "${basePath}/png/app-256x256.png",
             "sizes": "256x256",
             "type": "image/png"
         },
         {
-            "src": "/png/app-512x512.png",
+            "src": "${basePath}/png/app-512x512.png",
             "sizes": "512x512",
             "type": "image/png"
         }
 	],
-	"start_url": ".",
+	"start_url": "${basePath}/",
 	"display": "standalone",
 	"share_target": {
-		"action": "/system-share",
+		"action": "${basePath}/system-share",
 		"method": "POST",
 		"enctype": "multipart/form-data",
 		"params": {

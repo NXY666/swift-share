@@ -1,4 +1,5 @@
 ﻿<!DOCTYPE html>
+<!--suppress HtmlUnknownTarget -->
 <html lang="zh-Hans">
 <head>
 	<title>快传</title>
@@ -6,12 +7,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=0.9, user-scalable=no">
 	<meta name="description" content="轻量级文本、文件传输工具。简单、快捷、一目了然。">
 	<meta name="keywords" content="快传, 传输, 简洁, 快捷, 文本, 文件, 媒体, 提取, 下载, 播放, 投送, 分享">
-	<!--suppress HtmlUnknownTarget -->
-	<link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="文件提取">
+	<!-- 动态 Base -->
+	<script>window.basePath = "${basePath}";</script>
+	<link rel="search" href="${basePath}/osd.xml" type="application/opensearchdescription+xml" title="文件提取">
 	<!-- 图标 -->
-	<link rel="icon" type="image/x-icon" href="./favicon.ico">
+	<link rel="icon" type="image/x-icon" href="${basePath}/favicon.ico">
 	<!-- 样式 -->
-	<link rel="stylesheet" type="text/css" href="./index.css">
+	<link rel="stylesheet" type="text/css" href="${basePath}/index.css">
 	<!-- 自定义元素 -->
 	<style>
 		*:not(:defined) {
@@ -19,62 +21,12 @@
 		}
 	</style>
 	<!-- WPA -->
-	<link rel="manifest" href="./app.webmanifest"/>
+	<link rel="manifest" href="${basePath}/app.webmanifest"/>
 	<!-- 外部库 -->
 	<script defer src="https://fastly.jsdelivr.net/npm/qrcode-generator@1.4.4"></script>
-	<!-- 动态 Base -->
-	<script>
-		const base = window.location.pathname.replace(/\/$/, '');
-
-		function completeUrl(url) {
-			return new URL(base + url.replace(/^([^/])/, "/$1"), location).href;
-		}
-
-		function completeWsUrl(url) {
-			return completeUrl(url).replace(/^http/, 'ws');
-		}
-
-		// base不在根目录上
-		if (base) {
-			const observer = new MutationObserver(mutationsList => {
-				for (let mutation of mutationsList) {
-					if (mutation.type === 'childList') {
-						mutation.addedNodes.forEach(node => {
-							switch (node.tagName) {
-								case 'SCRIPT': {
-									if (node.src) {
-										const url = new URL(node.src);
-										if (url.origin === location.origin && !url.pathname.startsWith(base)) {
-											url.pathname = base + url.pathname;
-										}
-										node.src = url.href;
-									}
-									break;
-								}
-								case 'LINK': {
-									if (node.href) {
-										const url = new URL(node.href);
-										if (url.origin === location.origin && !url.pathname.startsWith(base)) {
-											url.pathname = base + url.pathname;
-										}
-										node.href = url.href;
-									}
-									break;
-								}
-							}
-						});
-					}
-				}
-			});
-
-			const config = {childList: true, subtree: true};
-
-			observer.observe(document, config);
-		}
-	</script>
 	<!-- 脚本 -->
-	<script type="module" src="./preload.js"></script>
-	<script type="module" src="./index.js"></script>
+	<script type="module" src="${basePath}/preload.js"></script>
+	<script type="module" src="${basePath}/index.js"></script>
 </head>
 <body>
 	<h1 class="width-full title">
