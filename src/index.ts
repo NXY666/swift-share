@@ -203,7 +203,7 @@ declare global {
 
 function renderTemplate(template: string, data: { [x: string]: any; }) {
 	// 使用正则表达式匹配占位符，并替换为相应的变量值
-	return template.replace(/\$\{(\w+)}/g, (match, key) => {
+	return template.replace(/\$\{(\w+)}/g, (_match, key) => {
 		// 如果 data 对象中存在对应的键，则返回其值，否则返回空字符串
 		if (data[key] !== undefined) {
 			return data[key];
