@@ -28,6 +28,15 @@
   <img alt="网页截图（投送）" src="https://github.com/user-attachments/assets/0b1b34fa-c2a1-476e-a606-178ba5a13819" width="400"/>
 </p>
 </details>
+<details>
+<summary>🗃️ <b>PWA 应用。</b>贴近系统，文件互传还能更方便。</summary>
+<p align="center">
+  <img alt="PWA应用截图（系统分享）" src="https://github.com/user-attachments/assets/58c8b5ee-e1ab-452a-88fd-74401228269f" width="400"/>
+</p>
+<h4>附加功能：系统分享</h4>
+<p>通过系统分享直接将文本或文件上传到快传，无需打开网页。</p>
+<p>支持搭载 Android 和 Windows 系统的设备。</p>
+</details>
 
 ## ✨ 亮点
 
@@ -49,16 +58,29 @@
 
 > 将快传安装为 PWA 应用，通过系统分享上传文本和文件。
 
-* 目前该方法支持安卓和 Windows 系统。
+* 目前该方法支持搭载 Android 和 Windows 系统的设备。
 * 安卓设备请使用 Chrome 浏览器，并确保 Google Play 商店在安装 PWA 应用时可用且网络环境支持访问谷歌服务。
-* 华为（鸿蒙）设备安装**原生** GMS 后亦可使用，HarmonyOS NEXT 无法使用。
-* Windows 设备建议使用 Edge 浏览器。
+* 华为（鸿蒙，NEXT除外）设备安装**原生** GMS 后亦可使用。
+* Windows 设备建议使用 Edge 浏览器，Chrome 可能[尚未实现](https://issues.chromium.org/issues/40140070)该功能。
+* 如果网站未使用 HTTPS 协议或设备未达到安装要求，则只会创建快捷方式，不支持系统分享。
 
-### 方法3：搜索提取
+#### 方法3：搜索栏提取
 
-> 在搜索框中输入提取码，即可快速查找并下载文件。
+> 在浏览器的搜索栏中输入提取码，即可快速查找并下载文件。
 
-* 在浏览器设置的“搜索引擎”中找到“文件提取”条目，启用后可直接在地址栏中快速提取文件。
+<details>
+<summary>教程</summary>
+<p>不同浏览器的设置方法略有不同，以 Chrome 浏览器为例：</p>
+<ol>
+  <li>打开浏览器设置（<code>chrome://settings/searchEngines</code>），找到“搜索引擎”。</li>
+  <p align="center"><img alt="搜索栏提取第1步截图" src="https://github.com/user-attachments/assets/d5fb509d-64aa-46d5-bb6b-f88a237ab51b" width="400"/></p>
+  <li>在“未使用的快捷字词”中，找到“文件提取”条目，点击“启用”按钮。</li>
+  <p align="center"><img alt="搜索栏提取第2步截图" src="https://github.com/user-attachments/assets/d80d1135-4d9a-4cee-a645-1783fd0ef87b" width="400"/></p>
+  <li>在“网站搜索”中，找到刚刚启用的“文件提取”条目，设置一个合适的快捷字词。</li>
+  <li>在浏览器地址栏中输入快捷字词，点击空格键或 Tab 键，然后根据提示输入提取码，按回车键即可提取文件。</li>
+  <p align="center"><img alt="搜索栏提取第4步截图" src="https://github.com/user-attachments/assets/10a7aa4b-e7e3-42be-8388-408aa5bc2e2c" width="400"/></p>
+</ol>
+</details>
 
 ### ▶️ 在线播放
 
@@ -127,18 +149,17 @@ http {
     # WebSocket
     map $http_upgrade $connection_upgrade {
         default upgrade;
-        # 非 WebSocket 关闭连接（可选）
-        # '' close;
+        '' close;
     }
 }
 ```
 
 在 `sites-available` 目录下的配置文件中添加以下配置，将快传部署到 `/swift` 子路径。
 
-* 必须包含 `host` 标头。格式为 `example.com:3000` 。
-* 当使用 https 时，必须包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` 。
-* 当部署在子路径时，必须包含 `X-Forwarded-Path` 标头，格式为 `/example` 。
-* 当部署在根目录时，`X-Forwarded-Path` 标头必须移除或置空。
+* **必须**包含 `host` 标头。格式为 `example.com:3000` 。
+* 当使用 HTTPS 协议时，**必须**包含 `X-Forwarded-Proto` 标头。格式为 `http` 或 `https` 。
+* 当部署在子路径时，**必须**包含 `X-Forwarded-Path` 标头，格式为 `/example` 。
+* 当部署在根目录时，`X-Forwarded-Path` 标头**必须**移除或置空。
 
 ```nginx
 # /etc/nginx/sites-available/default
