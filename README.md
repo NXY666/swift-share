@@ -180,19 +180,21 @@ server {
 #### 编辑配置
 
 ```shell
-swift-share --edit-config
+swift-share config edit
 ```
 
 #### 重置配置
 
 ```shell
-swift-share --reset-config
+swift-share config reset
 ```
 
-#### 清除数据
+#### 清除所有数据
+
+> 在数据目录外的共享目录不会被清除。
 
 ```shell
-swift-share --clear
+swift-share clear
 ```
 
 ## ♾️ Biu~ 命令
