@@ -3,6 +3,8 @@ import "regenerator-runtime/runtime";
 import './index.css';
 import {api} from "./js/api.js";
 import {copyText, parseExtractCode} from "./js/string.js";
+import {downloadConfigs, uploadFiles} from "./js/transfer.js";
+import {completeUrl, completeWsUrl} from "./js/url.js";
 
 function disableForm(form) {
 	const formId = form.id;
@@ -22,6 +24,20 @@ function enableForm(form) {
 			delete element.dataset.disabledBy;
 		}
 	});
+}
+
+function commonErrorReasonHandler(reason) {
+	let message;
+
+	if (reason.code === -1 && reason.message === "TypeError: Failed to fetch") {
+		message = `网络异常，请检查网络连接。`;
+	} else if (reason instanceof Error || reason.code === -1) {
+		message = `未知错误，请联系开发者。（${reason.message}）`;
+	} else {
+		message = reason.message;
+	}
+
+	return message;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -59,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			uploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	uploadTextForm.addEventListener('submit', e => {
+	uploadTextForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const text = uploadTextInput.value;
@@ -67,11 +83,13 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
+		const {showAlertDialog} = await import('./js/dialog.js');
+
 		disableForm(uploadTextForm);
 
 		api.post("/upload/text", text)
-		.then(({data}) => alert(`文本上传成功。请凭【${data.code.toUpperCase()}】提取文本。`))
-		.catch(({message}) => alert(message))
+		.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(uploadTextForm));
 	});
 
@@ -94,12 +112,12 @@ document.addEventListener('DOMContentLoaded', function () {
 		.then(({data}) => {
 			extractedText.style.backgroundColor = 'var(--background-color-3)';
 			extractedText.style.color = 'var(--form-color)';
-			extractedText.textContent = `${data.text}`;
+			extractedText.textContent = data.text;
 		})
-		.catch(({message}) => {
+		.catch(reason => {
 			extractedText.style.backgroundColor = 'var(--form-background-error-color)';
 			extractedText.style.color = 'var(--form-error-color)';
-			extractedText.textContent = message;
+			extractedText.textContent = commonErrorReasonHandler(reason);
 		})
 		.finally(() => enableForm(extractTextForm));
 	});
@@ -115,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	const uploadFileInput = document.getElementById('uploadFileInput');
 	const uploadFileForm = document.getElementById('uploadFileForm');
 
-	uploadFileForm.addEventListener('submit', e => {
+	uploadFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const blobFiles = uploadFileInput.files;
@@ -123,132 +141,27 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
+		const {showAlertDialog} = await import('./js/dialog.js');
+
 		disableForm(uploadFileForm);
 
-		let checkpointTimeout = null;
-		api.post('/upload/files/apply', {
-			files: Array.from(blobFiles).map(file => ({
-				name: file.name,
-				size: file.size
-			}))
-		})
-		.then(async ({data}) => {
-			const {configs, checkpointUrl} = data;
-
-			// 每隔15秒检查一次
-			checkpointTimeout = setTimeout(function checkpoint() {
-				api.get(checkpointUrl).finally(() => {
-					if (checkpointTimeout != null) {
-						checkpointTimeout = setTimeout(checkpoint, 15 * 1000);
-					}
-				});
-			});
-
-			const extractCode = data.code;
-
-			const {UploadDialog} = await import('./js/dialog.js');
-			const uploadDialog = new UploadDialog(configs, extractCode);
-			uploadDialog.open();
-
-			let activeAbortController = null;
-			uploadDialog.signal.addEventListener('abort', () => {
-				activeAbortController?.abort("上传已取消");
-			});
-
-			const failedConfigs = [];
-			for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
-				if (uploadDialog.signal.aborted) {
-					failedConfigs.push(...configs.slice(activeConfigIndex));
-					break;
-				}
-
-				const activeConfig = configs[activeConfigIndex];
-				const blobFile = blobFiles[activeConfigIndex];
-
-				await new Promise((resolve, reject) => {
-					activeAbortController = new AbortController();
-					const uploadFilePromises = [];
-					for (const uploadConfig of activeConfig.parts) {
-						const formData = new FormData();
-						formData.append('id', activeConfig.id);
-						formData.append('key', activeConfig.key);
-						formData.append('index', uploadConfig.index);
-						// -1 表示整个文件
-						formData.append('part', uploadConfig.index === -1 ? blobFile : blobFile.slice(...uploadConfig.range));
-						uploadFilePromises.push(api.post("/upload/files", formData, {signal: activeAbortController.signal}, {slowRequest: true}).finally(() => {
-							uploadDialog.addFileProgress();
-						}));
-					}
-					Promise.all(uploadFilePromises)
-					.then(() => resolve())
-					.catch(() => {
-						// 终止未完成的上传
-						try {
-							activeAbortController.abort("文件上传失败");
-						} catch {}
-						reject();
-					});
-				}).catch(() => {
-					failedConfigs.push(activeConfig);
-				}).finally(() => {
-					uploadDialog.addTotalProgress();
-				});
-			}
-
-			if (failedConfigs.length > 0) {
-				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
-			}
-		})
-		.catch(({message}) => alert(message))
-		.finally(() => {
-			enableForm(uploadFileForm);
-			clearTimeout(checkpointTimeout);
-			checkpointTimeout = null;
-		});
+		uploadFiles(blobFiles)
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
+		.finally(() => enableForm(uploadFileForm));
 	});
 
 	const extractFileCode = document.getElementById('extractFileCode');
 	const extractFileForm = document.getElementById('extractFileForm');
 
-	async function downloadConfigs(configs) {
-		const {DownloadDialog} = await import("./js/dialog.js");
-		const downloadDialog = new DownloadDialog(configs);
-		downloadDialog.open();
-
-		const failedConfigs = [];
-
-		for (let activeConfigIndex = 0; activeConfigIndex < configs.length; activeConfigIndex++) {
-			const activeConfig = configs[activeConfigIndex];
-
-			try {
-				// 请求文件的第一个字，请求到了说明可以开始下载
-				await api.get(activeConfig.downUrl, {headers: {"Range": `bytes=0-0`}});
-
-				// 说明下载完成，下载整个文件
-				const a = document.createElement('a');
-				a.href = completeUrl(activeConfig.downUrl);
-				a.download = activeConfig.name;
-				a.click();
-			} catch {
-				failedConfigs.push(activeConfig);
-			}
-
-			downloadDialog.addFileProgress();
-			downloadDialog.addTotalProgress();
-		}
-
-		if (failedConfigs.length > 0) {
-			alert(`以下文件未能下载：\n${failedConfigs.map(config => config.name).join('\n')}`);
-		}
-	}
-
-	extractFileForm.addEventListener('submit', e => {
+	extractFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(extractFileCode.value);
 		if (!extractionCode.length) {
 			return;
 		}
+
+		const {showAlertDialog, SelectDownloadDialog} = await import('./js/dialog.js');
 
 		disableForm(extractFileForm);
 
@@ -258,11 +171,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (e.isTrusted && configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
-				const {SelectDownloadDialog} = await import('./js/dialog.js');
 				new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 			}
 		})
-		.catch(({message}) => alert(`文件提取失败：${message}`))
+		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(extractFileForm));
 	});
 
@@ -296,13 +208,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	let subExtractInst = null, videoTrackStation;
 
-	playFileForm.addEventListener('submit', e => {
+	playFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const extractionCode = parseExtractCode(playFileCode.value);
 		if (!extractionCode.length) {
 			return;
 		}
+
+		const {showAlertDialog, SelectPlayDialog} = await import('./js/dialog.js');
 
 		disableForm(playFileForm);
 
@@ -313,11 +227,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (configs.length === 1 && !configs[0].removed) {
 				await playConfig(configs[0]);
 			} else {
-				const {SelectPlayDialog} = await import('./js/dialog.js');
 				new SelectPlayDialog(configs, config => playConfig(config)).open();
 			}
 		})
-		.catch(({message}) => alert(`文件提取失败：${message}`))
+		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(playFileForm));
 	});
 
@@ -359,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	disableDropSend();
 
-	dropConnectForm.addEventListener('submit', e => {
+	dropConnectForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		if (dropConnectForm.dataset.enabled === 'true') {
@@ -372,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		if (!connectCode.length) {
 			return;
 		}
+
+		const {showAlertDialog} = await import('./js/dialog.js');
 
 		disableForm(dropConnectForm);
 
@@ -391,9 +306,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			};
 			dropSendWsClient.open();
 		})
-		.catch(({message}) => {
+		.catch(reason => {
+			showAlertDialog('连接失败', commonErrorReasonHandler(reason));
+
 			enableForm(dropConnectForm);
-			alert(`连接失败：${message}`);
 		});
 	});
 
@@ -405,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			dropUploadTextForm.dispatchEvent(new SubmitEvent('submit'));
 		}
 	});
-	dropUploadTextForm.addEventListener('submit', e => {
+	dropUploadTextForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const text = dropUploadTextInput.value;
@@ -413,24 +329,28 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
+		const {showAlertDialog} = await import('./js/dialog.js');
+
 		disableForm(dropUploadTextForm);
 
 		api.post("/upload/text?drop=" + dropConnectCode.value, text)
 		.then(() => dropUploadTextForm.reset())
-		.catch(({message}) => alert(message))
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
 		.finally(() => enableForm(dropUploadTextForm));
 	});
 
 	const dropUploadFileInput = document.getElementById('dropUploadFileInput');
 	const dropUploadFileForm = document.getElementById('dropUploadFileForm');
 
-	dropUploadFileForm.addEventListener('submit', e => {
+	dropUploadFileForm.addEventListener('submit', async e => {
 		e.preventDefault();
 
 		const blobFiles = dropUploadFileInput.files;
 		if (!blobFiles.length) {
 			return;
 		}
+
+		const {showAlertDialog} = await import('./js/dialog.js');
 
 		disableForm(dropUploadFileForm);
 
@@ -507,11 +427,13 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (failedConfigs.length > 0) {
 				alert(`以下文件未能上传：\n${failedConfigs.map(config => config.name).join('\n')}`);
 			}
-		})
-		.catch(({message}) => alert(message))
-		.finally(() => {
+
 			dropUploadFileForm.reset();
+		})
+		.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)))
+		.finally(() => {
 			enableForm(dropUploadFileForm);
+
 			clearTimeout(checkpointTimeout);
 			checkpointTimeout = null;
 		});
@@ -544,13 +466,15 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropRecvHelper.style.display = 'none';
 	}
 
-	dropRecvSwitchButton.addEventListener('click', () => {
+	dropRecvSwitchButton.addEventListener('click', async () => {
 		if (dropRecvSwitchButton.dataset.enabled === 'true') {
 			dropRecvWsClient.close();
 
 			disableRecv();
 			return;
 		}
+
+		const {showAlertDialog} = await import('./js/dialog.js');
 
 		dropRecvSwitchButton.disabled = true;
 
@@ -567,8 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
 					qr.addData(text, mode);
 					qr.make();
 
-					return qr.createTableTag(3, 0)
-					.replaceAll('background-color: #ffffff;', '');
+					return qr.createTableTag(4, 0)
+					.replaceAll('background-color: #ffffff;', '')
+					.replaceAll(' border-width: 0px; border-style: none; border-collapse: collapse; padding: 0px; margin: 0px; width: 4px; height: 4px; ', '');
 				}
 
 				function parseHTML(htmlString) {
@@ -582,6 +507,15 @@ document.addEventListener('DOMContentLoaded', function () {
 				const qrCodeUrl = new URL(`#DROP-${code}`, location).toString();
 				const dropQrCodeTable = parseHTML(createQrcode(qrCodeUrl, '0', 'H', 'Byte', 'UTF-8'));
 				dropQrCodeTable.id = 'dropQrCodeTable';
+
+				const resizeObserver = new ResizeObserver(entries => {
+					for (let entry of entries) {
+						const width = entry.contentRect.width;
+						dropQrCodeTable.style.height = `${width}px`;
+					}
+				});
+				resizeObserver.observe(dropQrCodeTable);
+
 				dropQrCode.appendChild(dropQrCodeTable);
 
 				const qrCodeTip = document.createElement('span');
@@ -597,13 +531,14 @@ document.addEventListener('DOMContentLoaded', function () {
 			const {WebSocketClient} = await import('./js/websocket.js');
 			dropRecvWsClient = new WebSocketClient(completeWsUrl(wsRecvUrl));
 			dropRecvWsClient.onMessage = message => {
-				const clone = dropRecvDataTemplate.content.cloneNode(true);
+				const cloneFragment = dropRecvDataTemplate.content.cloneNode(true);
+				const element = cloneFragment.firstElementChild;
 
 				const {type, data} = JSON.parse(message);
 
-				const typeEl = clone.querySelector('.type');
-				const contentEl = clone.querySelector('.content');
-				const operateButton = clone.querySelector('.operate-button');
+				const typeEl = element.querySelector('.type');
+				const contentEl = element.querySelector('.content');
+				const operateButton = element.querySelector('.operate-button');
 
 				switch (type) {
 					case 'text': {
@@ -632,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 								await downloadConfigs(configs);
 							})
-							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
@@ -651,19 +586,20 @@ document.addEventListener('DOMContentLoaded', function () {
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
 								new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
 							})
-							.catch(({message}) => alert(`文件提取失败：${message}`))
+							.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 							.finally(() => operateButton.disabled = false);
 						});
 						break;
 					}
 				}
 
-				if (dropRecvDataList.classList.contains("empty")) {
-					dropRecvDataList.classList.remove("empty");
-					dropRecvDataList.appendChild(clone);
-				} else {
-					dropRecvDataList.insertBefore(clone, dropRecvDataList.firstChild);
+				if (dropRecvDataList.classList.contains('empty')) {
+					dropRecvDataList.classList.remove('empty');
 				}
+
+				dropRecvDataList.firstElementChild.insertAdjacentElement('afterend', element);
+
+				element.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 			};
 			dropRecvWsClient.onClose = () => {
 				disableRecv();
@@ -672,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 			enableRecv();
 		})
-		.catch(({message}) => alert(`启动失败：${message}`))
+		.catch(reason => showAlertDialog('初始化失败', commonErrorReasonHandler(reason)))
 		.finally(() => dropRecvSwitchButton.disabled = false);
 	});
 

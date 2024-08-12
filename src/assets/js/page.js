@@ -134,6 +134,8 @@ class HTMLPageBarElement extends HTMLElement {
 			const itemPageId = item.getAttribute('for');
 
 			document.pages[itemPageId].style.display = 'block';
+
+			document.title = `快传 - ${item.textContent}`;
 		}
 	}
 }
@@ -153,9 +155,11 @@ class HTMLPageItemElement extends HTMLElement {
 				justify-content: center;
 				width: 5em;
 				height: 2em;
-				border-radius: 100px;
 				cursor: pointer;
 				color: var(--text-color-2);
+				border-radius: 100px;
+				outline-color: var(--primary-color-2);
+                outline-offset: 2px;
 			}
 
 			:host(:hover) {
@@ -172,8 +176,8 @@ class HTMLPageItemElement extends HTMLElement {
 			}
 
 			:host > slot {
-				display: block;
 				position: relative;
+				display: block;
 				pointer-events: none;
 			}
 		`;

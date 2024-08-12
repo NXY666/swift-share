@@ -39,15 +39,19 @@
 
 .input-form {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 15px;
 }
 
 .input-form > input {
 	flex: 6;
+	min-width: 170px;
+	height: 35px;
 }
 
 .input-form > button {
 	flex: 1;
+	min-width: 70px;
 }
 
 #uploadTextForm, #dropUploadTextForm {
@@ -92,10 +96,6 @@
 	border-radius: 0 0 5px 5px;
 }
 
-#uploadFileInput {
-	width: 0;
-}
-
 #playFileVideoContainer {
 	position: relative;
 	margin-top: 15px;
@@ -116,23 +116,39 @@
 	display: flex;
 	flex-direction: column;
 	margin-top: 20px;
-	padding: 20px;
-	border-radius: 5px;
-	background-color: var(--background-color-3);
 	gap: 20px;
 }
 
+.drop-send-box {
+	display: flex;
+	flex-direction: column;
+	padding: 15px;
+	border-radius: 5px;
+	background-color: var(--background-color-3);
+	gap: 10px;
+}
+
 @media (prefers-color-scheme: dark) {
-	#dropSender {
+	.drop-send-box {
 		background-color: var(--background-color-1);
 	}
 }
 
-.drop-send-box {
+.drop-send-box-title {
+	font-weight: bold;
+	line-height: 1.5;
+	display: flex;
+	margin: 0;
+	text-align: left;
 }
 
-.drop-send-box-title {
-	margin-top: 0;
+.drop-send-box-title:before {
+	display: inline-block;
+	width: 4px;
+	margin-right: 10px;
+	content: '';
+	border-radius: 5px;
+	background-color: var(--primary-color-2);
 }
 
 #dropUploadFileInput {
@@ -145,6 +161,8 @@
 
 #dropRecvHelper {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	margin-top: 20px;
 	text-align: left;
 	gap: 20px;
@@ -161,6 +179,8 @@
 	display: flex;
 	flex-direction: column;
 	flex-shrink: 0;
+	width: 30%;
+	min-width: 130px;
 	padding: 15px 15px 10px;
 	border-radius: 5px;
 	background-color: #F6F8FA;
@@ -173,8 +193,9 @@
 
 .drop-recv-method-list {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
-	width: 100%;
+	min-width: 195px;
 	gap: 20px;
 }
 
@@ -212,7 +233,7 @@
 }
 
 .drop-recv-data .stick {
-	width: 5px;
+	width: 4px;
 	border-radius: 5px;
 	background-color: var(--primary-color-2);
 }
@@ -226,6 +247,7 @@
 
 .drop-recv-data .content {
 	font-size: 14px;
+	line-height: 1.5;
 	overflow: hidden;
 	flex: 1;
 	white-space: nowrap;

@@ -1,5 +1,8 @@
 import {defineKeyboardClickEvent} from "./element.js";
-import {copyText} from "./string.js";
+import {copyText, parseBytes} from "./string.js";
+import PhotoSwipeLightbox from "photoswipe/lightbox";
+import 'photoswipe/style.css';
+import {completeUrl} from "./url.js";
 
 /**
  * @abstract
@@ -288,7 +291,7 @@ class Dialog {
 				{
 					if (typeof this.#content === 'string') {
 						this.#bodyContainer.textContent = this.#content;
-					} else {
+					} else if (this.#content instanceof Node) {
 						this.#bodyContainer.appendChild(this.#content);
 					}
 				}
@@ -698,6 +701,369 @@ export class DownloadDialog extends TransferDialog {
 	}
 }
 
+export class ConfirmUploadTextDialog extends Dialog {
+	static defaultTitle = '上传文本';
+
+	static defaultStyles = `
+		.dialog-text-pre {
+			overflow: auto;
+			min-height: 100px;
+			max-height: 250px;
+			margin: 0;
+			padding: 10px;
+			text-align: left;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		.dialog-text-pre.auto-wrap {
+			white-space: pre-wrap;
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 文本框
+	 * @type {HTMLPreElement}
+	 */
+	#textPre = document.createElement('pre');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 自动换行标签
+	 * @type {HTMLLabelElement}
+	 */
+	#autoWrapLabel = document.createElement('label');
+
+	/**
+	 * 自动换行复选框
+	 * @type {HTMLInputElement}
+	 */
+	#autoWrapCheckbox = document.createElement('input');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 上传文本
+	 * @type {string}
+	 */
+	#text = "";
+
+	constructor(text, callback) {
+		super();
+
+		this.#text = text;
+
+		this.#textPre.classList.add('dialog-text-pre', 'auto-wrap');
+		this.#textPre.textContent = text;
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#autoWrapLabel.style.display = 'flex';
+			this.#autoWrapLabel.style.alignItems = 'center';
+			this.#autoWrapLabel.style.gap = '5px';
+			{
+				this.#autoWrapCheckbox.type = 'checkbox';
+				this.#autoWrapCheckbox.id = 'auto-wrap';
+				this.#autoWrapCheckbox.checked = true;
+				this.#autoWrapCheckbox.addEventListener('change', () => {
+					this.#textPre.classList.toggle('auto-wrap');
+				});
+				this.#autoWrapLabel.appendChild(this.#autoWrapCheckbox);
+
+				this.#autoWrapLabel.appendChild(document.createTextNode('自动换行'));
+			}
+			this.#autoWrapLabel.htmlFor = 'auto-wrap';
+			this.#buttonGroup.appendChild(this.#autoWrapLabel);
+
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				callback();
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#textPre;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
+export class ConfirmUploadImageDialog extends Dialog {
+	static defaultTitle = '上传图片';
+
+	static defaultStyles = `
+		.dialog-image-container {
+		    display: block;
+            font-size: 0;
+            cursor: zoom-in;
+		}
+		.dialog-image {
+			width: 100%;
+			min-height: 100px;
+			max-height: 250px;
+			object-fit: cover;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 图片容器
+	 * @type {HTMLAnchorElement}
+	 */
+	#imageContainer = document.createElement('a');
+
+	/**
+	 * 预览图片
+	 * @type {HTMLImageElement}
+	 */
+	#image = document.createElement('img');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 图片地址
+	 * @type {string}
+	 */
+	#src = "";
+
+	constructor(src, callback) {
+		super();
+
+		this.#src = src;
+
+		this.#imageContainer.classList.add('dialog-image-container');
+		{
+			this.#image.src = src;
+			this.#image.classList.add('dialog-image');
+			this.#image.addEventListener('load', () => {
+				this.#imageContainer.setAttribute('data-pswp-width', this.#image.naturalWidth.toString());
+				this.#imageContainer.setAttribute('data-pswp-height', this.#image.naturalHeight.toString());
+
+				const lightbox = new PhotoSwipeLightbox({
+					gallery: this.#imageContainer,
+					pswpModule: () => import('photoswipe')
+				});
+				lightbox.init();
+			});
+			this.#imageContainer.appendChild(this.#image);
+		}
+		this.#imageContainer.setAttribute('data-cropped', 'true');
+		this.#imageContainer.setAttribute('data-pswp-src', src);
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				callback();
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#imageContainer;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
+export class SelectUploadDialog extends Dialog {
+	static defaultTitle = '上传文件';
+
+	static defaultStyles = `
+		.dialog-checkbox-list {
+			margin: 0;
+			overflow-y: auto;
+			max-height: 300px;
+			padding: 5px;
+			list-style-type: none;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+			border: 1px solid var(--dialog-border-color);
+		}
+		@media (prefers-color-scheme: dark) {
+			.dialog-checkbox-list {
+				border-color: transparent;
+			}
+		}
+		.dialog-checkbox-list li label {
+			display: flex;
+			align-items: center;
+			overflow-wrap: anywhere;
+			padding: 10px;
+			border-radius: 5px;
+			gap: 10px;
+		}
+		.dialog-checkbox-list li label:hover {
+			background-color: var(--dialog-background-color);
+		}
+		.dialog-checkbox-list li label.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			background-color: transparent;
+		}
+		.dialog-button-group {
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+	`;
+
+	/**
+	 * 复选框列表
+	 * @type {HTMLUListElement}
+	 */
+	#checkboxList = document.createElement('ul');
+
+	/**
+	 * 按钮组
+	 * @type {HTMLDivElement}
+	 */
+	#buttonGroup = document.createElement('div');
+
+	/**
+	 * 全选标签
+	 * @type {HTMLLabelElement}
+	 */
+	#selectAllLabel = document.createElement('label');
+
+	/**
+	 * 全选复选框
+	 * @type {HTMLInputElement}
+	 */
+	#selectAllCheckbox = document.createElement('input');
+
+	/**
+	 * 确认按钮
+	 * @type {HTMLButtonElement}
+	 */
+	#confirmButton = document.createElement('button');
+
+	/**
+	 * 上传文件
+	 * @type {any[]}
+	 */
+	#files = [];
+
+	constructor(files, callback) {
+		super();
+
+		this.#files = files;
+
+		this.#checkboxList.classList.add('dialog-checkbox-list');
+		files.forEach((file, index) => {
+			const checkboxListItem = document.createElement('li');
+			const checkboxLabel = document.createElement('label');
+			const checkbox = document.createElement('input');
+			const fileContentSpan = document.createElement('span');
+			const fileSizeSpan = document.createElement('div');
+
+			{
+				checkboxLabel.title = file.name;
+				{
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.checked = true;
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+					});
+					checkboxLabel.appendChild(checkbox);
+
+					fileContentSpan.textContent = file.name;
+					{
+						fileSizeSpan.textContent = parseBytes(file.size);
+						fileSizeSpan.style.fontSize = '80%';
+						fileSizeSpan.style.color = 'var(--text-color-2)';
+						fileContentSpan.appendChild(fileSizeSpan);
+					}
+					checkboxLabel.appendChild(fileContentSpan);
+				}
+				checkboxListItem.appendChild(checkboxLabel);
+			}
+			this.#checkboxList.appendChild(checkboxListItem);
+		});
+
+		this.#buttonGroup.classList.add('dialog-button-group');
+		{
+			this.#selectAllLabel.style.display = 'flex';
+			this.#selectAllLabel.style.alignItems = 'center';
+			this.#selectAllLabel.style.gap = '5px';
+			{
+				this.#selectAllCheckbox.type = 'checkbox';
+				this.#selectAllCheckbox.checked = true; // 默认全选
+				this.#selectAllCheckbox.addEventListener('change', () => {
+					// 全选或取消全选
+					this.#checkboxList.querySelectorAll('input').forEach(checkbox => {
+						checkbox.checked = this.#selectAllCheckbox.checked;
+					});
+				});
+				this.#selectAllLabel.appendChild(this.#selectAllCheckbox);
+
+				// 全选文字
+				this.#selectAllLabel.appendChild(document.createTextNode(' 全选'));
+			}
+			this.#buttonGroup.appendChild(this.#selectAllLabel);
+
+			this.#confirmButton.textContent = '上传';
+			this.#confirmButton.style.marginLeft = 'auto';
+			this.#confirmButton.addEventListener('click', async () => {
+				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#files[checkbox.value]);
+				if (selectedConfigs.length !== 0) {
+					callback(selectedConfigs);
+				}
+				this.close();
+			});
+			this.#buttonGroup.appendChild(this.#confirmButton);
+		}
+
+		this.content = this.#checkboxList;
+		this.footer = this.#buttonGroup;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+}
+
 export class SelectDownloadDialog extends Dialog {
 	static defaultTitle = '从集合中下载文件';
 
@@ -786,27 +1152,38 @@ export class SelectDownloadDialog extends Dialog {
 			const checkboxListItem = document.createElement('li');
 			const checkboxLabel = document.createElement('label');
 			const checkbox = document.createElement('input');
+			const fileContentSpan = document.createElement('span');
+			const fileSizeSpan = document.createElement('div');
 			if (downloadConfig.removed) {
 				checkboxLabel.classList.add('disabled');
 			}
 
-			checkbox.type = 'checkbox';
-			checkbox.value = index;
-			checkbox.disabled = downloadConfig.removed;
-			checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
-			checkbox.addEventListener('change', () => {
-				// 更新全选框状态
-				const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
-				this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
-				this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
-			});
+			{
+				{
+					checkbox.type = 'checkbox';
+					checkbox.value = index;
+					checkbox.disabled = downloadConfig.removed;
+					checkbox.checked = !downloadConfig.removed; // 设置初始状态为全选，但是如果被移除了就不选
+					checkbox.addEventListener('change', () => {
+						// 更新全选框状态
+						const checkboxItems = Array.from(this.#checkboxList.querySelectorAll('input'));
+						this.#selectAllCheckbox.checked = checkboxItems.every(checkbox => checkbox.checked || checkbox.disabled);
+						this.#selectAllCheckbox.indeterminate = !this.#selectAllCheckbox.checked && checkboxItems.some(checkbox => checkbox.checked);
+					});
+					checkboxLabel.appendChild(checkbox);
 
-			checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;
-			checkboxLabel.appendChild(checkbox);
-			checkboxLabel.appendChild(document.createTextNode(` ${downloadConfig.name}`));
-
-			checkboxListItem.appendChild(checkboxLabel);
-
+					fileContentSpan.textContent = downloadConfig.name;
+					{
+						fileSizeSpan.textContent = parseBytes(downloadConfig.size);
+						fileSizeSpan.style.fontSize = '80%';
+						fileSizeSpan.style.color = 'var(--text-color-2)';
+						fileContentSpan.appendChild(fileSizeSpan);
+					}
+					checkboxLabel.appendChild(fileContentSpan);
+				}
+				checkboxLabel.title = downloadConfig.removed ? '文件已损坏，请重新上传' : downloadConfig.name;
+				checkboxListItem.appendChild(checkboxLabel);
+			}
 			this.#checkboxList.appendChild(checkboxListItem);
 		});
 
@@ -952,4 +1329,55 @@ export class SelectPlayDialog extends Dialog {
 		this.closeOnClickOverlay = true;
 		this.closeOnEsc = true;
 	}
+}
+
+class AlertDialog extends Dialog {
+	static defaultTitle = '提示';
+
+	static defaultStyles = `
+		.dialog-alert {
+			padding: 10px;
+			border-radius: 5px;
+			background-color: var(--dialog-on-background-color);
+		}
+	`;
+
+	/**
+	 * 提示标题
+	 * @type {string}
+	 */
+	#alertTitle;
+
+	/**
+	 * 提示内容
+	 * @type {string}
+	 */
+	#alertContent;
+
+	/**
+	 * 构造函数
+	 * @param {string} title
+	 * @param {string} content
+	 */
+	constructor(title, content) {
+		super();
+
+		this.#alertTitle = title;
+
+		this.#alertContent = content;
+
+		this.content = this.#alertContent;
+
+		this.closeOnClickOverlay = true;
+		this.closeOnEsc = true;
+	}
+
+	get title() {
+		return this.#alertTitle;
+	}
+}
+
+export function showAlertDialog(title, content) {
+	const alertDialog = new AlertDialog(title, content);
+	alertDialog.open();
 }
