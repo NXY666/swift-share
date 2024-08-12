@@ -1,7 +1,7 @@
 {
   "name": "swift-share-dev",
   "version": "0.0.0",
-  "description": "传递文本、传输文件、持久共享及在线播放。",
+  "description": "轻量级文本、文件传输工具。简单、快捷、一目了然。",
   "main": "src/index.ts",
   "type": "module",
   "author": "GreatNXY",
