@@ -46,8 +46,8 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.25.3",
-    "@babel/runtime": "^7.25.0",
+    "@babel/preset-env": "^7.25.4",
+    "@babel/runtime": "^7.25.4",
     "@rollup/plugin-alias": "^5.1.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^26.0.1",
@@ -58,9 +58,9 @@
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.11",
     "@types/ws": "^8.5.12",
-    "core-js": "^3.38.0",
+    "core-js": "^3.38.1",
     "postcss-import": "^16.1.0",
-    "rollup": "^4.20.0",
+    "rollup": "^4.21.0",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-watch-assets": "^1.0.1",
