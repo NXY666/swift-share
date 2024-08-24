@@ -60,7 +60,9 @@ if ('serviceWorker' in navigator) {
 			.map(({value}) => value));
 
 			if (shareFiles.length !== 0) {
-				const dialog = new SelectUploadDialog(shareFiles, files => {
+				const dialog = new SelectUploadDialog(shareFiles);
+				dialog.addEventListener('confirm', (evt) => {
+					const {files} = evt.data;
 					uploadFiles(files).catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 				});
 				dialog.open();
@@ -73,7 +75,8 @@ if ('serviceWorker' in navigator) {
 			if (response.ok) {
 				const text = await response.text();
 
-				const dialog = new ConfirmUploadTextDialog(text, () => {
+				const dialog = new ConfirmUploadTextDialog(text);
+				dialog.addEventListener('confirm', () => {
 					api.post("/upload/text", text)
 					.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
 					.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
@@ -95,6 +98,11 @@ if (navigator.clipboard) {
 
 		const {showAlertDialog, ConfirmUploadTextDialog, ConfirmUploadImageDialog} = await import("./js/dialog.js");
 
+		// 如果有对话框正在显示，则不处理
+		if (dialogManager.any()) {
+			return;
+		}
+
 		if (!isInputElement || activeElement.readOnly || activeElement.disabled) {
 			try {
 				const clipboardItems = await navigator.clipboard.read();
@@ -103,7 +111,8 @@ if (navigator.clipboard) {
 				if (clipboardItem.types.includes('text/plain')) {
 					const textBlob = await clipboardItem.getType('text/plain');
 					const text = await textBlob.text();
-					const dialog = new ConfirmUploadTextDialog(text, () => {
+					const dialog = new ConfirmUploadTextDialog(text);
+					dialog.addEventListener('confirm', () => {
 						api.post("/upload/text", text)
 						.then(({data}) => showAlertDialog('上传成功', `请凭【${data.code.toUpperCase()}】提取文本。`))
 						.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
@@ -112,7 +121,8 @@ if (navigator.clipboard) {
 				} else if (clipboardItem.types.includes('image/png')) {
 					const blob = await clipboardItem.getType('image/png');
 					const blobUrl = URL.createObjectURL(blob);
-					const dialog = new ConfirmUploadImageDialog(blobUrl, () => {
+					const dialog = new ConfirmUploadImageDialog(blobUrl);
+					dialog.addEventListener('confirm', () => {
 						uploadFiles([new File([blob], 'image.png', {type: 'image/png'})])
 						.catch(reason => showAlertDialog('上传失败', commonErrorReasonHandler(reason)));
 					});
@@ -120,9 +130,9 @@ if (navigator.clipboard) {
 				}
 			} catch (error) {
 				if (error.name === 'NotAllowedError') {
-					showAlertDialog('上传失败', '请允许网站访问剪贴板，以便通过剪贴板上传文本和图片。');
+					await showAlertDialog('上传失败', '请允许网站访问剪贴板，以便通过剪贴板上传文本和图片。');
 				} else {
-					showAlertDialog('上传失败', `未知错误，请联系开发者。（${error.message}）`);
+					await showAlertDialog('上传失败', `未知错误，请联系开发者。（${error.message}）`);
 				}
 			}
 		}

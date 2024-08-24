@@ -4,10 +4,66 @@ import PhotoSwipeLightbox from "photoswipe/lightbox";
 import 'photoswipe/style.css';
 import {completeUrl} from "./url.js";
 
+window.dialogManager = new class DialogManager extends EventTarget {
+	#dialogs = [];
+
+	/**
+	 * 添加对话框
+	 */
+	add(dialog) {
+		this.#dialogs.unshift(dialog);
+		// 有对话框时禁止滚动
+		if (this.#dialogs.length === 1) {
+			this.dispatchEvent(new DialogEvent('modalshow'));
+		}
+
+		dialog.addEventListener('close', () => {
+			this.#dialogs.splice(this.#dialogs.indexOf(dialog), 1);
+			// 没有对话框时允许滚动
+			if (this.#dialogs.length === 0) {
+				this.dispatchEvent(new DialogEvent('modalhide'));
+			}
+		});
+	}
+
+	any() {
+		return this.#dialogs.length > 0;
+	}
+
+	/**
+	 * 监听键盘事件
+	 */
+	constructor() {
+		super();
+
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				console.log('Esc', this.#dialogs);
+				// 关闭最前面的对话框
+				this.#dialogs[0]?.close('esc');
+			}
+		});
+	}
+};
+
+class DialogEvent extends Event {
+	#data;
+
+	get data() {
+		return this.#data;
+	}
+
+	constructor(type, options) {
+		super(type, options);
+
+		this.#data = options?.data;
+	}
+}
+
 /**
  * @abstract
  */
-class Dialog {
+class Dialog extends EventTarget {
 	static defaultTitle = '对话框';
 
 	static defaultStyles = `
@@ -182,8 +238,6 @@ class Dialog {
 	 */
 	#showCloseButton = true;
 
-	#closeDialogKeyboardEvent;
-
 	get title() {
 		return this.constructor.defaultTitle;
 	}
@@ -220,16 +274,6 @@ class Dialog {
 
 	set closeOnEsc(closeOnEsc) {
 		this.#closeOnEsc = closeOnEsc;
-		if (closeOnEsc) {
-			document.addEventListener('keydown', this.#closeDialogKeyboardEvent = (e) => {
-				if (e.key === 'Escape') {
-					document.removeEventListener('keydown', this.#closeDialogKeyboardEvent);
-					this.close();
-				}
-			});
-		} else {
-			document.removeEventListener('keydown', this.#closeDialogKeyboardEvent);
-		}
 	}
 
 	set showCloseButton(showCloseButton) {
@@ -306,31 +350,43 @@ class Dialog {
 					this.#dialog.appendChild(this.#footerContainer);
 				}
 			}
-			if (this.#closeOnClickOverlay) {
-				this.#overlay.addEventListener('click', (ev) => {
-					if (ev.target === this.#overlay) {
-						this.close();
-					}
-				});
-			}
+			this.#overlay.addEventListener('click', (ev) => {
+				if (ev.target === this.#overlay) {
+					this.close('overlay');
+				}
+			});
 			this.#overlay.appendChild(this.#dialog);
 		}
 		document.body.appendChild(this.#overlay);
+
+		dialogManager.add(this);
+		this.dispatchEvent(new DialogEvent('open'));
 	}
 
 	/**
 	 * 关闭对话框
+	 * @param {string} [method] 关闭方法
 	 */
-	close() {
+	close(method) {
 		if (!this.#hasOpened || this.#hasClosed) {
 			return;
+		} else if (method === 'overlay' && !this.#closeOnClickOverlay) {
+			return;
+		} else if (method === 'esc' && !this.#closeOnEsc) {
+			return;
 		}
+
 		this.#hasClosed = true;
 		this.#overlay.style.animationName = 'overlay-disappear';
 		this.#dialog.style.animationName = 'dialog-disappear';
 		this.#dialog.addEventListener('animationend', () => {
 			document.body.removeChild(this.#overlay);
 		});
+
+		if (method) {
+			this.dispatchEvent(new DialogEvent(`cancel`));
+		}
+		this.dispatchEvent(new DialogEvent('close'));
 	}
 }
 
@@ -762,7 +818,7 @@ export class ConfirmUploadTextDialog extends Dialog {
 	 */
 	#text = "";
 
-	constructor(text, callback) {
+	constructor(text) {
 		super();
 
 		this.#text = text;
@@ -792,7 +848,7 @@ export class ConfirmUploadTextDialog extends Dialog {
 			this.#confirmButton.textContent = '上传';
 			this.#confirmButton.style.marginLeft = 'auto';
 			this.#confirmButton.addEventListener('click', async () => {
-				callback();
+				this.dispatchEvent(new DialogEvent('confirm'));
 				this.close();
 			});
 			this.#buttonGroup.appendChild(this.#confirmButton);
@@ -861,7 +917,7 @@ export class ConfirmUploadImageDialog extends Dialog {
 	 */
 	#src = "";
 
-	constructor(src, callback) {
+	constructor(src) {
 		super();
 
 		this.#src = src;
@@ -890,7 +946,7 @@ export class ConfirmUploadImageDialog extends Dialog {
 			this.#confirmButton.textContent = '上传';
 			this.#confirmButton.style.marginLeft = 'auto';
 			this.#confirmButton.addEventListener('click', async () => {
-				callback();
+				this.dispatchEvent(new DialogEvent('confirm'));
 				this.close();
 			});
 			this.#buttonGroup.appendChild(this.#confirmButton);
@@ -982,7 +1038,7 @@ export class SelectUploadDialog extends Dialog {
 	 */
 	#files = [];
 
-	constructor(files, callback) {
+	constructor(files) {
 		super();
 
 		this.#files = files;
@@ -1049,9 +1105,11 @@ export class SelectUploadDialog extends Dialog {
 			this.#confirmButton.addEventListener('click', async () => {
 				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#files[checkbox.value]);
 				if (selectedConfigs.length !== 0) {
-					callback(selectedConfigs);
+					this.dispatchEvent(new DialogEvent('confirm', {data: {configs: selectedConfigs}}));
+					this.close();
+				} else {
+					this.close('cancel');
 				}
-				this.close();
 			});
 			this.#buttonGroup.appendChild(this.#confirmButton);
 		}
@@ -1142,7 +1200,7 @@ export class SelectDownloadDialog extends Dialog {
 	 */
 	#configs = [];
 
-	constructor(configs, callback) {
+	constructor(configs) {
 		super();
 
 		this.#configs = configs;
@@ -1215,7 +1273,8 @@ export class SelectDownloadDialog extends Dialog {
 			this.#confirmButton.addEventListener('click', async () => {
 				const selectedConfigs = Array.from(this.#checkboxList.querySelectorAll('input:checked')).map(checkbox => this.#configs[checkbox.value]);
 				if (selectedConfigs.length !== 0) {
-					callback(selectedConfigs);
+					this.dispatchEvent(new DialogEvent('confirm', {data: {configs: selectedConfigs}}));
+					this.close();
 				}
 				this.close();
 			});
@@ -1285,7 +1344,7 @@ export class SelectPlayDialog extends Dialog {
 	 */
 	#configs = [];
 
-	constructor(configs, callback) {
+	constructor(configs) {
 		super();
 
 		this.#configs = configs;
@@ -1318,9 +1377,11 @@ export class SelectPlayDialog extends Dialog {
 		this.#confirmButton.addEventListener('click', () => {
 			const selectedConfig = this.#configs[this.#radioList.querySelector('input:checked')?.value];
 			if (selectedConfig) {
-				callback(selectedConfig);
+				this.dispatchEvent(new DialogEvent('confirm', {data: {config: selectedConfig}}));
+				this.close();
+			} else {
+				this.close('cancel');
 			}
-			this.close();
 		});
 
 		this.content = this.#radioList;
@@ -1378,6 +1439,11 @@ class AlertDialog extends Dialog {
 }
 
 export function showAlertDialog(title, content) {
-	const alertDialog = new AlertDialog(title, content);
-	alertDialog.open();
+	return new Promise((resolve) => {
+		const alertDialog = new AlertDialog(title, content);
+		alertDialog.addEventListener('close', () => {
+			resolve();
+		});
+		alertDialog.open();
+	});
 }

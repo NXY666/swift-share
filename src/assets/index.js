@@ -171,7 +171,12 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (e.isTrusted && configs.length === 1 && !configs[0].removed) {
 				await downloadConfigs(configs);
 			} else {
-				new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
+				const dialog = new SelectDownloadDialog(configs);
+				dialog.addEventListener('confirm', (evt) => {
+					const {configs} = evt.data;
+					downloadConfigs(configs);
+				});
+				dialog.open();
 			}
 		})
 		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
@@ -227,7 +232,12 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (configs.length === 1 && !configs[0].removed) {
 				await playConfig(configs[0]);
 			} else {
-				new SelectPlayDialog(configs, config => playConfig(config)).open();
+				const dialog = new SelectPlayDialog(configs);
+				dialog.addEventListener('confirm', (evt) => {
+					const {config} = evt.data;
+					playConfig(config);
+				});
+				dialog.open();
 			}
 		})
 		.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
@@ -584,7 +594,12 @@ document.addEventListener('DOMContentLoaded', function () {
 								const {configs} = data;
 
 								const {SelectDownloadDialog} = await import('./js/dialog.js');
-								new SelectDownloadDialog(configs, configs => downloadConfigs(configs)).open();
+								const dialog = new SelectDownloadDialog(configs);
+								dialog.addEventListener('confirm', (evt) => {
+									const {configs} = evt.data;
+									downloadConfigs(configs);
+								});
+								dialog.open();
 							})
 							.catch(reason => showAlertDialog('提取失败', commonErrorReasonHandler(reason)))
 							.finally(() => operateButton.disabled = false);
