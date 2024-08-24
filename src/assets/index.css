@@ -1,4 +1,5 @@
 @import 'css/common.css';
+@import 'photoswipe/dist/photoswipe.css';
 
 .title {
 	display: flex;

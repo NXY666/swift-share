@@ -10,10 +10,13 @@ import terser from '@rollup/plugin-terser';
 import {execSync} from "child_process";
 import fs from "fs";
 import babel from '@rollup/plugin-babel';
-import postcss from 'rollup-plugin-postcss';
-import postcssImport from 'postcss-import';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import sass from 'rollup-plugin-sass';
+import postcss from "postcss";
+import postcssImport from "postcss-import";
+import autoprefixer from 'autoprefixer';
+import cssnano from "cssnano";
 
 // 将 import.meta.url 转换为当前文件的绝对路径
 const __filename = fileURLToPath(import.meta.url);
@@ -116,12 +119,24 @@ export default defineConfig([{
 		}),
 		resolve(),
 		commonjs(),
-		postcss({
-			plugins: [
-				postcssImport()
-			],
-			extract: true,
-			minimize: isProd
+		sass({
+			include: ['src/assets/**/*.css', 'src/assets/**/*.scss'],
+			processor:
+				css => postcss([
+					postcssImport({
+						path: ['src/assets']
+					}),
+					autoprefixer,
+					cssnano()
+				])
+				.process(css, {from: undefined})
+				.then(result => result.css),
+			// 输出和输入文件同名，只是后缀不同
+			output(style, styleNodes) {
+				for (const styleNode of styleNodes) {
+					fs.writeFileSync(path.resolve('dist', path.relative('src', styleNode.id)), styleNode.content);
+				}
+			}
 		}),
 		isProd && babel({
 			babelHelpers: 'bundled'

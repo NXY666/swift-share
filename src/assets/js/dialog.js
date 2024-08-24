@@ -1,7 +1,6 @@
 import {defineKeyboardClickEvent} from "./element.js";
 import {copyText, parseBytes} from "./string.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
-import 'photoswipe/style.css';
 import {completeUrl} from "./url.js";
 
 window.dialogManager = new class DialogManager extends EventTarget {
