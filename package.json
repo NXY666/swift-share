@@ -34,10 +34,10 @@
     "download"
   ],
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "chokidar": "^3.6.0",
+    "body-parser": "^1.20.3",
+    "chokidar": "^4.0.0",
     "commander": "^12.1.0",
-    "express": "^4.19.2",
+    "express": "^4.21.0",
     "mime": "^4.0.4",
     "multer": "^1.4.5-lts.1",
     "photoswipe": "^5.4.4",
@@ -61,14 +61,14 @@
     "autoprefixer": "^10.4.20",
     "core-js": "^3.38.1",
     "cssnano": "^7.0.6",
-    "postcss": "^8.4.45",
+    "postcss": "^8.4.47",
     "postcss-import": "^16.1.0",
-    "rollup": "^4.21.2",
+    "rollup": "^4.21.3",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-sass": "^1.13.2",
     "rollup-plugin-watch-assets": "^1.0.1",
     "tslib": "^2.7.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.2"
   },
   "overrides": {
     "@types/mime": "4.0.0"
